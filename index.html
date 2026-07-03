@@ -41,19 +41,32 @@
         </div>
       </div>
 
-      <!-- Slayt 2: Günlük kutu -->
+      <!-- Slayt 2: Kutu -->
       <div class="tutorial-slide">
         <div class="tut-hero">📦</div>
-        <h2 class="tut-title">Günlük Kutu</h2>
-        <p class="tut-text">Her gün <b>1 kez</b> kutu açabilirsin. Çıkan eşya otomatik olarak üstüne kuşanılır ve statların anında güncellenir.</p>
+        <h2 class="tut-title">4 Saatte Bir Kutu</h2>
+        <p class="tut-text">Kutu açma hakkın <b>4 saatte bir</b> yenilenir. Çıkan eşya otomatik olarak üstüne kuşanılır ve statların anında güncellenir. Sık açıldığı için nadir/efsanevi şansı bilerek düşük tutuldu.</p>
         <div class="rarity-bars">
-          <div class="rarity-bar standart"><span class="rarity-dot"></span> Standart <b>%80</b></div>
-          <div class="rarity-bar nadir"><span class="rarity-dot"></span> Nadir <b>%15</b></div>
-          <div class="rarity-bar efsanevi"><span class="rarity-dot"></span> Eşsiz / Efsanevi <b>%5</b></div>
+          <div class="rarity-bar standart"><span class="rarity-dot"></span> Standart <b>~%93</b></div>
+          <div class="rarity-bar nadir"><span class="rarity-dot"></span> Nadir <b>~%6</b></div>
+          <div class="rarity-bar efsanevi"><span class="rarity-dot"></span> Eşsiz / Efsanevi <b>~%0.5</b></div>
         </div>
+        <p class="tut-text small">🍀 Şansın yaver gitmiyorsa üzülme: uzun süre nadir/efsanevi çıkmazsa şansın <b>otomatik artar</b>, belli bir noktada garanti verilir.</p>
       </div>
 
-      <!-- Slayt 3: Kuşanım -->
+      <!-- Slayt 3: Toz & Seri Bonusu -->
+      <div class="tutorial-slide">
+        <div class="tut-hero">✨</div>
+        <h2 class="tut-title">Toz & Seri Bonusu</h2>
+        <p class="tut-text">Yeni eşya eskisinin yerini alırken eski eşya <b>toza</b> dönüşür. Biriken tozla garantili kutu satın alabilirsin:</p>
+        <div class="tut-slot-grid">
+          <div class="tut-slot-pill def">🔷 12 Toz → Garanti Nadir Kutu</div>
+          <div class="tut-slot-pill atk">🌟 35 Toz → Garanti Efsanevi Kutu</div>
+        </div>
+        <p class="tut-text small">🔥 Art arda gün kutu açarsan seri oluşur: <b>3 günde</b> garanti Nadir, <b>7 günde</b> (ve katlarında) garanti Efsanevi bonusu kazanırsın.</p>
+      </div>
+
+      <!-- Slayt 4: Kuşanım -->
       <div class="tutorial-slide">
         <div class="tut-hero">🛡️</div>
         <h2 class="tut-title">Kuşanım Sistemi</h2>
@@ -65,13 +78,14 @@
           <div class="tut-slot-pill def">🛡️ Zırh — Savunma</div>
           <div class="tut-slot-pill def">👢 Ayakkabı — Savunma</div>
         </div>
+        <p class="tut-text small">🎯 Aynı slot üst üste gelmesin diye sistem otomatik dengeliyor, tüm eşya türlerine sahip olma şansın artıyor.</p>
       </div>
 
-      <!-- Slayt 4: Haftalık savaş -->
+      <!-- Slayt 5: Günlük savaş -->
       <div class="tutorial-slide">
         <div class="tut-hero">⚔️</div>
-        <h2 class="tut-title">Haftalık Savaş</h2>
-        <p class="tut-text">Her hafta <b>1 kez</b> listeden birine saldırabilirsin. Statlar belirleyici, zar sadece küçük bir sürpriz katar.</p>
+        <h2 class="tut-title">Günlük Savaş</h2>
+        <p class="tut-text">Her gün <b>1 kez</b> listeden birine saldırabilirsin. Statlar belirleyici, zar sadece küçük bir sürpriz katar.</p>
         <div class="tut-result-preview">
           <div class="win">🏆 Kazanan <b>+10</b> puan</div>
           <div class="lose">💀 Kaybeden <b>−5</b> puan (0'ın altına inmez)</div>
@@ -79,11 +93,11 @@
         <p class="tut-text small">📜 Her savaş, ekrandaki Savaş Geçmişi'nde anlık olarak herkese gösterilir.</p>
       </div>
 
-      <!-- Slayt 5: Efsanevi eşyalar -->
+      <!-- Slayt 6: Efsanevi eşyalar -->
       <div class="tutorial-slide legend-slide">
         <div class="tut-hero">🌟</div>
         <h2 class="tut-title">Hedeflemeniz Gereken Eşyalar</h2>
-        <p class="tut-text small">Sadece %5 ihtimalle düşen, savaşın gidişatını değiştirebilecek özel pasif yetenekleri olan efsanevi eşyalar:</p>
+        <p class="tut-text small">Sadece küçük bir ihtimalle düşen, savaşın gidişatını değiştirebilecek özel pasif yetenekleri olan efsanevi eşyalar:</p>
         <div id="legendaryShowcase" class="legendary-showcase"></div>
       </div>
 
@@ -108,6 +122,8 @@
     </div>
     <div class="topbar-right">
       <span id="currentPlayerName" class="current-player-name"></span>
+      <button id="updatesBtn" class="icon-btn" title="Yenilikler">🆕<span id="updatesDot" class="update-dot hidden"></span></button>
+      <button id="collectionBtn" class="icon-btn" title="Koleksiyon">📖</button>
       <button id="howToBtn" class="icon-btn" title="Nasıl Oynanır">❓</button>
       <button id="switchPlayerBtn" class="icon-btn" title="Oyuncu Değiştir">🔄</button>
     </div>
@@ -125,7 +141,10 @@
     <section class="panel center-panel">
 
       <div class="box-area">
-        <h2 class="panel-title">📦 Günlük Kutu</h2>
+        <div class="box-area-top">
+          <h2 class="panel-title">📦 Kutu</h2>
+          <span id="streakChip" class="streak-chip hidden">🔥 <b id="myStreak">0</b> gün seri</span>
+        </div>
         <div id="boxWrapper" class="box-wrapper">
           <div id="lootBox" class="loot-box">📦</div>
           <div id="itemPopup" class="item-popup hidden">
@@ -134,6 +153,14 @@
         </div>
         <button id="openBoxBtn" class="btn btn-gold btn-block">Kutuyu Aç</button>
         <p id="boxStatus" class="box-status"></p>
+        <div class="guarantee-row">
+          <button id="guaranteeRareBtn" class="btn btn-mini nadir-mini" title="12 toz karşılığı garanti Nadir eşya">
+            🔷 Garanti Nadir <span>12 toz</span>
+          </button>
+          <button id="guaranteeLegendaryBtn" class="btn btn-mini efsanevi-mini" title="35 toz karşılığı garanti Efsanevi eşya">
+            🌟 Garanti Efsanevi <span>35 toz</span>
+          </button>
+        </div>
       </div>
 
       <div class="equipment-area">
@@ -143,11 +170,12 @@
           <span class="stat-chip atk">⚔️ Saldırı: <b id="myAttack">0</b></span>
           <span class="stat-chip def">🛡️ Savunma: <b id="myDefense">0</b></span>
           <span class="stat-chip pts">⭐ Puan: <b id="myPoints">0</b></span>
+          <span class="stat-chip dust">✨ Toz: <b id="myDust">0</b></span>
         </div>
       </div>
 
       <div class="attack-area">
-        <h2 class="panel-title">⚔️ Haftalık Saldırı</h2>
+        <h2 class="panel-title">⚔️ Günlük Saldırı</h2>
         <div id="attackTargets" class="attack-targets"></div>
         <p id="attackStatus" class="box-status"></p>
       </div>
@@ -168,6 +196,26 @@
   <div class="modal-card result-card">
     <div id="resultContent"></div>
     <button id="closeResultBtn" class="btn btn-primary btn-block">Kapat</button>
+  </div>
+</div>
+
+<!-- ============ YENİLİKLER / YOL HARİTASI MODALI ============ -->
+<div id="updatesModal" class="modal-overlay hidden">
+  <div class="modal-card updates-card">
+    <h2 class="updates-title">🆕 Yenilikler & Yol Haritası</h2>
+    <p class="tut-text small">Oyun yavaş yavaş büyüyor, aşağıda neyin eklendiğini ve sırada ne olduğunu görebilirsin.</p>
+    <div id="updatesList" class="updates-list"></div>
+    <button id="closeUpdatesBtn" class="btn btn-primary btn-block">Kapat</button>
+  </div>
+</div>
+
+<!-- ============ KOLEKSİYON KİTABI MODALI ============ -->
+<div id="collectionModal" class="modal-overlay hidden">
+  <div class="modal-card collection-card">
+    <h2 class="updates-title">📖 Eşya Koleksiyonu</h2>
+    <p id="collectionProgress" class="tut-text small"></p>
+    <div id="collectionList" class="collection-list"></div>
+    <button id="closeCollectionBtn" class="btn btn-primary btn-block">Kapat</button>
   </div>
 </div>
 
