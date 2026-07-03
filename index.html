@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Kutu Aç & Savaş</title>
+<title>Pembe Panterler Battle</title>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -11,7 +11,7 @@
 <!-- ============ GİRİŞ / OYUNCU SEÇİM EKRANI ============ -->
 <div id="loginScreen" class="screen">
   <div class="login-card">
-    <h1 class="game-title">⚔️ KUTU AÇ & SAVAŞ</h1>
+    <h1 class="game-title">🐆 PEMBE PANTERLER BATTLE</h1>
     <p class="login-sub">Kimsin kral? Aşağıdan ismini seç ya da yeni oyuncu olarak katıl.</p>
     <div id="playerListLogin" class="player-list-login"></div>
     <div id="newPlayerBox" class="new-player-box">
@@ -22,24 +22,79 @@
   </div>
 </div>
 
-<!-- ============ TUTORIAL MODAL ============ -->
+<!-- ============ TUTORIAL MODAL (yana kaydırmalı) ============ -->
 <div id="tutorialModal" class="modal-overlay hidden">
   <div class="modal-card tutorial-card">
-    <h2>👋 Hoş Geldin!</h2>
-    <div class="tutorial-section">
-      <h3>Nasıl Oynanır?</h3>
-      <ul class="tutorial-list">
-        <li>📦 Her gün <b>1 kez</b> kutu açabilirsin. Kutudan rastgele bir eşya çıkar ve otomatik kuşanılır.</li>
-        <li>⚔️ Her hafta <b>1 kez</b> listeden bir rakibe saldırabilirsin. Kazanan puan alır, kaybeden puan kaybeder.</li>
-        <li>🛡️ 5 eşya slotun var: Kask, Zırh, Kılıç, Eldiven, Ayakkabı. Kılıç & Eldiven saldırı; Kask, Zırh & Ayakkabı savunma gücü verir.</li>
-        <li>📜 Tüm savaşlar alt köşedeki Savaş Geçmişi'nde canlı olarak kayıt altına alınır.</li>
-      </ul>
+
+    <div id="tutorialTrack" class="tutorial-track">
+
+      <!-- Slayt 1: Karşılama -->
+      <div class="tutorial-slide">
+        <div class="tut-hero">🐆</div>
+        <h2 class="tut-title">Pembe Panterler Battle'a Hoş Geldin!</h2>
+        <p class="tut-text">7 kişilik arenada her gün şansını dene, statlarını güçlendir ve haftada bir kez rakiplerinden birine saldırıp liderlik tablosunda zirveye tırman.</p>
+        <div class="tut-mini-steps">
+          <div class="tut-mini-step"><span>📦</span>Kutu Aç</div>
+          <div class="tut-mini-step"><span>🛡️</span>Kuşan</div>
+          <div class="tut-mini-step"><span>⚔️</span>Saldır</div>
+          <div class="tut-mini-step"><span>🏆</span>Zirveye Çık</div>
+        </div>
+      </div>
+
+      <!-- Slayt 2: Günlük kutu -->
+      <div class="tutorial-slide">
+        <div class="tut-hero">📦</div>
+        <h2 class="tut-title">Günlük Kutu</h2>
+        <p class="tut-text">Her gün <b>1 kez</b> kutu açabilirsin. Çıkan eşya otomatik olarak üstüne kuşanılır ve statların anında güncellenir.</p>
+        <div class="rarity-bars">
+          <div class="rarity-bar standart"><span class="rarity-dot"></span> Standart <b>%80</b></div>
+          <div class="rarity-bar nadir"><span class="rarity-dot"></span> Nadir <b>%15</b></div>
+          <div class="rarity-bar efsanevi"><span class="rarity-dot"></span> Eşsiz / Efsanevi <b>%5</b></div>
+        </div>
+      </div>
+
+      <!-- Slayt 3: Kuşanım -->
+      <div class="tutorial-slide">
+        <div class="tut-hero">🛡️</div>
+        <h2 class="tut-title">Kuşanım Sistemi</h2>
+        <p class="tut-text">5 eşya slotun var, yeni eşya çıktığında eskisinin yerini alır:</p>
+        <div class="tut-slot-grid">
+          <div class="tut-slot-pill atk">🗡️ Kılıç — Saldırı</div>
+          <div class="tut-slot-pill atk">🧤 Eldiven — Saldırı</div>
+          <div class="tut-slot-pill def">⛑️ Kask — Savunma</div>
+          <div class="tut-slot-pill def">🛡️ Zırh — Savunma</div>
+          <div class="tut-slot-pill def">👢 Ayakkabı — Savunma</div>
+        </div>
+      </div>
+
+      <!-- Slayt 4: Haftalık savaş -->
+      <div class="tutorial-slide">
+        <div class="tut-hero">⚔️</div>
+        <h2 class="tut-title">Haftalık Savaş</h2>
+        <p class="tut-text">Her hafta <b>1 kez</b> listeden birine saldırabilirsin. Statlar belirleyici, zar sadece küçük bir sürpriz katar.</p>
+        <div class="tut-result-preview">
+          <div class="win">🏆 Kazanan <b>+10</b> puan</div>
+          <div class="lose">💀 Kaybeden <b>−5</b> puan (0'ın altına inmez)</div>
+        </div>
+        <p class="tut-text small">📜 Her savaş, ekrandaki Savaş Geçmişi'nde anlık olarak herkese gösterilir.</p>
+      </div>
+
+      <!-- Slayt 5: Efsanevi eşyalar -->
+      <div class="tutorial-slide legend-slide">
+        <div class="tut-hero">🌟</div>
+        <h2 class="tut-title">Hedeflemeniz Gereken Eşyalar</h2>
+        <p class="tut-text small">Sadece %5 ihtimalle düşen, savaşın gidişatını değiştirebilecek özel pasif yetenekleri olan efsanevi eşyalar:</p>
+        <div id="legendaryShowcase" class="legendary-showcase"></div>
+      </div>
+
     </div>
-    <div class="tutorial-section">
-      <h3>🌟 Hedeflemeniz Gereken Eşyalar</h3>
-      <p class="tutorial-legendary-sub">Sadece %5 ihtimalle düşen, kendine özel güçlü yeteneği olan efsanevi eşyalar:</p>
-      <div id="legendaryShowcase" class="legendary-showcase"></div>
+
+    <div class="tutorial-nav">
+      <button id="tutPrevBtn" class="tut-nav-btn">‹</button>
+      <div id="tutorialDots" class="tutorial-dots"></div>
+      <button id="tutNextBtn" class="tut-nav-btn">›</button>
     </div>
+
     <button id="closeTutorialBtn" class="btn btn-primary btn-block">Anladım, Başlayalım!</button>
   </div>
 </div>
@@ -49,7 +104,7 @@
 
   <header class="topbar">
     <div class="topbar-left">
-      <span class="game-title small">⚔️ Kutu Aç & Savaş</span>
+      <span class="game-title small">🐆 Pembe Panterler Battle</span>
     </div>
     <div class="topbar-right">
       <span id="currentPlayerName" class="current-player-name"></span>
