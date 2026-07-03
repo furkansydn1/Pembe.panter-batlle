@@ -199,27 +199,70 @@ const closeResultBtn = document.getElementById("closeResultBtn");
 const battleLogEl = document.getElementById("battleLog");
 
 // ============================================================
-// TUTORIAL
+// TUTORIAL (yana kaydırmalı carousel)
 // ============================================================
+const tutorialTrack = document.getElementById("tutorialTrack");
+const tutorialDots = document.getElementById("tutorialDots");
+const tutPrevBtn = document.getElementById("tutPrevBtn");
+const tutNextBtn = document.getElementById("tutNextBtn");
+
 function renderLegendaryShowcase() {
-  legendaryShowcase.innerHTML = LEGENDARY_ITEMS.map(it =>
-    `<div class="legendary-chip">${SLOT_MAP[it.slot].icon} ${it.name}</div>`
-  ).join("");
+  legendaryShowcase.innerHTML = LEGENDARY_ITEMS.map(it => `
+    <div class="legend-card">
+      <div class="legend-icon">${SLOT_MAP[it.slot].icon}</div>
+      <div class="legend-body">
+        <div class="legend-name">${it.name}</div>
+        <div class="legend-passive">✨ ${it.desc}</div>
+      </div>
+    </div>
+  `).join("");
 }
+
+function buildTutorialDots() {
+  const slideCount = tutorialTrack.children.length;
+  tutorialDots.innerHTML = "";
+  for (let i = 0; i < slideCount; i++) {
+    const dot = document.createElement("button");
+    dot.className = "tut-dot" + (i === 0 ? " active" : "");
+    dot.onclick = () => goToTutorialSlide(i);
+    tutorialDots.appendChild(dot);
+  }
+}
+
+function currentTutorialIndex() {
+  return Math.round(tutorialTrack.scrollLeft / tutorialTrack.clientWidth);
+}
+
+function goToTutorialSlide(i) {
+  const slideCount = tutorialTrack.children.length;
+  const clamped = Math.max(0, Math.min(slideCount - 1, i));
+  tutorialTrack.scrollTo({ left: clamped * tutorialTrack.clientWidth, behavior: "smooth" });
+}
+
+tutorialTrack.addEventListener("scroll", () => {
+  const idx = currentTutorialIndex();
+  [...tutorialDots.children].forEach((d, i) => d.classList.toggle("active", i === idx));
+});
+tutPrevBtn.onclick = () => goToTutorialSlide(currentTutorialIndex() - 1);
+tutNextBtn.onclick = () => goToTutorialSlide(currentTutorialIndex() + 1);
+
 function maybeShowTutorial() {
   if (!localStorage.getItem("gacha_tutorial_seen")) {
-    renderLegendaryShowcase();
-    tutorialModal.classList.remove("hidden");
+    openTutorial();
   }
+}
+function openTutorial() {
+  renderLegendaryShowcase();
+  buildTutorialDots();
+  tutorialModal.classList.remove("hidden");
+  // Modal ilk kez görünür olduğunda scrollLeft/clientWidth doğru okunsun diye ufak bir gecikme
+  requestAnimationFrame(() => { tutorialTrack.scrollLeft = 0; });
 }
 closeTutorialBtn.onclick = () => {
   localStorage.setItem("gacha_tutorial_seen", "1");
   tutorialModal.classList.add("hidden");
 };
-howToBtn.onclick = () => {
-  renderLegendaryShowcase();
-  tutorialModal.classList.remove("hidden");
-};
+howToBtn.onclick = () => openTutorial();
 
 // ============================================================
 // LOGIN / OYUNCU SEÇİMİ
