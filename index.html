@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Kutu Aç & Savaş</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ============ GİRİŞ / OYUNCU SEÇİM EKRANI ============ -->
+<div id="loginScreen" class="screen">
+  <div class="login-card">
+    <h1 class="game-title">⚔️ KUTU AÇ & SAVAŞ</h1>
+    <p class="login-sub">Kimsin kral? Aşağıdan ismini seç ya da yeni oyuncu olarak katıl.</p>
+    <div id="playerListLogin" class="player-list-login"></div>
+    <div id="newPlayerBox" class="new-player-box">
+      <input id="newPlayerName" type="text" maxlength="16" placeholder="Yeni isim yaz (max 7 oyuncu)">
+      <button id="newPlayerBtn" class="btn btn-primary">Katıl</button>
+    </div>
+    <p id="loginError" class="login-error"></p>
+  </div>
+</div>
+
+<!-- ============ TUTORIAL MODAL ============ -->
+<div id="tutorialModal" class="modal-overlay hidden">
+  <div class="modal-card tutorial-card">
+    <h2>👋 Hoş Geldin!</h2>
+    <div class="tutorial-section">
+      <h3>Nasıl Oynanır?</h3>
+      <ul class="tutorial-list">
+        <li>📦 Her gün <b>1 kez</b> kutu açabilirsin. Kutudan rastgele bir eşya çıkar ve otomatik kuşanılır.</li>
+        <li>⚔️ Her hafta <b>1 kez</b> listeden bir rakibe saldırabilirsin. Kazanan puan alır, kaybeden puan kaybeder.</li>
+        <li>🛡️ 5 eşya slotun var: Kask, Zırh, Kılıç, Eldiven, Ayakkabı. Kılıç & Eldiven saldırı; Kask, Zırh & Ayakkabı savunma gücü verir.</li>
+        <li>📜 Tüm savaşlar alt köşedeki Savaş Geçmişi'nde canlı olarak kayıt altına alınır.</li>
+      </ul>
+    </div>
+    <div class="tutorial-section">
+      <h3>🌟 Hedeflemeniz Gereken Eşyalar</h3>
+      <p class="tutorial-legendary-sub">Sadece %5 ihtimalle düşen, kendine özel güçlü yeteneği olan efsanevi eşyalar:</p>
+      <div id="legendaryShowcase" class="legendary-showcase"></div>
+    </div>
+    <button id="closeTutorialBtn" class="btn btn-primary btn-block">Anladım, Başlayalım!</button>
+  </div>
+</div>
+
+<!-- ============ ANA OYUN EKRANI ============ -->
+<div id="gameScreen" class="screen hidden">
+
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="game-title small">⚔️ Kutu Aç & Savaş</span>
+    </div>
+    <div class="topbar-right">
+      <span id="currentPlayerName" class="current-player-name"></span>
+      <button id="howToBtn" class="icon-btn" title="Nasıl Oynanır">❓</button>
+      <button id="switchPlayerBtn" class="icon-btn" title="Oyuncu Değiştir">🔄</button>
+    </div>
+  </header>
+
+  <main class="main-grid">
+
+    <!-- SOL: Liderlik Tablosu -->
+    <section class="panel leaderboard-panel">
+      <h2 class="panel-title">🏆 Liderlik Tablosu</h2>
+      <div id="leaderboard" class="leaderboard-list"></div>
+    </section>
+
+    <!-- ORTA: Kutu Açma + Kuşanım -->
+    <section class="panel center-panel">
+
+      <div class="box-area">
+        <h2 class="panel-title">📦 Günlük Kutu</h2>
+        <div id="boxWrapper" class="box-wrapper">
+          <div id="lootBox" class="loot-box">📦</div>
+          <div id="itemPopup" class="item-popup hidden">
+            <div id="itemPopupInner" class="item-popup-inner"></div>
+          </div>
+        </div>
+        <button id="openBoxBtn" class="btn btn-gold btn-block">Kutuyu Aç</button>
+        <p id="boxStatus" class="box-status"></p>
+      </div>
+
+      <div class="equipment-area">
+        <h2 class="panel-title">🛡️ Kuşanım</h2>
+        <div id="equipmentGrid" class="equipment-grid"></div>
+        <div class="stat-summary">
+          <span class="stat-chip atk">⚔️ Saldırı: <b id="myAttack">0</b></span>
+          <span class="stat-chip def">🛡️ Savunma: <b id="myDefense">0</b></span>
+          <span class="stat-chip pts">⭐ Puan: <b id="myPoints">0</b></span>
+        </div>
+      </div>
+
+      <div class="attack-area">
+        <h2 class="panel-title">⚔️ Haftalık Saldırı</h2>
+        <div id="attackTargets" class="attack-targets"></div>
+        <p id="attackStatus" class="box-status"></p>
+      </div>
+
+    </section>
+
+    <!-- SAĞ: Savaş Geçmişi -->
+    <section class="panel battlelog-panel">
+      <h2 class="panel-title">📜 Savaş Geçmişi</h2>
+      <div id="battleLog" class="battle-log"></div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Sonuç modalı (savaş sonucu göstermek için) -->
+<div id="resultModal" class="modal-overlay hidden">
+  <div class="modal-card result-card">
+    <div id="resultContent"></div>
+    <button id="closeResultBtn" class="btn btn-primary btn-block">Kapat</button>
+  </div>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
