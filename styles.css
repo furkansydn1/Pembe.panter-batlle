@@ -317,6 +317,18 @@ input{font-family:inherit;}
 .btn-mini.efsanevi-mini{border-color:#ffcc4d55;}
 .btn-mini.efsanevi-mini:not(:disabled):hover{border-color:var(--gold);}
 .btn-mini:disabled{opacity:.35; cursor:not-allowed;}
+.btn-mini.btn-block{ width:100%; flex:none; }
+
+.energy-area{ display:flex; flex-direction:column; gap:8px; }
+.energy-bar-track{
+  height: 14px; border-radius: 999px; overflow:hidden;
+  background: var(--bg-panel-alt); border: 1px solid var(--border);
+}
+.energy-bar-fill{
+  height:100%; width:0%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  transition: width .4s ease;
+}
 
 /* ---------- EQUIPMENT GRID ---------- */
 .equipment-grid{
@@ -330,6 +342,18 @@ input{font-family:inherit;}
   border-radius: 10px;
   padding: 10px 8px;
   text-align:center;
+  position: relative;
+  transition: border-color .15s ease, transform .1s ease;
+}
+.equip-slot:hover{ border-color: var(--accent); }
+.equip-slot:active{ transform: scale(.96); }
+.equip-slot::after{
+  content: "›";
+  position: absolute; top: 4px; right: 6px;
+  font-size: .9rem; color: var(--text-dim);
+}
+.equip-hint{
+  font-size: .72rem; color: var(--text-dim); text-align:center; margin: -4px 0 0;
 }
 .equip-slot.filled.rarity-nadir{border-color:var(--blue);}
 .equip-slot.filled.rarity-efsanevi{border-color:var(--gold); box-shadow: 0 0 14px #ffcc4d44;}

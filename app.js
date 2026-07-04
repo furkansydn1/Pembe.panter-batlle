@@ -27,8 +27,18 @@ const LOG_COL = "battleLog";
 const MAX_PLAYERS = 7;
 const BASE_ATTACK = 10;
 const BASE_DEFENSE = 10;
-const ATTACK_COOLDOWN_MS = 24 * 60 * 60 * 1000;      // günde 1 saldırı
+const ATTACK_COOLDOWN_MS = 2 * 60 * 60 * 1000;       // 2 saatte 1 saldırı
 const BOX_COOLDOWN_MS = 4 * 60 * 60 * 1000;          // 4 saatte 1 kutu
+
+// Enerji sistemi: kutu/savaş beklerken oynanacak, cooldown'u olmayan dolgu aktivite.
+// Ana ekonomiye (gerçek eşya düşürme) dokunmaz, sadece toz ekonomisini besler.
+const ENERGY_MAX = 100;
+const ENERGY_REGEN_MS_PER_POINT = 5 * 60 * 1000; // her 5 dakikada +1 enerji
+const ENERGY_COST_PER_ACTION = 10;
+const ENERGY_DUST_MIN = 1;
+const ENERGY_DUST_MAX = 3;
+const ENERGY_BONUS_CHANCE = 0.08;
+const ENERGY_BONUS_DUST = 10;
 
 // Temel şans oranları (yüzde). 4 saatte bir açıldığı için (günde ~6 kutu)
 // eskisinden çok daha zor: efsanevi ve nadir oranları düşürüldü.
@@ -108,7 +118,7 @@ const LEGENDARY_ITEMS = [
   { name: "Kıl dönmesi kılıcı", slot: "kilic", atk: 24, def: 5, effect: "attack_multiplier",
     desc: "Saldırı gücü hesaplamasında %15 fazladan bonus verir." },
   { name: "Nargile kılıcı", slot: "kilic", atk: 22, def: 6, effect: "chill_risk",
-    desc: "Kazanırsa 3 puan fazladan alır, ama %20 ihtimalle nargile keyfine dalıp o gün saldıramaz." },
+    desc: "Kazanırsa 3 puan fazladan alır, ama %20 ihtimalle nargile keyfine dalıp bu sefer saldıramaz." },
   { name: "Yeşil kaş Kaskı", slot: "kask", atk: 3, def: 24, effect: "lucky_defense_roll",
     desc: "Savunmadayken zar atışı 2 katı sayılır, şansı yaver gider." },
   { name: "Kirli Kel Kaskı", slot: "kask", atk: 4, def: 24, effect: "revenge_steal",
@@ -120,7 +130,7 @@ const LEGENDARY_ITEMS = [
   { name: "Deli Necmi eldiveni", slot: "eldiven", atk: 25, def: 4, effect: "attack_multiplier",
     desc: "Saldırı gücü hesaplamasında %15 fazladan bonus verir." },
   { name: "Pas geçen eldiven", slot: "eldiven", atk: 21, def: 6, effect: "chill_risk",
-    desc: "Kazanırsa 3 puan fazladan alır, ama %20 ihtimalle o gün saldırıyı pas geçer." }
+    desc: "Kazanırsa 3 puan fazladan alır, ama %20 ihtimalle o seferki saldırıyı pas geçer." }
 ];
 const LEGENDARY_BY_SLOT = LEGENDARY_ITEMS.reduce((acc, it) => {
   (acc[it.slot] ||= []).push(it);
@@ -391,6 +401,10 @@ const itemPopupInner = document.getElementById("itemPopupInner");
 const guaranteeRareBtn = document.getElementById("guaranteeRareBtn");
 const guaranteeLegendaryBtn = document.getElementById("guaranteeLegendaryBtn");
 
+const energyBarFill = document.getElementById("energyBarFill");
+const energyStatus = document.getElementById("energyStatus");
+const energySpendBtn = document.getElementById("energySpendBtn");
+
 const attackTargetsEl = document.getElementById("attackTargets");
 const attackStatus = document.getElementById("attackStatus");
 
@@ -471,9 +485,17 @@ howToBtn.onclick = () => openTutorial();
 // Her yeni özellik bittiğinde status'u "soon" -> "done" yapıp
 // LATEST_UPDATE_VERSION'ı artırman yeterli, rozet otomatik güncellenir.
 // ============================================================
-const LATEST_UPDATE_VERSION = "1.4";
+const LATEST_UPDATE_VERSION = "1.5";
 
 const RELEASES = [
+  {
+    version: "1.5",
+    date: "4 Temmuz 2026",
+    items: [
+      "Enerji sistemi eklendi: kutu ve savaş beklerken harcanabilen, otomatik dolan ayrı bir kaynak. Enerji harcayarak anında toz kazanılabiliyor.",
+      "Saldırı cooldown'u günde 1'den 2 saatte 1'e düşürüldü."
+    ]
+  },
   {
     version: "1.4",
     date: "4 Temmuz 2026",
@@ -760,6 +782,8 @@ newPlayerBtn.onclick = async () => {
       lastAttackTime: 0,
       curseNextAttack: null,
       dust: 0,
+      energy: ENERGY_MAX,
+      lastEnergyUpdate: Date.now(),
       pityRare: 0,
       pityLegendary: 0,
       boxStreak: 0,
@@ -874,6 +898,7 @@ async function startGame() {
     renderBoxStatus();
     renderAttackTargets();
     renderStrangerBanner();
+    renderEnergy();
     if (!collectionModal.classList.contains("hidden")) renderCollection();
     if (!inventoryModal.classList.contains("hidden")) renderInventoryModal();
   });
@@ -929,6 +954,47 @@ function renderMyStats() {
 // ============================================================
 // RENDER: KUŞANIM
 // ============================================================
+// ============================================================
+// ENERJİ SİSTEMİ
+// ============================================================
+function getCurrentEnergy(data) {
+  const stored = data.energy ?? ENERGY_MAX;
+  const last = data.lastEnergyUpdate || Date.now();
+  const regen = Math.floor((Date.now() - last) / ENERGY_REGEN_MS_PER_POINT);
+  return Math.min(ENERGY_MAX, stored + regen);
+}
+
+function renderEnergy() {
+  if (!currentPlayerData) return;
+  const current = getCurrentEnergy(currentPlayerData);
+  energyBarFill.style.width = `${(current / ENERGY_MAX) * 100}%`;
+  energyStatus.textContent = `${current} / ${ENERGY_MAX} enerji`;
+  energySpendBtn.disabled = current < ENERGY_COST_PER_ACTION;
+}
+
+async function useEnergyAction() {
+  if (!currentPlayerData) return;
+  const current = getCurrentEnergy(currentPlayerData);
+  if (current < ENERGY_COST_PER_ACTION) return;
+
+  energySpendBtn.disabled = true;
+  const bonus = Math.random() < ENERGY_BONUS_CHANCE;
+  const dustGain = bonus ? ENERGY_BONUS_DUST : randInt(ENERGY_DUST_MIN, ENERGY_DUST_MAX);
+
+  await updateDoc(doc(db, PLAYERS_COL, currentPlayerId), {
+    energy: current - ENERGY_COST_PER_ACTION,
+    lastEnergyUpdate: Date.now(),
+    dust: (currentPlayerData.dust || 0) + dustGain
+  });
+
+  energyStatus.textContent = bonus
+    ? `🎉 Şanslı buluş! +${dustGain} toz kazandın!`
+    : `+${dustGain} toz kazandın.`;
+  setTimeout(renderEnergy, 1800);
+}
+energySpendBtn.onclick = useEnergyAction;
+setInterval(renderEnergy, 30000);
+
 function renderDailyEventBanner() {
   const event = getTodaysEvent();
   dailyEventBanner.className = `daily-event-banner type-${event.type}`;
@@ -1186,7 +1252,7 @@ function renderAttackTargets() {
     const remainMs = ATTACK_COOLDOWN_MS - (Date.now() - last);
     attackStatus.textContent = last === 0
       ? "Saldırı hakkın hazır!"
-      : `Bugünkü saldırı hakkını kullandın. ${formatRemaining(remainMs)} sonra tekrar saldırabilirsin.`;
+      : `Bu saldırı hakkını kullandın. ${formatRemaining(remainMs)} sonra tekrar saldırabilirsin.`;
   } else {
     attackStatus.textContent = "Günlük saldırı hakkın hazır, birini seç!";
   }
@@ -1284,7 +1350,7 @@ async function runAttack(defenderId) {
       const defender = defenderSnap.data();
 
       if (Date.now() - (attacker.lastAttackTime || 0) < ATTACK_COOLDOWN_MS) {
-        throw new Error("Bugünkü saldırı hakkını zaten kullandın.");
+        throw new Error("Bu saldırı hakkını zaten kullandın.");
       }
 
       const logDetails = [];
@@ -1298,7 +1364,7 @@ async function runAttack(defenderId) {
       const chillItem = getEffect(attacker.equipment, "chill_risk");
       if (chillItem && Math.random() < 0.2) {
         tx.update(attackerRef, { lastAttackTime: Date.now() });
-        logDetails.push(`${attacker.name}, Nargile Kılıcı'nın keyfine daldı ve saldıramadan gününü harcadı.`);
+        logDetails.push(`${attacker.name}, Nargile Kılıcı'nın keyfine daldı ve saldıramadan bu seferki hakkını harcadı.`);
         tx.set(doc(collection(db, LOG_COL)), {
           attacker: attacker.name, defender: defender.name,
           message: logDetails.join(" "),
@@ -1479,7 +1545,7 @@ function showResultModal(result) {
   } else if (result.skipped) {
     resultContent.innerHTML = `
       <div class="result-title lose">💨 Nargile Keyfi</div>
-      <p class="result-line">Bugün saldıramadan günün geçti.</p>`;
+      <p class="result-line">Bu sefer saldıramadan hakkın harcandı.</p>`;
   } else {
     const won = result.attackerWins;
     resultContent.innerHTML = `
