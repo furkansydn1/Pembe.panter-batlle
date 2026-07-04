@@ -137,6 +137,7 @@
     </div>
     <div class="topbar-right">
       <span id="currentPlayerName" class="current-player-name"></span>
+      <button id="soundToggleBtn" class="icon-btn" title="Ses aç/kapat">🔊</button>
       <button id="updatesBtn" class="icon-btn" title="Yenilikler">🆕<span id="updatesDot" class="update-dot hidden"></span></button>
       <button id="collectionBtn" class="icon-btn" title="Koleksiyon">📖</button>
       <button id="howToBtn" class="icon-btn" title="Nasıl Oynanır">❓</button>
@@ -153,7 +154,7 @@
   <main class="main-grid">
 
     <!-- SOL: Liderlik Tablosu -->
-    <section class="panel leaderboard-panel">
+    <section id="navLeaderboard" class="panel leaderboard-panel">
       <h2 class="panel-title">🏆 Liderlik Tablosu</h2>
       <div id="leaderboard" class="leaderboard-list"></div>
     </section>
@@ -161,7 +162,7 @@
     <!-- ORTA: Kutu Açma + Kuşanım -->
     <section class="panel center-panel">
 
-      <div class="box-area">
+      <div id="navBox" class="box-area">
         <div class="box-area-top">
           <h2 class="panel-title">📦 Kutu</h2>
           <span id="streakChip" class="streak-chip hidden">🔥 <b id="myStreak">0</b> gün seri</span>
@@ -192,7 +193,7 @@
         <div id="energyTasksRow" class="energy-tasks-row"></div>
       </div>
 
-      <div class="equipment-area">
+      <div id="navProfile" class="equipment-area">
         <h2 class="panel-title">🛡️ Kuşanım</h2>
         <div id="equipmentGrid" class="equipment-grid"></div>
         <p class="equip-hint">👆 Envanterini görmek ve eşya değiştirmek için bir slota dokun</p>
@@ -204,13 +205,13 @@
         </div>
       </div>
 
-      <div class="attack-area">
+      <div id="navAttack" class="attack-area">
         <h2 class="panel-title">⚔️ Saldırı (Saat Başı)</h2>
         <div id="attackTargets" class="attack-targets"></div>
         <p id="attackStatus" class="box-status"></p>
       </div>
 
-      <div class="quests-area">
+      <div id="navQuests" class="quests-area">
         <h2 class="panel-title">🎯 Günlük Görevler</h2>
         <div id="questsList" class="quests-list"></div>
       </div>
@@ -224,6 +225,14 @@
     </section>
 
   </main>
+
+  <nav id="bottomNav" class="bottom-nav">
+    <button type="button" class="nav-btn active" data-target="navBox"><span class="nav-ic">📦</span>Kutu</button>
+    <button type="button" class="nav-btn" data-target="navQuests"><span class="nav-ic">🎯</span>Görev</button>
+    <button type="button" class="nav-btn" data-target="navAttack"><span class="nav-ic">⚔️</span>Savaş</button>
+    <button type="button" class="nav-btn" data-target="navLeaderboard"><span class="nav-ic">🏆</span>Sıra</button>
+    <button type="button" class="nav-btn" data-target="navProfile"><span class="nav-ic">🐆</span>Profil</button>
+  </nav>
 </div>
 
 <!-- Sonuç modalı (savaş sonucu göstermek için) -->

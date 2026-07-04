@@ -182,6 +182,7 @@ input{font-family:inherit;}
   grid-template-columns: 260px 1fr 300px;
   gap: 18px;
   padding: 18px;
+  padding-bottom: 96px;
   max-width: 1400px;
   margin: 0 auto;
   align-items:start;
@@ -189,6 +190,29 @@ input{font-family:inherit;}
 @media (max-width: 1000px){
   .main-grid{grid-template-columns: 1fr;}
 }
+
+/* ---------- ALT NAVİGASYON BARI (tasarım prototipindeki gibi) ---------- */
+.bottom-nav{
+  position: fixed; left:0; right:0; bottom:0; z-index: 30;
+  display:flex; justify-content:space-between; gap:6px;
+  background: linear-gradient(180deg, var(--bg-mid), var(--panel-edge));
+  border-top: 1px solid rgba(255,255,255,.08);
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -10px 24px -12px #00000088;
+}
+.nav-btn{
+  flex:1; background:none; border:none; color: var(--text-dim); font-family:inherit; cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; gap:3px; padding:8px 2px; border-radius:12px;
+  font-size:.65rem; font-weight:800; text-transform:uppercase; letter-spacing:.2px;
+  transition: transform .08s ease, background .15s ease, color .15s ease;
+}
+.nav-btn .nav-ic{font-size:1.25rem;}
+.nav-btn.active{
+  color: var(--text);
+  background: linear-gradient(180deg, var(--accent-2), var(--accent));
+  box-shadow: 0 3px 0 var(--pink-dark);
+}
+.nav-btn:active{ transform: translateY(2px); }
 
 .panel{
   background: linear-gradient(180deg, var(--panel-light), var(--panel) 55%, var(--panel-edge));

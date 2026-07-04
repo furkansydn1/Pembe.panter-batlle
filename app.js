@@ -1476,6 +1476,10 @@ async function performBoxOpen({ forcedRarity = null, costDust = 0, isFree = fals
 
   lootBox.className = `loot-box burst-${item.rarity}`;
   spawnSparks(item.rarity);
+  sfxShake();
+  if (item.rarity === "efsanevi") setTimeout(sfxOpenLegendary, 500);
+  else if (item.rarity === "nadir") setTimeout(sfxOpenRare, 500);
+  else setTimeout(sfxOpenStandart, 500);
 
   const animDuration = item.rarity === "efsanevi" ? 1900 : item.rarity === "nadir" ? 1400 : 1000;
   await new Promise(r => setTimeout(r, animDuration));
@@ -1658,6 +1662,7 @@ function pickBattleMessage({ attackerWins, attackerName, defenderName, winPts, l
 
 async function runAttack(defenderId) {
   attackTargetsEl.querySelectorAll("button").forEach(b => b.disabled = true);
+  sfxAttack();
   const dailyEvent = getTodaysEvent();
 
   try {
@@ -1909,6 +1914,90 @@ function renderBattleLog(entries) {
     const time = e.timestamp ? new Date(e.timestamp).toLocaleString("tr-TR") : "";
     return `<div class="log-entry ${cls}">${e.message}<span class="log-time">${time}</span></div>`;
   }).join("");
+}
+
+// ============================================================
+// SES EFEKTLERİ
+// Tasarım prototipindeki gibi, dışarıdan hiçbir ses dosyası kullanılmadan
+// Web Audio API osilatörleriyle anlık üretiliyor. Oyunun mevcut mantığına
+// dokunmadan (skor/kutu/saldırı hesapları aynı), sadece geri bildirim katmanı.
+// ============================================================
+let audioCtx = null;
+let soundOn = localStorage.getItem("gacha_sound_on") !== "0";
+
+function ensureAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === "suspended") audioCtx.resume();
+  return audioCtx;
+}
+
+function tone(freq, start, dur, type = "sine", gain = 0.18) {
+  if (!soundOn) return;
+  try {
+    const ctx = ensureAudioCtx();
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = type; osc.frequency.value = freq;
+    g.gain.value = 0;
+    osc.connect(g); g.connect(ctx.destination);
+    const t0 = ctx.currentTime + start;
+    g.gain.linearRampToValueAtTime(gain, t0 + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.start(t0); osc.stop(t0 + dur + 0.05);
+  } catch (e) { /* sessiz geç, ses opsiyonel bir katman */ }
+}
+
+function sfxClick() { tone(520, 0, 0.08, "square", 0.10); }
+function sfxShake() { tone(140, 0, 0.09, "sawtooth", 0.12); tone(110, 0.06, 0.09, "sawtooth", 0.10); }
+function sfxOpenStandart() { tone(660, 0, 0.12, "triangle"); tone(880, 0.08, 0.15, "triangle"); }
+function sfxOpenRare() { tone(520, 0, 0.1, "triangle"); tone(780, 0.09, 0.12, "triangle"); tone(1040, 0.18, 0.2, "triangle"); }
+function sfxOpenLegendary() {
+  [523, 659, 784, 1046, 1318].forEach((f, i) => tone(f, i * 0.09, 0.35, "triangle", 0.16));
+  tone(1568, 0.45, 0.5, "sine", 0.14);
+}
+function sfxAttack() { tone(200, 0, 0.05, "sawtooth", 0.15); tone(90, 0.05, 0.18, "sawtooth", 0.18); }
+
+const soundToggleBtn = document.getElementById("soundToggleBtn");
+function refreshSoundBtn() {
+  if (!soundToggleBtn) return;
+  soundToggleBtn.textContent = soundOn ? "🔊" : "🔇";
+}
+refreshSoundBtn();
+if (soundToggleBtn) {
+  soundToggleBtn.onclick = () => {
+    soundOn = !soundOn;
+    localStorage.setItem("gacha_sound_on", soundOn ? "1" : "0");
+    refreshSoundBtn();
+    if (soundOn) sfxClick();
+  };
+}
+
+// Genel tık sesi: mevcut butonların hiçbirinin davranışını değiştirmeden,
+// sadece her buton tıklamasında kısa bir "click" sesi çalar (event delegation).
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest("button");
+  if (!btn || btn.disabled) return;
+  if (btn.id === "soundToggleBtn") return; // kendi sesini kendi yönetiyor
+  sfxClick();
+}, true);
+
+// ============================================================
+// ALT NAVİGASYON BARI (tasarım prototipindeki gibi)
+// Oyunun tek sayfalık grid yapısını bozmadan, ilgili bölüme yumuşak
+// kaydırma yapar ve aktif sekmeyi işaretler.
+// ============================================================
+const bottomNav = document.getElementById("bottomNav");
+if (bottomNav) {
+  const navButtons = [...bottomNav.querySelectorAll(".nav-btn")];
+  navButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      navButtons.forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      const targetId = btn.getAttribute("data-target");
+      const target = document.getElementById(targetId);
+      if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
 }
 
 // ============================================================
