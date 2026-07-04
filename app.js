@@ -121,15 +121,15 @@ const LEGENDARY_ITEMS = [
     desc: "Kazanırsa 3 puan fazladan alır, ama %20 ihtimalle nargile keyfine dalıp bu sefer saldıramaz." },
   { name: "Yeşil kaş Kaskı", slot: "kask", atk: 3, def: 24, effect: "lucky_defense_roll",
     desc: "Savunmadayken zar atışı 2 katı sayılır, şansı yaver gider." },
-  { name: "Kirli Kel Kaskı", slot: "kask", atk: 4, def: 24, effect: "revenge_steal",
+  { name: "Karanın Airpodsları Kaskı", slot: "kask", atk: 4, def: 24, effect: "revenge_steal",
     desc: "Savunmada kaybetse bile taş çatlasa saldırandan 3 puan çalar." },
-  { name: "Yamuk Ömer zırhı", slot: "zirh", atk: 3, def: 25, effect: "no_loss_on_defense_lose",
+  { name: "Götün zırhı", slot: "zirh", atk: 3, def: 25, effect: "no_loss_on_defense_lose",
     desc: "Savunmadayken maçı kaybetse bile puanı asla düşmez." },
-  { name: "Salyangoz ayakkabıları", slot: "ayakkabi", atk: 2, def: 23, effect: "lucky_defense_roll",
+  { name: "Harput ayakkabıları", slot: "ayakkabi", atk: 2, def: 23, effect: "lucky_defense_roll",
     desc: "Yavaş ama sağlam: savunmadayken zar atışı 2 katı sayılır." },
-  { name: "Deli Necmi eldiveni", slot: "eldiven", atk: 25, def: 4, effect: "attack_multiplier",
+  { name: "Emrenin yamuk parmak eldiveni", slot: "eldiven", atk: 25, def: 4, effect: "attack_multiplier",
     desc: "Saldırı gücü hesaplamasında %15 fazladan bonus verir." },
-  { name: "Pas geçen eldiven", slot: "eldiven", atk: 21, def: 6, effect: "chill_risk",
+  { name: "Gay eldiveni", slot: "eldiven", atk: 21, def: 6, effect: "chill_risk",
     desc: "Kazanırsa 3 puan fazladan alır, ama %20 ihtimalle o seferki saldırıyı pas geçer." }
 ];
 const LEGENDARY_BY_SLOT = LEGENDARY_ITEMS.reduce((acc, it) => {
@@ -1290,27 +1290,27 @@ function getEffect(equipment, effectName) {
 // en az 5-6 farklı, eğlenceli mesaj havuzu.
 // ============================================================
 const WIN_MESSAGES = [
-  "{attacker}, {defender}'i yerle bir etti! (+{winPts} / -{losePts})",
-  "{attacker}, {defender}'e resmen tarih dersi verdi. (+{winPts} / -{losePts})",
-  "{attacker} kazandı, {defender} sahayı ağlayarak terk etti. (+{winPts} / -{losePts})",
-  "{attacker}, {defender}'i turnayı gözünden vurdu. (+{winPts} / -{losePts})",
-  "{attacker}, {defender}'e diz çöktürdü. (+{winPts} / -{losePts})",
+  "{attacker}, {defender}'in Amını götünü dağıttı! (+{winPts} / -{losePts})",
+  "{attacker}, {defender}'e resmen köpeği yapıp Merkezefendi parkında gezdirdi. (+{winPts} / -{losePts})",
+  "{attacker} sikti, {defender} Götünü tutarak kaçtı. (+{winPts} / -{losePts})",
+  "{attacker}, {defender}'i kanalize ederek darp etti. (+{winPts} / -{losePts})",
+  "{attacker}, {defender}'i Dinden çıkardı. (+{winPts} / -{losePts})",
   "{attacker}, {defender}'e götten girdi. (+{winPts} / -{losePts})",
-  "{attacker} bu maçı fondip yaptı, {defender} elendi. (+{winPts} / -{losePts})",
-  "{attacker}, {defender}'i evine gönderdi. (+{winPts} / -{losePts})"
+  "{attacker} Bu savaşa eli sikinde girdi, {defender} Korkudan bayıldı. (+{winPts} / -{losePts})",
+  "{attacker}, {defender}'i Götüne iki şaplak atıp gönderdi. (+{winPts} / -{losePts})"
 ];
 const LOSE_MESSAGES = [
-  "{attacker}, {defender}'e saldırdı ama fena çuvalladı. ({defender} +{winPts} / {attacker} -{losePts})",
-  "{attacker}, {defender}'in savunmasına toslayıp geri döndü. ({defender} +{winPts} / {attacker} -{losePts})",
-  "{defender}, gelen {attacker}'ı ters köşeye yatırdı. ({defender} +{winPts} / {attacker} -{losePts})",
-  "{attacker} cesurca saldırdı ama {defender} onu eve yolladı. ({defender} +{winPts} / {attacker} -{losePts})",
-  "{defender}, {attacker}'ın saldırısını fiyaskoyla savuşturdu. ({defender} +{winPts} / {attacker} -{losePts})",
-  "{attacker} bu sefer çok iddialıydı ama {defender} güldü geçti. ({defender} +{winPts} / {attacker} -{losePts})"
+  "{attacker}, {defender}'e saldırdı ama siki tuttu. ({defender} +{winPts} / {attacker} -{losePts})",
+  "{attacker}, {defender}'in önünde secdeye kapanıp süphaneke okudu. ({defender} +{winPts} / {attacker} -{losePts})",
+  "{defender}, gelen {attacker}'ı Alkol içirip arkadaşıyla sikti. ({defender} +{winPts} / {attacker} -{losePts})",
+  "{attacker} cesurca saldırdı ama {defender}'ı Sikine bile takmadı. ({defender} +{winPts} / {attacker} -{losePts})",
+  "{defender}, {attacker}'ın saldırısını Sikiyle savuşturdu. ({defender} +{winPts} / {attacker} -{losePts})",
+  "{attacker} bu sefer çok iddialıydı ama {defender} Cemalden izin alıp Mcdonalds tuvaletinde domalttı. ({defender} +{winPts} / {attacker} -{losePts})"
 ];
 const REPEAT_WIN_MESSAGES = [
-  "{attacker}, {defender}'i yine hedef seçti ve yine kazandı! Bu artık gelenek oldu. ({repeatCount}. kez üst üste) (+{winPts} / -{losePts})",
+  "{attacker}, {defender}'i yine hedef seçti ve yine kazandı! Sikmeye Doyamadı bir türlü. ({repeatCount}. kez üst üste) (+{winPts} / -{losePts})",
   "{attacker}'ın {defender} ile özel bir derdi var galiba, üst üste {repeatCount}. kez saldırdı ve yine kazandı. (+{winPts} / -{losePts})",
-  "{defender}, {attacker}'dan resmen çekiniyor olmalı, {repeatCount}. kez üst üste yenildi. (+{winPts} / -{losePts})"
+  "{defender}, {attacker}'dan resmen çekiniyor olmalı, {repeatCount}. kez üst üste domaldı. (+{winPts} / -{losePts})"
 ];
 const REPEAT_LOSE_MESSAGES = [
   "{attacker}, {defender}'e {repeatCount}. kez saldırdı ve yine eli boş döndü, inat mı bu? ({defender} +{winPts} / {attacker} -{losePts})",
