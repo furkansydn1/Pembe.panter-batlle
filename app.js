@@ -73,6 +73,36 @@ const DUST_COST_LEGENDARY_BOX = 55;
 // Savaşta ezici stat üstünlüğü (bu kat kadar fazla güç) varsa şansa bakılmaksızın kazanılır.
 const DOMINANCE_RATIO = 1.5;
 
+// ============================================================
+// ŞANSLI ÇARK
+// Haftada bir kez bedava çevirme hakkı, küçük toz/puan bonusları verir.
+// ============================================================
+const WHEEL_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000; // 7 günde 1 çevirme
+const WHEEL_SEGMENTS = [
+  { id: "dust_small", label: "+5 Toz", type: "dust", dust: 5, points: 0, weight: 28, color: "#cbb8e0" },
+  { id: "points_small", label: "+3 Puan", type: "points", dust: 0, points: 3, weight: 22, color: "#4dd68a" },
+  { id: "dust_medium", label: "+12 Toz", type: "dust", dust: 12, points: 0, weight: 20, color: "#4d9bff" },
+  { id: "points_medium", label: "+6 Puan", type: "points", dust: 0, points: 6, weight: 12, color: "#ff6fb0" },
+  { id: "dust_big", label: "+25 Toz", type: "dust", dust: 25, points: 0, weight: 12, color: "#ffcc4d" },
+  { id: "jackpot", label: "JACKPOT! +15 Puan +20 Toz", type: "combo", dust: 20, points: 15, weight: 6, color: "#ff2d87" }
+];
+const WHEEL_SEGMENT_ANGLE = 360 / WHEEL_SEGMENTS.length;
+
+// ============================================================
+// KELLE AVCISI
+// Herkesin görebileceği tek, paylaşımlı bir "ödül" ilanı. Bir oyuncu
+// başka birinin üstüne toz koyar, o kişiyi saldırıda İLK yenen ödülü kapar.
+// ============================================================
+const META_COL = "gameMeta";
+const BOUNTY_DOC_ID = "bounty";
+
+// ============================================================
+// 1.LİK AVI
+// Liderlik tablosunun zirvesindeki oyuncuyu saldırıda yenen kişi, normal
+// kazanma ödülünün üstüne ekstra bonus puan alır. Kimse zirvede rahat oturamasın.
+// ============================================================
+const THRONE_BONUS_POINTS = 8;
+
 // Aynı oyuncuya art arda saldırma hakkı sınırlı: bir hedefi üst üste bu sayıdan
 // fazla kez seçemezsin, tek bir kurbanın sürekli hedef alınmasını engellemek için.
 const MAX_CONSECUTIVE_ATTACKS_ON_TARGET = 3;
@@ -477,6 +507,39 @@ const attackStatus = document.getElementById("attackStatus");
 
 const questsListEl = document.getElementById("questsList");
 
+const topPerformersBanner = document.getElementById("topPerformersBanner");
+const tpBestName = document.getElementById("tpBestName");
+const tpWorstName = document.getElementById("tpWorstName");
+
+const luckyWheel = document.getElementById("luckyWheel");
+const spinWheelBtn = document.getElementById("spinWheelBtn");
+const wheelStatus = document.getElementById("wheelStatus");
+
+const bountyActive = document.getElementById("bountyActive");
+const bountyTargetName = document.getElementById("bountyTargetName");
+const bountyAmountEl = document.getElementById("bountyAmount");
+const bountyPlacer = document.getElementById("bountyPlacer");
+const bountyForm = document.getElementById("bountyForm");
+const bountyTargetSelect = document.getElementById("bountyTargetSelect");
+const bountyAmountInput = document.getElementById("bountyAmountInput");
+const placeBountyBtn = document.getElementById("placeBountyBtn");
+const bountyStatus = document.getElementById("bountyStatus");
+
+const statsOverviewEl = document.getElementById("statsOverview");
+const statsOpponentsEl = document.getElementById("statsOpponents");
+const statsStreakEl = document.getElementById("statsStreak");
+
+const newFeaturesModal = document.getElementById("newFeaturesModal");
+const newFeaturesTrack = document.getElementById("newFeaturesTrack");
+const newFeaturesDots = document.getElementById("newFeaturesDots");
+const nfPrevBtn = document.getElementById("nfPrevBtn");
+const nfNextBtn = document.getElementById("nfNextBtn");
+const nfSkipBtn = document.getElementById("nfSkipBtn");
+const nfStepLabel = document.getElementById("nfStepLabel");
+const closeNewFeaturesBtn = document.getElementById("closeNewFeaturesBtn");
+
+let currentBounty = null; // gameMeta/bounty dokümanının canlı kopyası
+
 const resultModal = document.getElementById("resultModal");
 const resultContent = document.getElementById("resultContent");
 const closeResultBtn = document.getElementById("closeResultBtn");
@@ -537,10 +600,92 @@ tutorialTrack.addEventListener("scroll", () => {
 tutPrevBtn.onclick = () => goToTutorialSlide(currentTutorialIndex() - 1);
 tutNextBtn.onclick = () => goToTutorialSlide(currentTutorialIndex() + 1);
 
+// ============================================================
+// YENİ GÜNCELLEME TANITIM EKRANI (otomatik, sayfa sayfa)
+// Her yeni sürümde (LATEST_UPDATE_VERSION bump'landığında) burada da
+// NEW_FEATURE_SLIDES güncellenmeli. Oyuna giren, tutorial'ı zaten görmüş
+// ama bu sürümü henüz görmemiş herkese otomatik gösterilir.
+// ============================================================
+const NEW_FEATURE_SLIDES = {
+  "1.9": [
+    { icon: "🆕", title: "v1.9 Yenilikleri!", text: "Bu güncellemede oyuna 4 yepyeni sistem ve ana ekrana günlük bir performans panosu eklendi. Hadi hızlıca gezelim." },
+    { icon: "📊", title: "Kişisel İstatistik", text: "Yeni 📊 İstatistik sekmesinde toplam kazanma/kaybetme oranını, en çok yendiğin ve en çok yenildiğin kişiyi, şu anki ve şimdiye kadarki en uzun kazanma serini görebilirsin." },
+    { icon: "🎡", title: "Şanslı Çark", text: "Kutu sekmesine eklendi. Haftada bir kez tamamen bedava çevirebilirsin, küçük toz/puan ödülleri ve nadiren büyük bir jackpot kazandırır." },
+    { icon: "💀", title: "Kelle Avcısı", text: "Savaş sekmesinde artık tozunu harcayarak istediğin bir oyuncunun kellesine ödül koyabilirsin. Bu ilan herkese aynı anda görünür, o kişiyi İLK yenen ödülü kapar." },
+    { icon: "👑", title: "1.lik Avı", text: `Liderlik tablosunun zirvesindeki oyuncu artık 👑 rozetiyle işaretleniyor. Onu saldırıda yenersen normal kazancının üstüne +${THRONE_BONUS_POINTS} ekstra bonus puan kazanırsın.` },
+    { icon: "🦁", title: "Allahın Aslanı & Grubun Sürtüğü", text: "Ana ekranın üstünde artık günün en çok savaş kazanan oyuncusu 🦁 'Allahın Aslanı', en çok kaybedeni ise 🤡 'Grubun Sürtüğü' olarak gösteriliyor. Her gün sıfırdan başlıyor." }
+  ]
+};
+
+function renderNewFeaturesSlides(version) {
+  const slides = NEW_FEATURE_SLIDES[version] || [];
+  newFeaturesTrack.innerHTML = slides.map(s => `
+    <div class="tutorial-slide">
+      <div class="tut-hero">${s.icon}</div>
+      <h2 class="tut-title">${s.title}</h2>
+      <p class="tut-text">${s.text}</p>
+    </div>
+  `).join("");
+}
+
+function currentNewFeaturesIndex() {
+  return Math.round(newFeaturesTrack.scrollLeft / newFeaturesTrack.clientWidth);
+}
+function goToNewFeaturesSlide(i) {
+  const slideCount = newFeaturesTrack.children.length;
+  const clamped = Math.max(0, Math.min(slideCount - 1, i));
+  newFeaturesTrack.scrollTo({ left: clamped * newFeaturesTrack.clientWidth, behavior: "smooth" });
+}
+function buildNewFeaturesDots() {
+  const slideCount = newFeaturesTrack.children.length;
+  newFeaturesDots.innerHTML = "";
+  for (let i = 0; i < slideCount; i++) {
+    const dot = document.createElement("button");
+    dot.className = "tut-dot" + (i === 0 ? " active" : "");
+    dot.onclick = () => goToNewFeaturesSlide(i);
+    newFeaturesDots.appendChild(dot);
+  }
+}
+if (newFeaturesTrack) {
+  newFeaturesTrack.addEventListener("scroll", () => {
+    const idx = currentNewFeaturesIndex();
+    const slideCount = newFeaturesTrack.children.length;
+    [...newFeaturesDots.children].forEach((d, i) => d.classList.toggle("active", i === idx));
+    nfPrevBtn.disabled = idx <= 0;
+    nfNextBtn.disabled = idx >= slideCount - 1;
+    if (nfStepLabel) nfStepLabel.textContent = `${idx + 1} / ${slideCount}`;
+  });
+  nfPrevBtn.onclick = () => goToNewFeaturesSlide(currentNewFeaturesIndex() - 1);
+  nfNextBtn.onclick = () => goToNewFeaturesSlide(currentNewFeaturesIndex() + 1);
+}
+
+function closeNewFeatures() {
+  localStorage.setItem("gacha_last_seen_update", LATEST_UPDATE_VERSION);
+  newFeaturesModal.classList.add("hidden");
+  refreshUpdatesDot();
+}
+if (closeNewFeaturesBtn) closeNewFeaturesBtn.onclick = closeNewFeatures;
+if (nfSkipBtn) nfSkipBtn.onclick = closeNewFeatures;
+
+function maybeShowNewFeatures() {
+  const seen = localStorage.getItem("gacha_last_seen_update");
+  if (seen === LATEST_UPDATE_VERSION) return;
+  if (!NEW_FEATURE_SLIDES[LATEST_UPDATE_VERSION]) { closeNewFeatures(); return; }
+  renderNewFeaturesSlides(LATEST_UPDATE_VERSION);
+  buildNewFeaturesDots();
+  newFeaturesModal.classList.remove("hidden");
+  nfPrevBtn.disabled = true;
+  nfNextBtn.disabled = newFeaturesTrack.children.length <= 1;
+  if (nfStepLabel) nfStepLabel.textContent = `1 / ${newFeaturesTrack.children.length}`;
+  requestAnimationFrame(() => { newFeaturesTrack.scrollLeft = 0; });
+}
+
 function maybeShowTutorial() {
   if (!localStorage.getItem("gacha_tutorial_seen")) {
     openTutorial();
+    return true;
   }
+  return false;
 }
 function openTutorial() {
   renderLegendaryShowcase();
@@ -554,6 +699,10 @@ function openTutorial() {
 }
 function closeTutorial() {
   localStorage.setItem("gacha_tutorial_seen", "1");
+  // Yeni öğretici zaten bu sürümün tüm yeniliklerini anlattığı için, ayrıca
+  // "Yeni Güncelleme" ekranını tekrar göstermeye gerek yok.
+  localStorage.setItem("gacha_last_seen_update", LATEST_UPDATE_VERSION);
+  refreshUpdatesDot();
   tutorialModal.classList.add("hidden");
 }
 closeTutorialBtn.onclick = closeTutorial;
@@ -565,9 +714,21 @@ howToBtn.onclick = () => openTutorial();
 // Her yeni özellik bittiğinde status'u "soon" -> "done" yapıp
 // LATEST_UPDATE_VERSION'ı artırman yeterli, rozet otomatik güncellenir.
 // ============================================================
-const LATEST_UPDATE_VERSION = "1.8";
+const LATEST_UPDATE_VERSION = "1.9";
 
 const RELEASES = [
+  {
+    version: "1.9",
+    date: "5 Temmuz 2026",
+    items: [
+      "📊 Kişisel İstatistik sekmesi eklendi: toplam kazanma/kaybetme oranın, en çok yendiğin kişi, en çok yenildiğin kişi ve şimdiye kadarki en uzun kazanma serin artık tek bir ekranda, detaylı bir kariyer karnesi halinde görüntüleniyor.",
+      "🎡 Şanslı Çark eklendi (Kutu sekmesi): haftada bir kez tamamen bedava çevirebiliyorsun. Çark küçük toz veya puan ödülleri veriyor, nadiren de büyük bir 'jackpot' (hem toz hem puan) çıkabiliyor.",
+      "💀 Kelle Avcısı eklendi (Savaş sekmesi): tozunu harcayarak herhangi bir oyuncunun kellesine ödül koyabilirsin. Bu ödül herkese aynı anda görünür, o kişiyi savaşta İLK yenen oyuncu ödülü kapar ve ilan sıfırlanır.",
+      "👑 1.lik Avı eklendi: liderlik tablosunun zirvesindeki oyuncuyu saldırıda yenersen normal kazanç puanının üstüne +8 ekstra bonus puan kazanıyorsun. Zirvedeki isim artık liderlik tablosunda ve saldırı hedef listesinde 👑 rozetiyle işaretleniyor.",
+      "🦁🤡 Ana ekrana günlük performans banner'ı eklendi: o gün en çok savaş kazanan oyuncu 'Allahın Aslanı', en çok savaş kaybeden oyuncu ise 'Grubun Sürtüğü' olarak gösteriliyor. Sayaçlar her takvim günü sıfırlanıyor.",
+      "Yeni bir güncelleme geldiğinde artık oyuna giriş yapan herkese, o güncellemede neyin değiştiğini sayfa sayfa anlatan otomatik bir 'Yenilikler' tanıtım ekranı gösteriliyor (öğretici ile aynı kaydırmalı yapı, ama sadece o güncellemeye özel)."
+    ]
+  },
   {
     version: "1.8",
     date: "5 Temmuz 2026",
@@ -664,7 +825,6 @@ const RELEASES = [
 const ROADMAP = [
   "Rövanş hakkı: kaybedilen bir savaşın ardından, günlük cooldown'dan bağımsız bir intikam saldırısı hakkı.",
   "Dengeli hedef seçimi: sıralamada yakın oyunculara saldırıyı teşvik eden bir kısıtlama.",
-  "Günün MVP'si: günün en iyi performansına özel bir rozet.",
   "Rozet ve unvan sistemi: oyun içi başarımların profilde gösterilmesi.",
   "Haftalık/aylık sezonlar ve geçmiş şampiyonların tutulduğu bir arşiv.",
   "Anlık bildirimler: efsanevi eşya bulunduğunda veya saldırı anında ekran bildirimi.",
@@ -920,6 +1080,22 @@ newPlayerBtn.onclick = async () => {
       strangerAvailable: false,
       strangerUsed: false,
       strangerName: null,
+      lastWheelSpinTime: 0,
+      dailyStatsDay: null,
+      dailyWins: 0,
+      dailyLosses: 0,
+      stats: {
+        totalWins: 0,
+        totalLosses: 0,
+        attackWins: 0,
+        attackLosses: 0,
+        defenseWins: 0,
+        defenseLosses: 0,
+        currentStreak: 0,
+        longestStreak: 0,
+        winsByOpponent: {},
+        lossesByOpponent: {}
+      },
       createdAt: serverTimestamp()
     });
     selectPlayer(newDoc.id);
@@ -1010,7 +1186,8 @@ async function startGame() {
   currentPlayerNameEl.textContent = snap.data().name;
 
   renderDailyEventBanner();
-  maybeShowTutorial();
+  const openedTutorial = maybeShowTutorial();
+  if (!openedTutorial) maybeShowNewFeatures();
   await ensureStrangerForToday(snap.data());
   await ensureDailyQuestsForToday(snap.data());
 
@@ -1026,6 +1203,8 @@ async function startGame() {
     renderStrangerBanner();
     renderEnergy();
     renderQuests();
+    renderWheel();
+    renderStatsTab();
     if (!collectionModal.classList.contains("hidden")) renderCollection();
     if (!inventoryModal.classList.contains("hidden")) renderInventoryModal();
   });
@@ -1036,6 +1215,14 @@ async function startGame() {
     allPlayers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     renderLeaderboard();
     renderAttackTargets();
+    renderTopPerformers();
+    renderBountyForm();
+  });
+
+  // Kelle Avcısı ilanını (paylaşımlı doküman) canlı dinle
+  onSnapshot(doc(db, META_COL, BOUNTY_DOC_ID), (docSnap) => {
+    currentBounty = docSnap.exists() ? docSnap.data() : null;
+    renderBounty();
   });
 
   // Savaş geçmişini canlı dinle
@@ -1052,11 +1239,12 @@ function renderLeaderboard() {
   leaderboardEl.innerHTML = allPlayers.map((p, i) => {
     const isMe = p.id === currentPlayerId;
     const rankClass = i === 0 ? "gold" : "";
+    const isThrone = i === 0 && (p.points || 0) > 0;
     return `
       <div class="lb-row ${isMe ? "me" : ""}" data-id="${p.id}" ${isMe ? "" : 'style="cursor:pointer;"'}>
         <div class="lb-rank ${rankClass}">${i + 1}</div>
         <div class="lb-info">
-          <div class="lb-name">${p.name}${isMe ? " (sen)" : ""}</div>
+          <div class="lb-name">${isThrone ? '<span class="throne-crown" title="1.lik Avı hedefi">👑</span> ' : ""}${p.name}${isMe ? " (sen)" : ""}</div>
           <div class="lb-stats">⚔️ ${p.attack ?? BASE_ATTACK} &nbsp; 🛡️ ${p.defense ?? BASE_DEFENSE}</div>
         </div>
         <div class="lb-points">${p.points ?? 0}</div>
@@ -1107,6 +1295,62 @@ function renderMyStats() {
   const streak = currentPlayerData.boxStreak ?? 0;
   myStreakEl.textContent = streak;
   streakChip.classList.toggle("hidden", streak < 2);
+}
+
+// ============================================================
+// RENDER: İSTATİSTİK SEKMESİ
+// Kariyer boyu kazanma/kaybetme oranı, en çok yendiğin/yenildiğin kişi
+// ve en uzun kazanma serin.
+// ============================================================
+function renderStatsTab() {
+  if (!currentPlayerData || !statsOverviewEl) return;
+  const s = currentPlayerData.stats || {
+    totalWins: 0, totalLosses: 0, attackWins: 0, attackLosses: 0,
+    defenseWins: 0, defenseLosses: 0, currentStreak: 0, longestStreak: 0,
+    winsByOpponent: {}, lossesByOpponent: {}
+  };
+  const total = s.totalWins + s.totalLosses;
+  const winRate = total > 0 ? Math.round((s.totalWins / total) * 100) : 0;
+
+  statsOverviewEl.innerHTML = `
+    <div class="stat-summary" style="margin-bottom:6px;">
+      <span class="stat-chip pts">🏆 Kazanma: <b>${s.totalWins}</b></span>
+      <span class="stat-chip atk">💀 Kaybetme: <b>${s.totalLosses}</b></span>
+      <span class="stat-chip def">📈 Oran: <b>%${winRate}</b></span>
+    </div>
+    <div class="stats-mini-grid">
+      <div class="stats-mini-cell"><span>⚔️ Saldırıda</span><b>${s.attackWins}G / ${s.attackLosses}M</b></div>
+      <div class="stats-mini-cell"><span>🛡️ Savunmada</span><b>${s.defenseWins}G / ${s.defenseLosses}M</b></div>
+    </div>`;
+
+  const opponentEntries = Object.entries(s.winsByOpponent || {});
+  const lossEntries = Object.entries(s.lossesByOpponent || {});
+  const nameFor = (id) => (allPlayers.find(p => p.id === id)?.name) || "Silinmiş Oyuncu";
+
+  const topBeaten = opponentEntries.sort((a, b) => b[1] - a[1])[0];
+  const topBeatenBy = lossEntries.sort((a, b) => b[1] - a[1])[0];
+
+  statsOpponentsEl.innerHTML = `
+    <div class="stats-opp-row">
+      <span class="stats-opp-icon">🎯</span>
+      <div class="stats-opp-body">
+        <div class="stats-opp-label">En Çok Yendiğin</div>
+        <div class="stats-opp-value">${topBeaten ? `${nameFor(topBeaten[0])} <b>(${topBeaten[1]} kez)</b>` : "Henüz yok"}</div>
+      </div>
+    </div>
+    <div class="stats-opp-row">
+      <span class="stats-opp-icon">😵</span>
+      <div class="stats-opp-body">
+        <div class="stats-opp-label">En Çok Yenildiğin</div>
+        <div class="stats-opp-value">${topBeatenBy ? `${nameFor(topBeatenBy[0])} <b>(${topBeatenBy[1]} kez)</b>` : "Henüz yok"}</div>
+      </div>
+    </div>`;
+
+  statsStreakEl.innerHTML = `
+    <div class="stat-summary">
+      <span class="stat-chip pts">🔥 Şu Anki Seri: <b>${s.currentStreak}</b></span>
+      <span class="stat-chip atk">👑 En Uzun Seri: <b>${s.longestStreak}</b></span>
+    </div>`;
 }
 
 // ============================================================
@@ -1178,6 +1422,29 @@ function renderDailyEventBanner() {
   dailyEventBanner.innerHTML = `<span class="event-icon">${event.icon}</span><span class="event-text"><b>${event.title}</b> — ${event.desc}</span>`;
 }
 
+// ============================================================
+// GÜNÜN YILDIZI / GÜNÜN SÜRTÜĞÜ
+// allPlayers üzerinden, sadece BUGÜN (dailyStatsDay === bugün) savaşa
+// girmiş oyuncular arasında en çok kazanan ve en çok kaybeden bulunur.
+// ============================================================
+function renderTopPerformers() {
+  if (!topPerformersBanner) return;
+  const today = dateStr();
+  const activeToday = allPlayers.filter(p => p.dailyStatsDay === today && ((p.dailyWins || 0) + (p.dailyLosses || 0)) > 0);
+
+  if (!activeToday.length) {
+    tpBestName.textContent = "Henüz kimse savaşmadı";
+    tpWorstName.textContent = "Henüz kimse savaşmadı";
+    return;
+  }
+
+  const bestPlayer = activeToday.reduce((a, b) => (b.dailyWins || 0) > (a.dailyWins || 0) ? b : a, activeToday[0]);
+  const worstPlayer = activeToday.reduce((a, b) => (b.dailyLosses || 0) > (a.dailyLosses || 0) ? b : a, activeToday[0]);
+
+  tpBestName.textContent = (bestPlayer.dailyWins || 0) > 0 ? `${bestPlayer.name} (${bestPlayer.dailyWins} galibiyet)` : "Henüz kimse kazanmadı";
+  tpWorstName.textContent = (worstPlayer.dailyLosses || 0) > 0 ? `${worstPlayer.name} (${worstPlayer.dailyLosses} mağlubiyet)` : "Henüz kimse kaybetmedi";
+}
+
 // Bugün için henüz karar verilmediyse (yeni gün), gizemli yabancının çıkıp çıkmayacağına
 // deterministik olmayan tek seferlik bir rastgelelikle karar verip Firestore'a yazar.
 async function ensureStrangerForToday(data) {
@@ -1216,6 +1483,150 @@ strangerDuelBtn.onclick = async () => {
   showResultModal({ stranger: true, won, name: strangerName, reward });
   strangerDuelBtn.disabled = false;
 };
+
+// ============================================================
+// ŞANSLI ÇARK — mantık
+// Haftada bir kez bedava çevrilebilen, küçük toz/puan ödülleri veren çark.
+// ============================================================
+function canSpinWheelNow() {
+  if (!currentPlayerData) return false;
+  const last = currentPlayerData.lastWheelSpinTime || 0;
+  return Date.now() - last >= WHEEL_COOLDOWN_MS;
+}
+
+function buildWheelGradient() {
+  let acc = 0;
+  const stops = WHEEL_SEGMENTS.map(seg => {
+    const start = acc;
+    acc += WHEEL_SEGMENT_ANGLE;
+    return `${seg.color} ${start}deg ${acc}deg`;
+  });
+  return `conic-gradient(${stops.join(", ")})`;
+}
+
+function renderWheel() {
+  if (!luckyWheel || !currentPlayerData) return;
+  if (!luckyWheel.dataset.built) {
+    luckyWheel.style.background = buildWheelGradient();
+    luckyWheel.innerHTML = WHEEL_SEGMENTS.map((seg, i) => {
+      const angle = WHEEL_SEGMENT_ANGLE * i + WHEEL_SEGMENT_ANGLE / 2;
+      return `<span class="wheel-seg-label" style="transform: rotate(${angle}deg) translateY(-72px) rotate(${-angle}deg);">${seg.label}</span>`;
+    }).join("");
+    luckyWheel.dataset.built = "1";
+  }
+  const able = canSpinWheelNow();
+  spinWheelBtn.disabled = !able;
+  if (able) {
+    wheelStatus.textContent = "Çarkı çevirmeye hazır!";
+  } else {
+    const remain = WHEEL_COOLDOWN_MS - (Date.now() - (currentPlayerData.lastWheelSpinTime || 0));
+    wheelStatus.textContent = `Sıradaki çevirme hakkına ${formatRemaining(remain)} kaldı.`;
+  }
+}
+
+function pickWheelSegmentIndex() {
+  const total = WHEEL_SEGMENTS.reduce((s, seg) => s + seg.weight, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < WHEEL_SEGMENTS.length; i++) {
+    r -= WHEEL_SEGMENTS[i].weight;
+    if (r <= 0) return i;
+  }
+  return WHEEL_SEGMENTS.length - 1;
+}
+
+async function spinTheWheel() {
+  if (!currentPlayerData || !canSpinWheelNow()) return;
+  spinWheelBtn.disabled = true;
+
+  const idx = pickWheelSegmentIndex();
+  const seg = WHEEL_SEGMENTS[idx];
+  const segCenter = WHEEL_SEGMENT_ANGLE * idx + WHEEL_SEGMENT_ANGLE / 2;
+  const currentRotation = parseFloat(luckyWheel.dataset.rotation || "0");
+  const extraSpins = 4;
+  // Pointer 0 derecede (üstte) sabit, çark bu segmentin merkezi üste gelecek şekilde döner
+  const targetRotation = currentRotation - (currentRotation % 360) + extraSpins * 360 + (360 - segCenter);
+
+  luckyWheel.style.transition = "transform 3.2s cubic-bezier(.17,.67,.2,1)";
+  luckyWheel.style.transform = `rotate(${targetRotation}deg)`;
+  luckyWheel.dataset.rotation = String(targetRotation);
+  sfxShake();
+
+  wheelStatus.textContent = "Çark dönüyor...";
+  await new Promise(r => setTimeout(r, 3300));
+
+  await updateDoc(doc(db, PLAYERS_COL, currentPlayerId), {
+    lastWheelSpinTime: Date.now(),
+    dust: (currentPlayerData.dust || 0) + seg.dust,
+    points: (currentPlayerData.points || 0) + seg.points
+  });
+
+  wheelStatus.textContent = seg.type === "combo"
+    ? `🎉 JACKPOT! +${seg.points} puan ve +${seg.dust} toz kazandın!`
+    : `${seg.label} kazandın!`;
+  sfxOpenRare();
+}
+if (spinWheelBtn) spinWheelBtn.onclick = spinTheWheel;
+
+// ============================================================
+// KELLE AVCISI — mantık
+// Paylaşımlı tek bir ilan (gameMeta/bounty). Toz koyarak bir hedefe ödül
+// konur, o hedefi saldırıda İLK yenen kişi ödülü kapar.
+// ============================================================
+function renderBountyForm() {
+  if (!bountyTargetSelect || !currentPlayerId) return;
+  const options = allPlayers.filter(p => p.id !== currentPlayerId);
+  bountyTargetSelect.innerHTML = options.map(p => `<option value="${p.id}">${p.name}</option>`).join("");
+}
+
+function renderBounty() {
+  if (!bountyActive) return;
+  if (currentBounty && currentBounty.active) {
+    bountyActive.classList.remove("hidden");
+    bountyForm.classList.add("hidden");
+    bountyTargetName.textContent = currentBounty.targetName;
+    bountyAmountEl.textContent = currentBounty.amount;
+    bountyPlacer.textContent = currentBounty.placedByName;
+  } else {
+    bountyActive.classList.add("hidden");
+    bountyForm.classList.remove("hidden");
+  }
+}
+
+if (placeBountyBtn) {
+  placeBountyBtn.onclick = async () => {
+    if (!currentPlayerData) return;
+    const targetId = bountyTargetSelect.value;
+    const targetPlayer = allPlayers.find(p => p.id === targetId);
+    const amount = parseInt(bountyAmountInput.value, 10);
+
+    if (!targetPlayer) { bountyStatus.textContent = "Bir hedef seç."; return; }
+    if (!amount || amount < 1) { bountyStatus.textContent = "Geçerli bir toz miktarı gir."; return; }
+    if ((currentPlayerData.dust || 0) < amount) { bountyStatus.textContent = "Yeterli tozun yok."; return; }
+    if (currentBounty && currentBounty.active) { bountyStatus.textContent = "Zaten aktif bir ödül ilanı var."; return; }
+
+    placeBountyBtn.disabled = true;
+    try {
+      await updateDoc(doc(db, PLAYERS_COL, currentPlayerId), {
+        dust: (currentPlayerData.dust || 0) - amount
+      });
+      await setDoc(doc(db, META_COL, BOUNTY_DOC_ID), {
+        active: true,
+        targetId,
+        targetName: targetPlayer.name,
+        amount,
+        placedById: currentPlayerId,
+        placedByName: currentPlayerData.name,
+        createdAt: Date.now()
+      });
+      bountyStatus.textContent = "Ödül ilan edildi!";
+      bountyAmountInput.value = "";
+    } catch (e) {
+      bountyStatus.textContent = "Bir hata oldu: " + e.message;
+    } finally {
+      placeBountyBtn.disabled = false;
+    }
+  };
+}
 
 // ============================================================
 // GÜNLÜK GÖREVLER — mantık
@@ -1654,6 +2065,8 @@ function renderAttackTargets() {
   }
 
   const targets = allPlayers.filter(p => p.id !== currentPlayerId);
+  const throneId = allPlayers.length && (allPlayers[0].points || 0) > 0 ? allPlayers[0].id : null;
+  const bountyTargetId = currentBounty && currentBounty.active ? currentBounty.targetId : null;
 
   attackTargetsEl.innerHTML = targets.map(p => {
     const cooldownLeft = cooldowns[p.id] || 0;
@@ -1665,9 +2078,11 @@ function renderAttackTargets() {
       : isCurrentStreakTarget
         ? `<span class="target-streak-badge">${currentPlayerData.attackStreakOnTarget}/${MAX_CONSECUTIVE_ATTACKS_ON_TARGET}</span>`
         : "";
+    const throneBadge = p.id === throneId ? `<span class="throne-crown" title="Yenersen +${THRONE_BONUS_POINTS} bonus puan">👑</span>` : "";
+    const bountyBadge = p.id === bountyTargetId ? `<span class="target-streak-badge bounty-badge">💀 ${currentBounty.amount} toz</span>` : "";
     return `
     <div class="attack-target-row ${isLocked ? "locked" : ""}">
-      <div class="name">${p.name} ${badge}</div>
+      <div class="name">${throneBadge}${p.name} ${badge}${bountyBadge}</div>
       <div class="stats">⚔️${p.attack ?? BASE_ATTACK} 🛡️${p.defense ?? BASE_DEFENSE} · ${p.points ?? 0}⭐</div>
       <button data-id="${p.id}" ${canHitThis ? "" : "disabled"} style="${canHitThis ? "" : "opacity:.35;cursor:not-allowed;"}">${isLocked ? "Kilitli" : "Saldır"}</button>
     </div>`;
@@ -1746,16 +2161,23 @@ async function runAttack(defenderId) {
   sfxAttack();
   const dailyEvent = getTodaysEvent();
 
+  // 1.lik Avı: saldırı anında liderlik tablosunun (istemci tarafında bilinen)
+  // zirvesindeki oyuncu bu hedef mi, önceden belirlenir.
+  const isThroneTarget = allPlayers.length > 0 && allPlayers[0].id === defenderId && (allPlayers[0].points || 0) > 0;
+
   try {
     await runTransaction(db, async (tx) => {
       const attackerRef = doc(db, PLAYERS_COL, currentPlayerId);
       const defenderRef = doc(db, PLAYERS_COL, defenderId);
+      const bountyRef = doc(db, META_COL, BOUNTY_DOC_ID);
       const attackerSnap = await tx.get(attackerRef);
       const defenderSnap = await tx.get(defenderRef);
+      const bountySnap = await tx.get(bountyRef);
       if (!attackerSnap.exists() || !defenderSnap.exists()) throw new Error("Oyuncu bulunamadı.");
 
       const attacker = attackerSnap.data();
       const defender = defenderSnap.data();
+      const bounty = bountySnap.exists() ? bountySnap.data() : null;
 
       const currentWindow = getAttackWindowIndex();
       if ((attacker.lastAttackWindow ?? -1) === currentWindow) {
@@ -1920,6 +2342,53 @@ async function runAttack(defenderId) {
         logDetails.push(pickBattleMessage({ attackerWins: false, attackerName: attacker.name, defenderName: defender.name, winPts, losePts, isRepeat, repeatCount }));
       }
 
+      // 👑 1.lik Avı: zirvedeki oyuncuyu yenersen ekstra bonus puan
+      if (attackerWins && isThroneTarget) {
+        attackerPoints += THRONE_BONUS_POINTS;
+        legendaryLog.push(`👑 ${attacker.name}, zirvedeki ${defender.name}'i deviren 1.lik Avı bonusuyla +${THRONE_BONUS_POINTS} ekstra puan kazandı!`);
+      }
+
+      // 💀 Kelle Avcısı: aktif ilan bu hedefse ve saldıran kazandıysa ödülü kapar
+      let attackerDustGain = 0;
+      let bountyClearPayload = null;
+      if (attackerWins && bounty && bounty.active && bounty.targetId === defenderId) {
+        attackerDustGain = bounty.amount || 0;
+        bountyClearPayload = { active: false, targetId: null, targetName: null, amount: 0, placedById: null, placedByName: null };
+        legendaryLog.push(`💀 ${attacker.name}, ${defender.name}'in kellesindeki ${bounty.amount} tozluk ödülü kaptı!`);
+      }
+
+      // ---- Kariyer istatistikleri (İstatistik sekmesi) ve günlük galibiyet/mağlubiyet sayaçları ----
+      const today = dateStr();
+      function computeUpdatedStats(playerData, won, isAttackRole, opponentId) {
+        const st = playerData.stats || {};
+        const winsByOpponent = { ...(st.winsByOpponent || {}) };
+        const lossesByOpponent = { ...(st.lossesByOpponent || {}) };
+        let totalWins = st.totalWins || 0, totalLosses = st.totalLosses || 0;
+        let attackWins = st.attackWins || 0, attackLosses = st.attackLosses || 0;
+        let defenseWins = st.defenseWins || 0, defenseLosses = st.defenseLosses || 0;
+        let currentStreak = st.currentStreak || 0, longestStreak = st.longestStreak || 0;
+        if (won) {
+          totalWins++;
+          if (isAttackRole) attackWins++; else defenseWins++;
+          winsByOpponent[opponentId] = (winsByOpponent[opponentId] || 0) + 1;
+          currentStreak++;
+          longestStreak = Math.max(longestStreak, currentStreak);
+        } else {
+          totalLosses++;
+          if (isAttackRole) attackLosses++; else defenseLosses++;
+          lossesByOpponent[opponentId] = (lossesByOpponent[opponentId] || 0) + 1;
+          currentStreak = 0;
+        }
+        return { totalWins, totalLosses, attackWins, attackLosses, defenseWins, defenseLosses, currentStreak, longestStreak, winsByOpponent, lossesByOpponent };
+      }
+      const attackerStats = computeUpdatedStats(attacker, attackerWins, true, defenderId);
+      const defenderStats = computeUpdatedStats(defender, !attackerWins, false, currentPlayerId);
+
+      const attackerDailyWins = (attacker.dailyStatsDay === today ? (attacker.dailyWins || 0) : 0) + (attackerWins ? 1 : 0);
+      const attackerDailyLosses = (attacker.dailyStatsDay === today ? (attacker.dailyLosses || 0) : 0) + (attackerWins ? 0 : 1);
+      const defenderDailyWins = (defender.dailyStatsDay === today ? (defender.dailyWins || 0) : 0) + (attackerWins ? 0 : 1);
+      const defenderDailyLosses = (defender.dailyStatsDay === today ? (defender.dailyLosses || 0) : 0) + (attackerWins ? 1 : 0);
+
       // Attacker'ın kendi laneti varsa bu savaşta kullanılmış olur (temizle)
       const attackerCurseClear = attacker.curseNextAttack ? null : undefined;
 
@@ -1945,18 +2414,30 @@ async function runAttack(defenderId) {
 
       tx.update(attackerRef, {
         points: attackerPoints,
+        dust: (attacker.dust || 0) + attackerDustGain,
         lastAttackTime: Date.now(),
         lastAttackWindow: currentWindow,
         lastAttackedId: defenderId,
         attackStreakOnTarget: repeatCount,
         targetCooldowns: newTargetCooldowns,
+        stats: attackerStats,
+        dailyStatsDay: today,
+        dailyWins: attackerDailyWins,
+        dailyLosses: attackerDailyLosses,
         ...(attacker.curseNextAttack ? { curseNextAttack: null } : {}),
         ...(attackerQuests !== attacker.dailyQuests ? { dailyQuests: attackerQuests } : {})
       });
       tx.update(defenderRef, {
         points: defenderPoints,
+        stats: defenderStats,
+        dailyStatsDay: today,
+        dailyWins: defenderDailyWins,
+        dailyLosses: defenderDailyLosses,
         ...(newCurseForDefenderTarget ? { curseNextAttack: newCurseForDefenderTarget } : {})
       });
+      if (bountyClearPayload) {
+        tx.update(bountyRef, bountyClearPayload);
+      }
 
       const fullMessage = [...logDetails, ...legendaryLog].join(" ");
       tx.set(doc(collection(db, LOG_COL)), {
