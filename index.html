@@ -62,9 +62,9 @@
         <h2 class="tut-title">4 Saatte Bir Kutu</h2>
         <p class="tut-text">Kutu açma hakkın <b>4 saatte bir</b> yenilenir. Çıkan eşya otomatik olarak üstüne kuşanılır ve statların anında güncellenir. Sık açıldığı için nadir/efsanevi şansı bilerek düşük tutuldu.</p>
         <div class="rarity-bars">
-          <div class="rarity-bar standart"><span class="rarity-dot"></span> Standart <b>~%93</b></div>
-          <div class="rarity-bar nadir"><span class="rarity-dot"></span> Nadir <b>~%6</b></div>
-          <div class="rarity-bar efsanevi"><span class="rarity-dot"></span> Eşsiz / Efsanevi <b>~%0.5</b></div>
+          <div class="rarity-bar standart"><span class="rarity-dot"></span> Standart <b>~%88</b></div>
+          <div class="rarity-bar nadir"><span class="rarity-dot"></span> Nadir <b>~%9</b></div>
+          <div class="rarity-bar efsanevi"><span class="rarity-dot"></span> Eşsiz / Efsanevi <b>~%3</b></div>
         </div>
         <p class="tut-text small">🍀 Şansın yaver gitmiyorsa üzülme: uzun süre nadir/efsanevi çıkmazsa şansın <b>otomatik artar</b>, belli bir noktada garanti verilir.</p>
       </div>
@@ -75,8 +75,8 @@
         <h2 class="tut-title">Toz & Seri Bonusu</h2>
         <p class="tut-text">Yeni eşya eskisinin yerini alırken eski eşya <b>toza</b> dönüşür. Biriken tozla garantili kutu satın alabilirsin:</p>
         <div class="tut-slot-grid">
-          <div class="tut-slot-pill def">🔷 12 Toz → Garanti Nadir Kutu</div>
-          <div class="tut-slot-pill atk">🌟 35 Toz → Garanti Efsanevi Kutu</div>
+          <div class="tut-slot-pill def">🔷 18 Toz → Garanti Nadir Kutu</div>
+          <div class="tut-slot-pill atk">🌟 55 Toz → Garanti Efsanevi Kutu</div>
         </div>
         <p class="tut-text small">🔥 Art arda gün kutu açarsan seri oluşur: <b>3 günde</b> garanti Nadir, <b>7 günde</b> (ve katlarında) garanti Efsanevi bonusu kazanırsın.</p>
       </div>
@@ -100,7 +100,7 @@
       <div class="tutorial-slide">
         <div class="tut-hero">⚔️</div>
         <h2 class="tut-title">Saldırı</h2>
-        <p class="tut-text">Her <b>2 saatte bir</b> listeden birine saldırabilirsin. Statlar belirleyici, yakın maçlarda ufak bir şans payı devreye girer.</p>
+        <p class="tut-text">Her <b>saat başı</b> (örn. 14:00-14:59) listeden birine saldırma hakkın açılır ve bu hak <b>herkes için aynı anda</b> yenilenir. O saat içinde kullanmazsan hakkın kaybolur, bir sonraki saat başını beklemen gerekir. Statlar belirleyici, yakın maçlarda ufak bir şans payı devreye girer.</p>
         <div class="tut-result-preview">
           <div class="win">🏆 Kazanan <b>+10</b> puan</div>
           <div class="lose">💀 Kaybeden <b>−5</b> puan (0'ın altına inmez)</div>
@@ -175,11 +175,11 @@
         <button id="openBoxBtn" class="btn btn-gold btn-block">Kutuyu Aç</button>
         <p id="boxStatus" class="box-status"></p>
         <div class="guarantee-row">
-          <button id="guaranteeRareBtn" class="btn btn-mini nadir-mini" title="12 toz karşılığı garanti Nadir eşya">
-            🔷 Garanti Nadir <span>12 toz</span>
+          <button id="guaranteeRareBtn" class="btn btn-mini nadir-mini" title="18 toz karşılığı garanti Nadir eşya">
+            🔷 Garanti Nadir <span>18 toz</span>
           </button>
-          <button id="guaranteeLegendaryBtn" class="btn btn-mini efsanevi-mini" title="35 toz karşılığı garanti Efsanevi eşya">
-            🌟 Garanti Efsanevi <span>35 toz</span>
+          <button id="guaranteeLegendaryBtn" class="btn btn-mini efsanevi-mini" title="55 toz karşılığı garanti Efsanevi eşya">
+            🌟 Garanti Efsanevi <span>55 toz</span>
           </button>
         </div>
       </div>
@@ -188,7 +188,8 @@
         <h2 class="panel-title">⚡ Enerji</h2>
         <div class="energy-bar-track"><div id="energyBarFill" class="energy-bar-fill"></div></div>
         <p id="energyStatus" class="box-status"></p>
-        <button id="energySpendBtn" class="btn-mini nadir-mini btn-block">⚡ Enerji Harca (10) — Toz Kazan</button>
+        <p class="equip-hint">👆 Görevlerden birini seç, enerjine göre toz kazan</p>
+        <div id="energyTasksRow" class="energy-tasks-row"></div>
       </div>
 
       <div class="equipment-area">
@@ -204,9 +205,14 @@
       </div>
 
       <div class="attack-area">
-        <h2 class="panel-title">⚔️ Saldırı (2 Saatte Bir)</h2>
+        <h2 class="panel-title">⚔️ Saldırı (Saat Başı)</h2>
         <div id="attackTargets" class="attack-targets"></div>
         <p id="attackStatus" class="box-status"></p>
+      </div>
+
+      <div class="quests-area">
+        <h2 class="panel-title">🎯 Günlük Görevler</h2>
+        <div id="questsList" class="quests-list"></div>
       </div>
 
     </section>
@@ -245,6 +251,16 @@
     <p id="collectionProgress" class="tut-text small"></p>
     <div id="collectionList" class="collection-list"></div>
     <button id="closeCollectionBtn" class="btn btn-primary btn-block">Kapat</button>
+  </div>
+</div>
+
+<!-- ============ BAŞKA OYUNCUNUN EKİPMANI MODALI ============ -->
+<div id="viewEquipmentModal" class="modal-overlay hidden">
+  <div class="modal-card inventory-card">
+    <h2 id="viewEquipmentTitle" class="updates-title">Ekipman</h2>
+    <p class="tut-text small">Sadece o an kuşanılı olan eşyalar gösterilir, envanterin tamamı değil.</p>
+    <div id="viewEquipmentGrid" class="equipment-grid"></div>
+    <button id="closeViewEquipmentBtn" class="btn btn-primary btn-block">Kapat</button>
   </div>
 </div>
 

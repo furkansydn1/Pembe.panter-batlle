@@ -27,23 +27,36 @@ const LOG_COL = "battleLog";
 const MAX_PLAYERS = 7;
 const BASE_ATTACK = 10;
 const BASE_DEFENSE = 10;
-const ATTACK_COOLDOWN_MS = 2 * 60 * 60 * 1000;       // 2 saatte 1 saldırı
+const ATTACK_COOLDOWN_MS = 1 * 60 * 60 * 1000;       // 1 saatte 1 saldırı
+// Saldırı hakları artık herkes için AYNI, saat başına hizalanmış (senkron) pencerelerde açılır
+// (örn. 14:00-14:59, 15:00-15:59...). Kişisel "son saldırıdan bu yana geçen süre" YERİNE
+// global pencere index'i kullanılır: bir oyuncu o pencerede saldırmazsa hakkı kaybolur,
+// bir sonraki saat başına kadar beklemesi gerekir. Böylece kimse "geç giriş yaparak"
+// hakkını sonraya taşıyamaz, herkesin saldırı saati birebir aynı olur.
+function getAttackWindowIndex(t = Date.now()) {
+  return Math.floor(t / ATTACK_COOLDOWN_MS);
+}
 const BOX_COOLDOWN_MS = 4 * 60 * 60 * 1000;          // 4 saatte 1 kutu
 
 // Enerji sistemi: kutu/savaş beklerken oynanacak, cooldown'u olmayan dolgu aktivite.
 // Ana ekonomiye (gerçek eşya düşürme) dokunmaz, sadece toz ekonomisini besler.
 const ENERGY_MAX = 100;
-const ENERGY_REGEN_MS_PER_POINT = 5 * 60 * 1000; // her 5 dakikada +1 enerji
-const ENERGY_COST_PER_ACTION = 10;
-const ENERGY_DUST_MIN = 1;
-const ENERGY_DUST_MAX = 3;
-const ENERGY_BONUS_CHANCE = 0.08;
-const ENERGY_BONUS_DUST = 10;
+const ENERGY_REGEN_MS_PER_POINT = 3 * 60 * 1000; // her 3 dakikada +1 enerji
 
-// Temel şans oranları (yüzde). 4 saatte bir açıldığı için (günde ~6 kutu)
-// eskisinden çok daha zor: efsanevi ve nadir oranları düşürüldü.
-const BASE_LEGENDARY_CHANCE = 0.5;
-const BASE_RARE_CHANCE = 6;
+// Enerji harcanan "görevler": tek bir jenerik buton yerine, farklı isim/maliyet/ödüle
+// sahip görev kartları. Zorluk arttıkça toz/enerji oranı hafifçe iyileşiyor (sabır
+// ödüllendiriliyor) ama enerji 100 ile sınırlı olduğu için ekonomi bozulmuyor, herkes
+// hızlıca her şeye sahip olamıyor.
+const ENERGY_TASKS = [
+  { id: "gasp", name: "Gasp Et", icon: "👛", cost: 10, dustMin: 1, dustMax: 3, bonusChance: 0.08, bonusDust: 6 },
+  { id: "zorbala", name: "Arkadaşını Zorbala", icon: "😈", cost: 20, dustMin: 3, dustMax: 5, bonusChance: 0.08, bonusDust: 8 },
+  { id: "kafautule", name: "Hafız Döv", icon: "🗣️", cost: 35, dustMin: 6, dustMax: 9, bonusChance: 0.10, bonusDust: 12 },
+  { id: "manipule", name: "Umumi Mastürbasyon", icon: "🕶️", cost: 50, dustMin: 9, dustMax: 13, bonusChance: 0.12, bonusDust: 18 }
+];
+
+// Temel şans oranları (yüzde). Nadir %9, Efsanevi %3.
+const BASE_LEGENDARY_CHANCE = 3;
+const BASE_RARE_CHANCE = 9;
 
 // Pity (şans telafisi) eşikleri: uzun süre efsanevi/nadir çıkmayana şansı yavaşça artar,
 // belli bir noktadan sonra garanti verir.
@@ -54,11 +67,39 @@ const LEGENDARY_PITY_HARD = 40;       // 40 kutudur efsanevi yoksa garanti efsan
 
 // Toz (dust) ekonomisi: eski eşya yeni eşyayla değişince nadirliğine göre toz kazanılır.
 const DUST_FROM_RARITY = { standart: 1, nadir: 3, efsanevi: 8 };
-const DUST_COST_RARE_BOX = 12;
-const DUST_COST_LEGENDARY_BOX = 35;
+const DUST_COST_RARE_BOX = 18;
+const DUST_COST_LEGENDARY_BOX = 55;
 
 // Savaşta ezici stat üstünlüğü (bu kat kadar fazla güç) varsa şansa bakılmaksızın kazanılır.
 const DOMINANCE_RATIO = 1.5;
+
+// ============================================================
+// GÜNLÜK GÖREVLER
+// Her gün, her oyuncuya 3 rastgele görev atanır (1'i her zaman "giriş yap").
+// Zorluğa göre ödül (toz + puan + nadir eşya şansı) ölçekleniyor. Dengeyi
+// korumak için "zor" görevler bile tek başına ekonomiyi patlatmayacak
+// ölçüde ödül veriyor.
+// ============================================================
+const QUEST_TIER_REWARDS = {
+  kolay: { dustMin: 1, dustMax: 2, pointsMin: 1, pointsMax: 2, itemChance: 0 },
+  orta: { dustMin: 4, dustMax: 7, pointsMin: 3, pointsMax: 5, itemChance: 0.2 },
+  zor: { dustMin: 9, dustMax: 14, pointsMin: 6, pointsMax: 10, itemChance: 1 }
+};
+const QUEST_TIER_LABELS = { kolay: "Kolay", orta: "Orta", zor: "Zor" };
+
+const QUEST_TEMPLATES = [
+  { type: "login", tier: "kolay", icon: "👋", label: "Bugün giriş yap", target: 1, autoComplete: true },
+  { type: "open_box", tier: "kolay", icon: "📦", target: 1, label: (t) => `${t} kutu aç` },
+  { type: "open_box", tier: "orta", icon: "📦", target: 3, label: (t) => `${t} kutu aç` },
+  { type: "open_box", tier: "zor", icon: "📦", target: 5, label: (t) => `${t} kutu aç` },
+  { type: "attack_count", tier: "kolay", icon: "⚔️", target: 1, label: (t) => `${t} savaşa gir` },
+  { type: "attack_count", tier: "orta", icon: "⚔️", target: 2, label: (t) => `${t} savaşa gir` },
+  { type: "battle_win", tier: "orta", icon: "🏆", target: 1, label: (t) => `${t} savaş kazan` },
+  { type: "battle_win", tier: "zor", icon: "🏆", target: 2, label: (t) => `${t} savaş kazan` },
+  { type: "energy_task", tier: "kolay", icon: "⚡", target: 1, label: (t) => `${t} kez enerji görevi yap` },
+  { type: "energy_task", tier: "orta", icon: "⚡", target: 3, label: (t) => `${t} kez enerji görevi yap` },
+  { type: "defeat_player", tier: "zor", icon: "🎯", target: 1, label: null }
+];
 
 // ============================================================
 // EŞYA VERİLERİ
@@ -259,6 +300,19 @@ function pickSlotWeighted(recentSlots) {
   return candidates[candidates.length - 1];
 }
 
+// Nadir eşyalarda ana stat artık sabit bir aralıkta düz rastgele değil: belirlenen
+// alt/üst sınır (8-18) arasında, ÜST SINIRI (max) yakalama ihtimali kasıtlı olarak
+// düşük tutuluyor (~%20). Geri kalan %80'lik zamanda min ile max-1 arasında bir
+// değer düşüyor. Böylece aynı nadir eşya bile her kutuda aynı gücü vermiyor, ve
+// en güçlü versiyonunu yakalamak gerçekten şanslı bir an oluyor.
+const RARE_STAT_MIN = 8;
+const RARE_STAT_MAX = 18;
+const RARE_STAT_MAX_CHANCE = 0.20;
+function rollRareStat() {
+  if (Math.random() < RARE_STAT_MAX_CHANCE) return RARE_STAT_MAX;
+  return randInt(RARE_STAT_MIN, RARE_STAT_MAX - 1);
+}
+
 function generateLootItemForRarity(slot, rarity) {
   const slotInfo = SLOT_MAP[slot];
   const id = genItemId();
@@ -275,7 +329,7 @@ function generateLootItemForRarity(slot, rarity) {
 
   if (rarity === "nadir") {
     const name = pick(RARE_NAMES[slot]);
-    const primary = randInt(8, 15);
+    const primary = rollRareStat();
     const secondary = randInt(1, 4);
     return {
       id, name, slot, rarity,
@@ -377,6 +431,11 @@ const inventoryModalTitle = document.getElementById("inventoryModalTitle");
 const inventoryList = document.getElementById("inventoryList");
 const closeInventoryBtn = document.getElementById("closeInventoryBtn");
 
+const viewEquipmentModal = document.getElementById("viewEquipmentModal");
+const viewEquipmentTitle = document.getElementById("viewEquipmentTitle");
+const viewEquipmentGrid = document.getElementById("viewEquipmentGrid");
+const closeViewEquipmentBtn = document.getElementById("closeViewEquipmentBtn");
+
 const dailyEventBanner = document.getElementById("dailyEventBanner");
 const strangerBanner = document.getElementById("strangerBanner");
 const strangerNameEl = document.getElementById("strangerName");
@@ -403,10 +462,12 @@ const guaranteeLegendaryBtn = document.getElementById("guaranteeLegendaryBtn");
 
 const energyBarFill = document.getElementById("energyBarFill");
 const energyStatus = document.getElementById("energyStatus");
-const energySpendBtn = document.getElementById("energySpendBtn");
+const energyTasksRow = document.getElementById("energyTasksRow");
 
 const attackTargetsEl = document.getElementById("attackTargets");
 const attackStatus = document.getElementById("attackStatus");
+
+const questsListEl = document.getElementById("questsList");
 
 const resultModal = document.getElementById("resultModal");
 const resultContent = document.getElementById("resultContent");
@@ -485,9 +546,30 @@ howToBtn.onclick = () => openTutorial();
 // Her yeni özellik bittiğinde status'u "soon" -> "done" yapıp
 // LATEST_UPDATE_VERSION'ı artırman yeterli, rozet otomatik güncellenir.
 // ============================================================
-const LATEST_UPDATE_VERSION = "1.5";
+const LATEST_UPDATE_VERSION = "1.7";
 
 const RELEASES = [
+  {
+    version: "1.7",
+    date: "4 Temmuz 2026",
+    items: [
+      "Saldırı sistemi tamamen senkron hale getirildi: saldırı hakkı artık 'son saldırından bu yana X saat' mantığıyla değil, herkes için birebir aynı, saat başına hizalanmış pencerelerle çalışıyor (örn. 14:00-14:59, 15:00-15:59). O saatlik pencerede saldırmazsan hakkın kaybolur ve bir sonraki saat başına kadar beklersin; kimse geç giriş yaparak hakkını sonraya taşıyamaz. Ayrıca saldırı bekleme süresi 2 saatten 1 saate düşürüldü, yani artık günde çok daha fazla saldırı hakkı var.",
+      "Enerji yenilenme hızı 5 dakikada +1'den 3 dakikada +1'e çıkarıldı, enerji dolum süresi kısaldı.",
+      "Nadir ve Efsanevi eşya düşme ihtimalleri artırıldı: Nadir %6'dan %9'a, Efsanevi %0.5'ten %3'e yükseltildi. Buna karşılık ekonomik dengeyi korumak için toz karşılığı garanti kutu maliyetleri de artırıldı: Garanti Nadir 12'den 18 toza, Garanti Efsanevi 35'ten 55 toza çıkarıldı.",
+      "Nadir eşyalarda artık her eşya aynı gücü vermiyor: ana stat 8 ile 18 arasında bir üst/alt sınıra göre belirleniyor, ama üst sınırı (en güçlü versiyonu) yakalamak kasıtlı olarak zor tutuldu (~%20 ihtimal). Geri kalan zamanlarda daha düşük ama yine de kullanılabilir bir değer düşüyor, böylece aynı isimli nadir eşyayı tekrar açmak hep bir sürpriz taşıyor.",
+      "Oyuncular artık birbirinin o an kuşanılı olan eşyalarını görebiliyor: Liderlik Tablosu'nda kendi dışındaki bir oyuncunun satırına dokunmak, o oyuncunun 5 slotuna ne taktığını (isim + güç değerleri) salt okunur şekilde gösteren bir ekran açıyor.",
+      "Enerji görev kartlarından ikisinin ismi değiştirildi: 'Kafa Ütüle' → 'Hafız Döv', 'Tam Manipülasyon' → 'Umumi Mastürbasyon'. (Sadece isim değişikliği, maliyet/ödül aynı kaldı.)",
+      "Not: Günlük görevler ve seri (streak) bonusu zaten takvim gününe göre (gece 00:00'dan bir sonraki gece 00:00'a kadar) çalışıyordu; kimin ne zaman giriş yaptığına bakılmaksızın herkes için aynı gün sınırı geçerli, bu davranış bu sürümde de korundu."
+    ]
+  },
+  {
+    version: "1.6",
+    date: "4 Temmuz 2026",
+    items: [
+      "Enerji Harca butonu kaldırıldı: yerine 'Gasp Et', 'Arkadaşını Zorbala', 'Kafa Ütüle' ve 'Tam Manipülasyon' gibi isimli görev kartları geldi. Görev ne kadar zor (enerji maliyeti yüksek) ise toz ödülü de o kadar iyi, ama enerjinin 100 ile sınırlı olması sayesinde ekonomi dengede kalıyor.",
+      "Günlük Görevler sistemi eklendi: her gün herkese 1'i her zaman 'giriş yap' olmak üzere 3 rastgele görev atanıyor (kutu aç, savaşa gir, savaş kazan, belirli bir oyuncuyu yen, enerji görevi yap gibi). Görevler zorluğuna göre (kolay/orta/zor) toz, puan ve zor görevlerde garanti nadir eşya ödülü veriyor."
+    ]
+  },
   {
     version: "1.5",
     date: "4 Temmuz 2026",
@@ -780,6 +862,7 @@ newPlayerBtn.onclick = async () => {
       inventory: { kask: [], zirh: [], kilic: [], eldiven: [], ayakkabi: [] },
       lastBoxOpenTime: 0,
       lastAttackTime: 0,
+      lastAttackWindow: -1,
       curseNextAttack: null,
       dust: 0,
       energy: ENERGY_MAX,
@@ -888,6 +971,7 @@ async function startGame() {
   renderDailyEventBanner();
   maybeShowTutorial();
   await ensureStrangerForToday(snap.data());
+  await ensureDailyQuestsForToday(snap.data());
 
   // Kendi oyuncu belgemi canlı dinle
   onSnapshot(ref, (docSnap) => {
@@ -899,6 +983,7 @@ async function startGame() {
     renderAttackTargets();
     renderStrangerBanner();
     renderEnergy();
+    renderQuests();
     if (!collectionModal.classList.contains("hidden")) renderCollection();
     if (!inventoryModal.classList.contains("hidden")) renderInventoryModal();
   });
@@ -926,7 +1011,7 @@ function renderLeaderboard() {
     const isMe = p.id === currentPlayerId;
     const rankClass = i === 0 ? "gold" : "";
     return `
-      <div class="lb-row ${isMe ? "me" : ""}">
+      <div class="lb-row ${isMe ? "me" : ""}" data-id="${p.id}" ${isMe ? "" : 'style="cursor:pointer;"'}>
         <div class="lb-rank ${rankClass}">${i + 1}</div>
         <div class="lb-info">
           <div class="lb-name">${p.name}${isMe ? " (sen)" : ""}</div>
@@ -935,7 +1020,38 @@ function renderLeaderboard() {
         <div class="lb-points">${p.points ?? 0}</div>
       </div>`;
   }).join("");
+
+  leaderboardEl.querySelectorAll(".lb-row[data-id]").forEach(row => {
+    if (row.classList.contains("me")) return;
+    row.onclick = () => {
+      const player = allPlayers.find(p => p.id === row.getAttribute("data-id"));
+      if (player) openViewEquipment(player);
+    };
+  });
 }
+
+// ============================================================
+// BAŞKA OYUNCUNUN EKİPMANINI GÖRÜNTÜLEME (salt okunur)
+// Herkes birbirinin o an kuşanılı olan eşyalarını görebilsin diye
+// liderlik tablosundaki bir oyuncuya tıklanınca açılan salt okunur ekran.
+// ============================================================
+function openViewEquipment(player) {
+  viewEquipmentTitle.textContent = `🛡️ ${player.name}'in Ekipmanı`;
+  const eq = player.equipment || emptyEquipment();
+  viewEquipmentGrid.innerHTML = SLOTS.map(s => {
+    const item = eq[s.key];
+    const rarityClass = item ? `rarity-${item.rarity}` : "";
+    return `
+      <div class="equip-slot view-only ${item ? `filled ${rarityClass}` : ""}" style="cursor:default;">
+        <div class="equip-slot-icon">${s.icon}</div>
+        <div class="equip-slot-label">${s.label}</div>
+        <div class="equip-slot-item ${item ? "" : "empty"}">${item ? item.name : "Boş"}</div>
+        ${item ? `<div class="equip-slot-count">⚔️${item.atk} 🛡️${item.def}</div>` : ""}
+      </div>`;
+  }).join("");
+  viewEquipmentModal.classList.remove("hidden");
+}
+closeViewEquipmentBtn.onclick = () => viewEquipmentModal.classList.add("hidden");
 
 // ============================================================
 // RENDER: BENİM İSTATİSTİKLERİM
@@ -969,30 +1085,49 @@ function renderEnergy() {
   const current = getCurrentEnergy(currentPlayerData);
   energyBarFill.style.width = `${(current / ENERGY_MAX) * 100}%`;
   energyStatus.textContent = `${current} / ${ENERGY_MAX} enerji`;
-  energySpendBtn.disabled = current < ENERGY_COST_PER_ACTION;
+  renderEnergyTasks(current);
 }
 
-async function useEnergyAction() {
-  if (!currentPlayerData) return;
-  const current = getCurrentEnergy(currentPlayerData);
-  if (current < ENERGY_COST_PER_ACTION) return;
+function renderEnergyTasks(current) {
+  if (!energyTasksRow) return;
+  current = current ?? getCurrentEnergy(currentPlayerData || { energy: ENERGY_MAX });
+  energyTasksRow.innerHTML = ENERGY_TASKS.map(t => `
+    <button type="button" class="btn-mini nadir-mini energy-task-btn" data-task="${t.id}" ${current < t.cost ? "disabled" : ""}>
+      ${t.icon} ${t.name}
+      <span>${t.cost} enerji · ~${t.dustMin}-${t.dustMax} toz</span>
+    </button>
+  `).join("");
 
-  energySpendBtn.disabled = true;
-  const bonus = Math.random() < ENERGY_BONUS_CHANCE;
-  const dustGain = bonus ? ENERGY_BONUS_DUST : randInt(ENERGY_DUST_MIN, ENERGY_DUST_MAX);
+  energyTasksRow.querySelectorAll("button[data-task]").forEach(btn => {
+    btn.onclick = () => useEnergyAction(btn.getAttribute("data-task"));
+  });
+}
+
+async function useEnergyAction(taskId) {
+  if (!currentPlayerData) return;
+  const task = ENERGY_TASKS.find(t => t.id === taskId);
+  if (!task) return;
+  const current = getCurrentEnergy(currentPlayerData);
+  if (current < task.cost) return;
+
+  energyTasksRow.querySelectorAll("button").forEach(b => b.disabled = true);
+  const bonus = Math.random() < task.bonusChance;
+  const dustGain = bonus ? task.bonusDust : randInt(task.dustMin, task.dustMax);
+
+  const newQuests = incrementQuestProgress(currentPlayerData.dailyQuests, "energy_task", 1);
 
   await updateDoc(doc(db, PLAYERS_COL, currentPlayerId), {
-    energy: current - ENERGY_COST_PER_ACTION,
+    energy: current - task.cost,
     lastEnergyUpdate: Date.now(),
-    dust: (currentPlayerData.dust || 0) + dustGain
+    dust: (currentPlayerData.dust || 0) + dustGain,
+    ...(newQuests !== currentPlayerData.dailyQuests ? { dailyQuests: newQuests } : {})
   });
 
   energyStatus.textContent = bonus
-    ? `🎉 Şanslı buluş! +${dustGain} toz kazandın!`
-    : `+${dustGain} toz kazandın.`;
+    ? `🎉 ${task.name} sırasında şanslı buluş! +${dustGain} toz kazandın!`
+    : `${task.name}: +${dustGain} toz kazandın.`;
   setTimeout(renderEnergy, 1800);
 }
-energySpendBtn.onclick = useEnergyAction;
 setInterval(renderEnergy, 30000);
 
 function renderDailyEventBanner() {
@@ -1039,6 +1174,192 @@ strangerDuelBtn.onclick = async () => {
   showResultModal({ stranger: true, won, name: strangerName, reward });
   strangerDuelBtn.disabled = false;
 };
+
+// ============================================================
+// GÜNLÜK GÖREVLER — mantık
+// ============================================================
+function rollQuestReward(tier) {
+  const r = QUEST_TIER_REWARDS[tier];
+  return {
+    dust: randInt(r.dustMin, r.dustMax),
+    points: randInt(r.pointsMin, r.pointsMax),
+    item: Math.random() < r.itemChance
+  };
+}
+
+function buildQuestFromTemplate(template, idx, otherPlayers) {
+  const reward = rollQuestReward(template.tier);
+  let label = template.label;
+
+  if (template.type === "defeat_player") {
+    if (!otherPlayers.length) return null;
+    const t = pick(otherPlayers);
+    label = `${t.name}'i savaşta yen`;
+    return {
+      id: `q${idx}_${template.type}`, type: template.type, tier: template.tier, icon: template.icon,
+      label, target: template.target, progress: 0, completed: false, claimed: false,
+      rewardDust: reward.dust, rewardPoints: reward.points, rewardItem: reward.item,
+      targetPlayerId: t.id, targetPlayerName: t.name
+    };
+  }
+
+  if (typeof label === "function") label = label(template.target);
+
+  return {
+    id: `q${idx}_${template.type}`, type: template.type, tier: template.tier, icon: template.icon,
+    label, target: template.target,
+    progress: template.autoComplete ? template.target : 0,
+    completed: !!template.autoComplete,
+    claimed: false,
+    rewardDust: reward.dust, rewardPoints: reward.points, rewardItem: reward.item,
+    targetPlayerId: null, targetPlayerName: null
+  };
+}
+
+// Bugün için henüz görev atanmadıysa, 1 "giriş yap" + farklı tipte 2 rastgele
+// görev daha seçip Firestore'a yazar (Gizemli Yabancı ile aynı desen).
+async function ensureDailyQuestsForToday(data) {
+  const today = dateStr();
+  if (data.questsDate === today && Array.isArray(data.dailyQuests) && data.dailyQuests.length) return;
+
+  const players = await loadPlayersOnce();
+  const others = players.filter(p => p.id !== currentPlayerId);
+
+  const rest = QUEST_TEMPLATES.filter(t => t.type !== "login" && (t.type !== "defeat_player" || others.length > 0));
+  const shuffled = [...rest].sort(() => Math.random() - 0.5);
+  const chosenTypes = new Set();
+  const picked = [];
+  for (const t of shuffled) {
+    if (chosenTypes.has(t.type)) continue;
+    chosenTypes.add(t.type);
+    picked.push(t);
+    if (picked.length === 2) break;
+  }
+
+  const loginTemplate = QUEST_TEMPLATES.find(t => t.type === "login");
+  const templatesToUse = [loginTemplate, ...picked];
+  const quests = templatesToUse.map((t, i) => buildQuestFromTemplate(t, i, others)).filter(Boolean);
+
+  await updateDoc(doc(db, PLAYERS_COL, currentPlayerId), {
+    dailyQuests: quests,
+    questsDate: today
+  });
+}
+
+// Belirli tipte, tamamlanmamış görevlerin ilerlemesini artırır. defeat_player
+// tipinde sadece targetPlayerId eşleşiyorsa sayılır.
+function incrementQuestProgress(quests, type, amount = 1, opts = {}) {
+  if (!quests || !quests.length) return quests;
+  let changed = false;
+  const updated = quests.map(q => {
+    if (q.completed || q.type !== type) return q;
+    if (type === "defeat_player" && q.targetPlayerId !== opts.targetPlayerId) return q;
+    const newProgress = Math.min(q.target, (q.progress || 0) + amount);
+    if (newProgress === (q.progress || 0)) return q;
+    changed = true;
+    return { ...q, progress: newProgress, completed: newProgress >= q.target };
+  });
+  return changed ? updated : quests;
+}
+
+// Görev ödülü olarak nadir eşya verilirken kutu açmayla aynı deseni kullanır:
+// slot boşsa otomatik kuşanılır, doluysa envantere eklenir.
+function buildItemGrantPayload(data, rarity) {
+  const recentSlots = data.recentSlots || [];
+  const slot = pickSlotWeighted(recentSlots);
+  const item = generateLootItemForRarity(slot, rarity);
+  const wasEmpty = !(data.equipment && data.equipment[slot]);
+  const newInvArr = [...getSlotInventory(slot), item];
+  const newEquipment = wasEmpty
+    ? { ...(data.equipment || emptyEquipment()), [slot]: item }
+    : (data.equipment || emptyEquipment());
+  const stats = computeStatsFromEquipment(newEquipment);
+  const newDiscovered = Array.from(new Set([...(data.discoveredItems || []), item.name]));
+  const newRecentSlots = [...recentSlots, slot].slice(-8);
+  return {
+    equipment: newEquipment,
+    attack: stats.attack,
+    defense: stats.defense,
+    [`inventory.${slot}`]: newInvArr,
+    discoveredItems: newDiscovered,
+    recentSlots: newRecentSlots,
+    _grantedItem: item
+  };
+}
+
+function renderQuests() {
+  if (!currentPlayerData || !questsListEl) return;
+  const quests = currentPlayerData.dailyQuests || [];
+  if (!quests.length) {
+    questsListEl.innerHTML = `<p class="box-status">Bugünkü görevler yükleniyor...</p>`;
+    return;
+  }
+
+  questsListEl.innerHTML = quests.map(q => {
+    const pct = Math.min(100, Math.round(((q.progress || 0) / q.target) * 100));
+    const readyToClaim = q.completed && !q.claimed;
+    return `
+      <div class="quest-card tier-${q.tier} ${q.claimed ? "claimed" : ""} ${readyToClaim ? "ready" : ""}">
+        <div class="quest-top">
+          <span class="quest-icon">${q.icon}</span>
+          <span class="quest-label">${q.label}</span>
+          <span class="quest-tier-badge tier-${q.tier}">${QUEST_TIER_LABELS[q.tier]}</span>
+        </div>
+        <div class="quest-progress-track"><div class="quest-progress-fill" style="width:${pct}%"></div></div>
+        <div class="quest-bottom">
+          <span class="quest-progress-text">${q.progress || 0}/${q.target}</span>
+          <span class="quest-reward">✨${q.rewardDust} · ⭐${q.rewardPoints}${q.rewardItem ? " · 🔷 Nadir Eşya" : ""}</span>
+          ${q.claimed
+            ? `<span class="quest-claimed-tag">✅ Alındı</span>`
+            : `<button class="btn-mini nadir-mini quest-claim-btn" data-id="${q.id}" ${readyToClaim ? "" : "disabled"}>Ödülü Al</button>`}
+        </div>
+      </div>`;
+  }).join("");
+
+  questsListEl.querySelectorAll(".quest-claim-btn").forEach(btn => {
+    btn.onclick = () => claimQuest(btn.getAttribute("data-id"));
+  });
+}
+
+async function claimQuest(questId) {
+  if (!currentPlayerData) return;
+  const quests = currentPlayerData.dailyQuests || [];
+  const quest = quests.find(q => q.id === questId);
+  if (!quest || !quest.completed || quest.claimed) return;
+
+  questsListEl.querySelectorAll(".quest-claim-btn").forEach(b => b.disabled = true);
+
+  let payload = {
+    dust: (currentPlayerData.dust || 0) + (quest.rewardDust || 0),
+    points: (currentPlayerData.points || 0) + (quest.rewardPoints || 0)
+  };
+
+  let grantedItem = null;
+  if (quest.rewardItem) {
+    const itemGrant = buildItemGrantPayload(currentPlayerData, "nadir");
+    grantedItem = itemGrant._grantedItem;
+    delete itemGrant._grantedItem;
+    payload = { ...payload, ...itemGrant };
+  }
+
+  const newQuests = quests.map(q => q.id === questId ? { ...q, claimed: true } : q);
+  payload.dailyQuests = newQuests;
+
+  await updateDoc(doc(db, PLAYERS_COL, currentPlayerId), payload);
+
+  if (grantedItem) {
+    itemPopupInner.className = `item-popup-inner rarity-${grantedItem.rarity}`;
+    itemPopupInner.innerHTML = `
+      <div class="streak-bonus-tag">🎯 Görev Ödülü!</div>
+      <div class="item-popup-icon">${SLOT_MAP[grantedItem.slot].icon}</div>
+      <div class="item-popup-name rarity-${grantedItem.rarity}">${grantedItem.name}</div>
+      <div class="item-popup-stats">⚔️ +${grantedItem.atk} &nbsp; 🛡️ +${grantedItem.def} &nbsp; · ${grantedItem.rarity.toUpperCase()}</div>
+      ${grantedItem.effectDesc ? `<div class="item-popup-passive">✨ ${grantedItem.effectDesc}</div>` : ""}
+    `;
+    itemPopup.classList.remove("hidden");
+    setTimeout(() => itemPopup.classList.add("hidden"), 5000);
+  }
+}
 
 function renderEquipment() {
   const eq = currentPlayerData?.equipment || emptyEquipment();
@@ -1174,6 +1495,7 @@ async function performBoxOpen({ forcedRarity = null, costDust = 0, isFree = fals
   const newRecentSlots = [...recentSlots, slot].slice(-8);
   const newDiscovered = Array.from(new Set([...(data.discoveredItems || []), item.name]));
   const newDust = Math.max(0, (data.dust || 0) - costDust);
+  const newQuests = incrementQuestProgress(data.dailyQuests, "open_box", 1);
 
   const updatePayload = {
     equipment: newEquipment,
@@ -1184,7 +1506,8 @@ async function performBoxOpen({ forcedRarity = null, costDust = 0, isFree = fals
     pityLegendary: newPityLegendary,
     dust: newDust,
     recentSlots: newRecentSlots,
-    discoveredItems: newDiscovered
+    discoveredItems: newDiscovered,
+    ...(newQuests !== data.dailyQuests ? { dailyQuests: newQuests } : {})
   };
   if (isFree) {
     updatePayload.lastBoxOpenTime = Date.now();
@@ -1239,8 +1562,8 @@ guaranteeLegendaryBtn.onclick = () => {
 // ============================================================
 function canAttackNow() {
   if (!currentPlayerData) return false;
-  const last = currentPlayerData.lastAttackTime || 0;
-  return Date.now() - last >= ATTACK_COOLDOWN_MS;
+  const lastWindow = currentPlayerData.lastAttackWindow ?? -1;
+  return lastWindow !== getAttackWindowIndex();
 }
 
 function renderAttackTargets() {
@@ -1248,13 +1571,12 @@ function renderAttackTargets() {
   const able = canAttackNow();
 
   if (!able) {
-    const last = currentPlayerData.lastAttackTime || 0;
-    const remainMs = ATTACK_COOLDOWN_MS - (Date.now() - last);
-    attackStatus.textContent = last === 0
-      ? "Saldırı hakkın hazır!"
-      : `Bu saldırı hakkını kullandın. ${formatRemaining(remainMs)} sonra tekrar saldırabilirsin.`;
+    const windowIdx = getAttackWindowIndex();
+    const windowEnd = (windowIdx + 1) * ATTACK_COOLDOWN_MS;
+    const remainMs = windowEnd - Date.now();
+    attackStatus.textContent = `Bu saatlik saldırı hakkını kullandın. Sıradaki saldırı penceresi ${formatRemaining(remainMs)} sonra açılıyor.`;
   } else {
-    attackStatus.textContent = "Günlük saldırı hakkın hazır, birini seç!";
+    attackStatus.textContent = "Saldırı hakkın hazır, birini seç! (Kullanmazsan bu pencere kapanır, bir daha kullanamazsın.)";
   }
 
   const targets = allPlayers.filter(p => p.id !== currentPlayerId);
@@ -1349,8 +1671,9 @@ async function runAttack(defenderId) {
       const attacker = attackerSnap.data();
       const defender = defenderSnap.data();
 
-      if (Date.now() - (attacker.lastAttackTime || 0) < ATTACK_COOLDOWN_MS) {
-        throw new Error("Bu saldırı hakkını zaten kullandın.");
+      const currentWindow = getAttackWindowIndex();
+      if ((attacker.lastAttackWindow ?? -1) === currentWindow) {
+        throw new Error("Bu saatlik saldırı penceresini zaten kullandın.");
       }
 
       const logDetails = [];
@@ -1363,7 +1686,12 @@ async function runAttack(defenderId) {
       // --- Nargile kılıcı: %20 ihtimalle saldıramaz ---
       const chillItem = getEffect(attacker.equipment, "chill_risk");
       if (chillItem && Math.random() < 0.2) {
-        tx.update(attackerRef, { lastAttackTime: Date.now() });
+        const skippedQuests = incrementQuestProgress(attacker.dailyQuests, "attack_count", 1);
+        tx.update(attackerRef, {
+          lastAttackTime: Date.now(),
+          lastAttackWindow: currentWindow,
+          ...(skippedQuests !== attacker.dailyQuests ? { dailyQuests: skippedQuests } : {})
+        });
         logDetails.push(`${attacker.name}, Nargile Kılıcı'nın keyfine daldı ve saldıramadan bu seferki hakkını harcadı.`);
         tx.set(doc(collection(db, LOG_COL)), {
           attacker: attacker.name, defender: defender.name,
@@ -1499,12 +1827,22 @@ async function runAttack(defenderId) {
       // Attacker'ın kendi laneti varsa bu savaşta kullanılmış olur (temizle)
       const attackerCurseClear = attacker.curseNextAttack ? null : undefined;
 
+      // Günlük görev ilerlemesi: her saldırı denemesi, kazanılan savaş, ve
+      // varsa "şu oyuncuyu yen" hedefi
+      let attackerQuests = incrementQuestProgress(attacker.dailyQuests, "attack_count", 1);
+      if (attackerWins) {
+        attackerQuests = incrementQuestProgress(attackerQuests, "battle_win", 1);
+        attackerQuests = incrementQuestProgress(attackerQuests, "defeat_player", 1, { targetPlayerId: defenderId });
+      }
+
       tx.update(attackerRef, {
         points: attackerPoints,
         lastAttackTime: Date.now(),
+        lastAttackWindow: currentWindow,
         lastAttackedId: defenderId,
         attackStreakOnTarget: repeatCount,
-        ...(attacker.curseNextAttack ? { curseNextAttack: null } : {})
+        ...(attacker.curseNextAttack ? { curseNextAttack: null } : {}),
+        ...(attackerQuests !== attacker.dailyQuests ? { dailyQuests: attackerQuests } : {})
       });
       tx.update(defenderRef, {
         points: defenderPoints,

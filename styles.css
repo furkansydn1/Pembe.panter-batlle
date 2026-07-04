@@ -330,6 +330,47 @@ input{font-family:inherit;}
   transition: width .4s ease;
 }
 
+.energy-tasks-row{ display:grid; grid-template-columns: repeat(2, 1fr); gap:8px; }
+.energy-task-btn{ width:100%; min-width:0; }
+
+/* ---------- GÜNLÜK GÖREVLER ---------- */
+.quests-area{ display:flex; flex-direction:column; gap:10px; }
+.quests-list{ display:flex; flex-direction:column; gap:8px; }
+.quest-card{
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display:flex; flex-direction:column; gap:6px;
+}
+.quest-card.tier-orta{ border-color:#4d9bff44; }
+.quest-card.tier-zor{ border-color:#ffcc4d44; }
+.quest-card.ready{ box-shadow: 0 0 0 1px var(--green) inset; }
+.quest-card.claimed{ opacity:.55; }
+.quest-top{ display:flex; align-items:center; gap:8px; }
+.quest-icon{ font-size:1.05rem; }
+.quest-label{ flex:1; font-weight:600; font-size:.85rem; }
+.quest-tier-badge{
+  font-size:.62rem; font-weight:700; padding:2px 7px; border-radius:999px;
+  background: var(--bg); color: var(--text-dim); border:1px solid var(--border);
+}
+.quest-tier-badge.tier-orta{ color: var(--blue); border-color:#4d9bff55; }
+.quest-tier-badge.tier-zor{ color: var(--gold); border-color:#ffcc4d55; }
+.quest-progress-track{
+  height:8px; border-radius:999px; overflow:hidden;
+  background: var(--bg); border:1px solid var(--border);
+}
+.quest-progress-fill{
+  height:100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  transition: width .3s ease;
+}
+.quest-bottom{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.quest-progress-text{ font-size:.72rem; color: var(--text-dim); }
+.quest-reward{ font-size:.72rem; color: var(--text-dim); flex:1; }
+.quest-claimed-tag{ font-size:.72rem; font-weight:700; color: var(--green); }
+.quest-claim-btn{ flex:none; min-width:0; padding:6px 12px; }
+
 /* ---------- EQUIPMENT GRID ---------- */
 .equipment-grid{
   display:grid;
@@ -355,6 +396,7 @@ input{font-family:inherit;}
 .equip-hint{
   font-size: .72rem; color: var(--text-dim); text-align:center; margin: -4px 0 0;
 }
+.equip-slot.view-only::after{ content: none; }
 .equip-slot.filled.rarity-nadir{border-color:var(--blue);}
 .equip-slot.filled.rarity-efsanevi{border-color:var(--gold); box-shadow: 0 0 14px #ffcc4d44;}
 .equip-slot-icon{font-size:1.5rem;}
