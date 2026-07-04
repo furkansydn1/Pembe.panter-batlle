@@ -596,6 +596,22 @@ input{font-family:inherit;}
 .update-badge.soon{ background: #8b8ca322; color: var(--text-dim); border: 1px solid var(--border); }
 .update-entry-desc{ font-size: .78rem; color: var(--text-dim); line-height:1.4; }
 
+.release-block{ margin-bottom: 16px; }
+.release-header{
+  display:flex; align-items:baseline; gap:10px; margin-bottom:8px;
+  padding-bottom:6px; border-bottom: 1px solid var(--border);
+}
+.release-version{
+  font-size:.85rem; font-weight:800; color: var(--gold);
+  background: var(--gold-dim); padding: 2px 10px; border-radius: 999px;
+}
+.release-date{ font-size:.72rem; color: var(--text-dim); }
+.release-items{ margin:0; padding-left:18px; display:flex; flex-direction:column; gap:6px; }
+.release-items li{ font-size:.8rem; color: var(--text); line-height:1.45; }
+.roadmap-block{ margin-top: 6px; padding-top: 12px; border-top: 1px dashed var(--border); }
+.roadmap-header{ font-size:.9rem; font-weight:700; color: var(--accent-2); margin-bottom:8px; }
+.roadmap-items li{ color: var(--text-dim); }
+
 /* ---------- KOLEKSİYON KİTABI ---------- */
 .collection-list{
   display:flex; flex-direction:column; gap:16px;
@@ -622,3 +638,64 @@ input{font-family:inherit;}
 .coll-chip.owned.rarity-standart{ border-color: var(--gray); color: var(--text); }
 .coll-chip.owned.rarity-nadir{ border-color: var(--blue); color: var(--blue); background: #4d9bff14; }
 .coll-chip.owned.rarity-efsanevi{ border-color: var(--gold); color: var(--gold); background: #ffcc4d14; box-shadow: 0 0 8px #ffcc4d33; }
+
+/* ---------- PIN ---------- */
+.pin-input-inline{
+  padding: 12px; border-radius:10px; border:1px solid var(--border);
+  background: var(--bg); color: var(--text); width:100%;
+  letter-spacing: 4px; text-align:center;
+}
+.pin-card{ text-align:center; max-width: 340px; }
+.pin-input{
+  width: 100%; padding: 14px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--bg-panel-alt); color: var(--text);
+  font-size: 1.6rem; letter-spacing: 10px; text-align:center; margin: 10px 0 4px;
+}
+.pin-modal-actions{ display:flex; gap:10px; margin-top: 14px; }
+.pin-modal-actions .btn{ flex:1; }
+.btn-secondary{ background: var(--bg-panel-alt); color: var(--text); border: 1px solid var(--border); }
+
+/* ---------- GÜNÜN OLAYI & GİZEMLİ YABANCI ---------- */
+.daily-event-banner{
+  margin: 0 18px; margin-top: 12px;
+  padding: 10px 16px; border-radius: 12px;
+  font-size: .82rem;
+  display:flex; align-items:center; gap:10px;
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--border);
+}
+.daily-event-banner.type-buff{ border-color:#4dd68a55; background: #4dd68a14; }
+.daily-event-banner.type-nerf{ border-color:#ff5c6c55; background: #ff5c6c14; }
+.daily-event-banner.type-neutral{ border-color: var(--border); }
+.event-icon{ font-size:1.2rem; flex-shrink:0; }
+.event-text b{ color: var(--text); }
+
+.stranger-banner{
+  margin: 10px 18px 0; padding: 10px 16px; border-radius: 12px;
+  background: linear-gradient(135deg, #7c5cff22, #191a26);
+  border: 1px solid #7c5cff55;
+  display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+  font-size: .82rem;
+}
+.stranger-banner b{ color: var(--accent-2); }
+
+/* ---------- ENVANTER ---------- */
+button.equip-slot{ font-family: inherit; cursor:pointer; width:100%; }
+.equip-slot-count{ font-size:.62rem; color: var(--text-dim); margin-top:4px; }
+.inventory-list{
+  display:flex; flex-direction:column; gap:10px;
+  max-height: 55vh; overflow-y:auto; margin:14px 0; padding-right:4px;
+}
+.inv-item{
+  background: var(--bg-panel-alt); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px 14px;
+}
+.inv-item.rarity-nadir{ border-color: var(--blue); }
+.inv-item.rarity-efsanevi{ border-color: var(--gold); box-shadow: 0 0 10px #ffcc4d22; }
+.inv-item-top{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:4px; }
+.inv-item-name{ font-weight:700; font-size:.86rem; }
+.inv-item-stats{ font-size:.75rem; color: var(--text-dim); }
+.inv-item-actions{ display:flex; gap:8px; margin-top:10px; }
+.inv-item-actions .btn-mini{ flex:1; min-width:0; }
+.popup-quick-actions{ display:flex; gap:8px; margin-top:10px; }
+.popup-quick-actions .btn-mini{ flex:1; min-width:0; }

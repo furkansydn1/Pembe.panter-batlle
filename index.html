@@ -16,9 +16,24 @@
     <div id="playerListLogin" class="player-list-login"></div>
     <div id="newPlayerBox" class="new-player-box">
       <input id="newPlayerName" type="text" maxlength="16" placeholder="Yeni isim yaz (max 7 oyuncu)">
+      <input id="newPlayerPin" type="password" inputmode="numeric" maxlength="4" pattern="[0-9]*" placeholder="4 haneli PIN belirle" class="pin-input-inline">
       <button id="newPlayerBtn" class="btn btn-primary">Katıl</button>
     </div>
     <p id="loginError" class="login-error"></p>
+  </div>
+</div>
+
+<!-- ============ PIN DOĞRULAMA MODALI ============ -->
+<div id="pinModal" class="modal-overlay hidden">
+  <div class="modal-card pin-card">
+    <h2 id="pinModalTitle" class="updates-title">🔒 PIN Gir</h2>
+    <p class="tut-text small">Bu hesaba ait 4 haneli PIN'ini gir. (İlk kez giriş yapıyorsan girdiğin 4 hane, o andan itibaren PIN'in olarak kaydedilir.)</p>
+    <input id="pinInput" type="password" inputmode="numeric" maxlength="4" pattern="[0-9]*" class="pin-input" placeholder="••••">
+    <p id="pinError" class="login-error"></p>
+    <div class="pin-modal-actions">
+      <button id="pinCancelBtn" class="btn btn-secondary">Vazgeç</button>
+      <button id="pinConfirmBtn" class="btn btn-primary">Giriş Yap</button>
+    </div>
   </div>
 </div>
 
@@ -129,6 +144,12 @@
     </div>
   </header>
 
+  <div id="dailyEventBanner" class="daily-event-banner"></div>
+  <div id="strangerBanner" class="stranger-banner hidden">
+    <span>🕵️ Gizemli bir yabancı, <b id="strangerName"></b>, sana meydan okuyor!</span>
+    <button id="strangerDuelBtn" class="btn-mini nadir-mini">Düelloya Gir</button>
+  </div>
+
   <main class="main-grid">
 
     <!-- SOL: Liderlik Tablosu -->
@@ -216,6 +237,15 @@
     <p id="collectionProgress" class="tut-text small"></p>
     <div id="collectionList" class="collection-list"></div>
     <button id="closeCollectionBtn" class="btn btn-primary btn-block">Kapat</button>
+  </div>
+</div>
+
+<!-- ============ ENVANTER MODALI ============ -->
+<div id="inventoryModal" class="modal-overlay hidden">
+  <div class="modal-card inventory-card">
+    <h2 id="inventoryModalTitle" class="updates-title">Envanter</h2>
+    <div id="inventoryList" class="inventory-list"></div>
+    <button id="closeInventoryBtn" class="btn btn-primary btn-block">Kapat</button>
   </div>
 </div>
 

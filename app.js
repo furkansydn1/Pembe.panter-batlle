@@ -47,6 +47,9 @@ const DUST_FROM_RARITY = { standart: 1, nadir: 3, efsanevi: 8 };
 const DUST_COST_RARE_BOX = 12;
 const DUST_COST_LEGENDARY_BOX = 35;
 
+// Savaşta ezici stat üstünlüğü (bu kat kadar fazla güç) varsa şansa bakılmaksızın kazanılır.
+const DOMINANCE_RATIO = 1.5;
+
 // ============================================================
 // EŞYA VERİLERİ
 // ============================================================
@@ -135,16 +138,84 @@ const ALL_ITEMS_BY_SLOT = Object.fromEntries(SLOTS.map(s => {
 }));
 const TOTAL_ITEM_COUNT = Object.values(ALL_ITEMS_BY_SLOT).reduce((sum, arr) => sum + arr.length, 0);
 
+// ============================================================
+// GÜNÜN OLAYI
+// Her gün (tarihe göre deterministik, sunucuya ihtiyaç duymadan) tüm
+// oyuncuları aynı anda etkileyen bir buff/nerf/nötr olay seçilir.
+// ============================================================
+const DAILY_EVENTS = [
+  { id: "lucky", icon: "🍀", type: "buff", title: "Şanslı Gün",
+    desc: "Bugün nadir ve efsanevi eşya düşme ihtimali %50 daha yüksek.",
+    legendaryChanceMult: 1.5, rareChanceMult: 1.5, pointsMult: 1, attackMult: 1, defenseMult: 1, varianceMult: 1, dustMult: 1, boxCooldownMult: 1, pityMult: 1 },
+  { id: "dry", icon: "🌪️", type: "nerf", title: "Kurak Gün",
+    desc: "Bugün nadir ve efsanevi eşya düşme ihtimali %30 daha düşük.",
+    legendaryChanceMult: 0.7, rareChanceMult: 0.7, pointsMult: 1, attackMult: 1, defenseMult: 1, varianceMult: 1, dustMult: 1, boxCooldownMult: 1, pityMult: 1 },
+  { id: "war", icon: "⚔️", type: "buff", title: "Savaş Çılgınlığı",
+    desc: "Bugün kazanılan tüm savaş puanları %50 fazla veriliyor.",
+    legendaryChanceMult: 1, rareChanceMult: 1, pointsMult: 1.5, attackMult: 1, defenseMult: 1, varianceMult: 1, dustMult: 1, boxCooldownMult: 1, pityMult: 1 },
+  { id: "fragile_armor", icon: "🛡️", type: "nerf", title: "Kırık Zırh Günü",
+    desc: "Bugün tüm savunma güçleri hesaplamada %15 zayıf sayılıyor.",
+    legendaryChanceMult: 1, rareChanceMult: 1, pointsMult: 1, attackMult: 1, defenseMult: 0.85, varianceMult: 1, dustMult: 1, boxCooldownMult: 1, pityMult: 1 },
+  { id: "power_surge", icon: "💪", type: "buff", title: "Güç Günü",
+    desc: "Bugün tüm saldırı güçleri hesaplamada %15 fazla sayılıyor.",
+    legendaryChanceMult: 1, rareChanceMult: 1, pointsMult: 1, attackMult: 1.15, defenseMult: 1, varianceMult: 1, dustMult: 1, boxCooldownMult: 1, pityMult: 1 },
+  { id: "dust_storm", icon: "✨", type: "buff", title: "Toz Fırtınası",
+    desc: "Bugün eşyaları toza çevirdiğinde 2 kat toz kazanıyorsun.",
+    legendaryChanceMult: 1, rareChanceMult: 1, pointsMult: 1, attackMult: 1, defenseMult: 1, varianceMult: 1, dustMult: 2, boxCooldownMult: 1, pityMult: 1 },
+  { id: "precision", icon: "🎯", type: "buff", title: "Kesinlik Günü",
+    desc: "Bugün savaşta şansın etkisi azaldı, statlar her zamankinden daha belirleyici.",
+    legendaryChanceMult: 1, rareChanceMult: 1, pointsMult: 1, attackMult: 1, defenseMult: 1, varianceMult: 0.4, dustMult: 1, boxCooldownMult: 1, pityMult: 1 },
+  { id: "chaos", icon: "🌀", type: "nerf", title: "Kaos Günü",
+    desc: "Bugün savaşta şansın etkisi arttı, sürprizlere açık ol.",
+    legendaryChanceMult: 1, rareChanceMult: 1, pointsMult: 1, attackMult: 1, defenseMult: 1, varianceMult: 2, dustMult: 1, boxCooldownMult: 1, pityMult: 1 },
+  { id: "slow_boxes", icon: "😴", type: "nerf", title: "Tembellik Günü",
+    desc: "Bugün kutu açma süresi 4 yerine 6 saat.",
+    legendaryChanceMult: 1, rareChanceMult: 1, pointsMult: 1, attackMult: 1, defenseMult: 1, varianceMult: 1, dustMult: 1, boxCooldownMult: 1.5, pityMult: 1 },
+  { id: "fast_boxes", icon: "⚡", type: "buff", title: "Hız Günü",
+    desc: "Bugün kutu açma süresi 4 yerine 3 saat.",
+    legendaryChanceMult: 1, rareChanceMult: 1, pointsMult: 1, attackMult: 1, defenseMult: 1, varianceMult: 1, dustMult: 1, boxCooldownMult: 0.75, pityMult: 1 },
+  { id: "compensation", icon: "🍀", type: "buff", title: "Telafi Günü",
+    desc: "Bugün şanssızlık telafisi (pity) 2 kat hızlı birikiyor.",
+    legendaryChanceMult: 1, rareChanceMult: 1, pointsMult: 1, attackMult: 1, defenseMult: 1, varianceMult: 1, dustMult: 1, boxCooldownMult: 1, pityMult: 2 },
+  { id: "calm", icon: "🌤️", type: "neutral", title: "Sakin Gün",
+    desc: "Bugün özel bir etki yok, her şey normal seyrinde.",
+    legendaryChanceMult: 1, rareChanceMult: 1, pointsMult: 1, attackMult: 1, defenseMult: 1, varianceMult: 1, dustMult: 1, boxCooldownMult: 1, pityMult: 1 }
+];
+
+function hashString(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) { h = (h * 31 + str.charCodeAt(i)) | 0; }
+  return Math.abs(h);
+}
+function getTodaysEvent() {
+  const idx = hashString(dateStr()) % DAILY_EVENTS.length;
+  return DAILY_EVENTS[idx];
+}
+function getEffectiveBoxCooldown() {
+  return BOX_COOLDOWN_MS * (getTodaysEvent().boxCooldownMult || 1);
+}
+
+// ============================================================
+// GİZEMLİ YABANCI
+// ============================================================
+const STRANGER_NAMES = [
+  "Mahmut Demirgan", "Cemal", "Kara", "İnce Yusuf", "Lahit Memet",
+  "Harput Ayakkabının Sahibi", "Hasan", "Yusuf Durmuş", "Abdulgafur", "Kenanpo"
+];
+const STRANGER_APPEAR_CHANCE = 0.18;
+const STRANGER_DUST_REWARD = 10;
+
 function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 function pick(arr) { return arr[randInt(0, arr.length - 1)]; }
+function genItemId() { return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`; }
 
 // Pity'li şans hesabı: pityRare/pityLegendary = son nadir/efsanevi'den beri kaç kutu açıldı.
-function rollRarity(pityRare, pityLegendary) {
+function rollRarity(pityRare, pityLegendary, event) {
   if (pityLegendary >= LEGENDARY_PITY_HARD) return "efsanevi";
   if (pityRare >= RARE_PITY_HARD) return "nadir";
 
-  const legChance = BASE_LEGENDARY_CHANCE + Math.max(0, pityLegendary - LEGENDARY_PITY_SOFT_START) * 0.4;
-  const rareChance = BASE_RARE_CHANCE + Math.max(0, pityRare - RARE_PITY_SOFT_START) * 1;
+  const legChance = (BASE_LEGENDARY_CHANCE + Math.max(0, pityLegendary - LEGENDARY_PITY_SOFT_START) * 0.4) * event.legendaryChanceMult;
+  const rareChance = (BASE_RARE_CHANCE + Math.max(0, pityRare - RARE_PITY_SOFT_START) * 1) * event.rareChanceMult;
 
   const r = Math.random() * 100;
   if (r < legChance) return "efsanevi";
@@ -180,12 +251,13 @@ function pickSlotWeighted(recentSlots) {
 
 function generateLootItemForRarity(slot, rarity) {
   const slotInfo = SLOT_MAP[slot];
+  const id = genItemId();
 
   if (rarity === "efsanevi") {
     const options = LEGENDARY_BY_SLOT[slot];
     const base = pick(options);
     return {
-      name: base.name, slot, rarity,
+      id, name: base.name, slot, rarity,
       atk: base.atk, def: base.def,
       effect: base.effect, effectDesc: base.desc
     };
@@ -196,7 +268,7 @@ function generateLootItemForRarity(slot, rarity) {
     const primary = randInt(8, 15);
     const secondary = randInt(1, 4);
     return {
-      name, slot, rarity,
+      id, name, slot, rarity,
       atk: slotInfo.type === "atk" ? primary : secondary,
       def: slotInfo.type === "def" ? primary : secondary,
       effect: null, effectDesc: null
@@ -208,7 +280,7 @@ function generateLootItemForRarity(slot, rarity) {
   const primary = randInt(3, 8);
   const secondary = randInt(0, 2);
   return {
-    name, slot, rarity,
+    id, name, slot, rarity,
     atk: slotInfo.type === "atk" ? primary : secondary,
     def: slotInfo.type === "def" ? primary : secondary,
     effect: null, effectDesc: null
@@ -261,8 +333,16 @@ const gameScreen = document.getElementById("gameScreen");
 const playerListLogin = document.getElementById("playerListLogin");
 const newPlayerBox = document.getElementById("newPlayerBox");
 const newPlayerName = document.getElementById("newPlayerName");
+const newPlayerPin = document.getElementById("newPlayerPin");
 const newPlayerBtn = document.getElementById("newPlayerBtn");
 const loginError = document.getElementById("loginError");
+
+const pinModal = document.getElementById("pinModal");
+const pinModalTitle = document.getElementById("pinModalTitle");
+const pinInput = document.getElementById("pinInput");
+const pinError = document.getElementById("pinError");
+const pinCancelBtn = document.getElementById("pinCancelBtn");
+const pinConfirmBtn = document.getElementById("pinConfirmBtn");
 
 const tutorialModal = document.getElementById("tutorialModal");
 const legendaryShowcase = document.getElementById("legendaryShowcase");
@@ -281,6 +361,16 @@ const collectionModal = document.getElementById("collectionModal");
 const collectionList = document.getElementById("collectionList");
 const collectionProgress = document.getElementById("collectionProgress");
 const closeCollectionBtn = document.getElementById("closeCollectionBtn");
+
+const inventoryModal = document.getElementById("inventoryModal");
+const inventoryModalTitle = document.getElementById("inventoryModalTitle");
+const inventoryList = document.getElementById("inventoryList");
+const closeInventoryBtn = document.getElementById("closeInventoryBtn");
+
+const dailyEventBanner = document.getElementById("dailyEventBanner");
+const strangerBanner = document.getElementById("strangerBanner");
+const strangerNameEl = document.getElementById("strangerName");
+const strangerDuelBtn = document.getElementById("strangerDuelBtn");
 
 const currentPlayerNameEl = document.getElementById("currentPlayerName");
 const leaderboardEl = document.getElementById("leaderboard");
@@ -381,63 +471,89 @@ howToBtn.onclick = () => openTutorial();
 // Her yeni özellik bittiğinde status'u "soon" -> "done" yapıp
 // LATEST_UPDATE_VERSION'ı artırman yeterli, rozet otomatik güncellenir.
 // ============================================================
-const LATEST_UPDATE_VERSION = "1.3";
+const LATEST_UPDATE_VERSION = "1.4";
 
-const CHANGELOG = [
-  { version: "1.3", status: "done", title: "⚖️ Puanlama Dengesi",
-    desc: "Saldırıp kazanırsan +10/-5 aynı kalıyor. Ama saldırıp kaybedersen artık sadece -3 puan kaybediyorsun, savunan kazanınca +5 alıyor. Saldırmak daha az riskli." },
-  { version: "1.3", status: "done", title: "📖 Eşya Koleksiyon Kitabı",
-    desc: "Bugüne kadar bulduğun tüm eşyalar bir kitapta toplanıyor, bulamadıkların '???' olarak görünüyor. Her slotta 20+ farklı eşya var, hepsini toplamaya çalış!" },
-  { version: "1.3", status: "done", title: "💬 Çeşitlenmiş Savaş Logları",
-    desc: "Kazanma, kaybetme ve aynı kişiye üst üste saldırma durumlarına özel, birbirinden farklı komik mesajlar eklendi." },
-  { version: "1.2", status: "done", title: "⏱️ 4 Saatte Bir Kutu, Günde 1 Savaş",
-    desc: "Kutu açma hakkı artık 4 saatte bir yenileniyor ama nadir/efsanevi düşme şansı ciddi şekilde zorlaştırıldı. Savaş hakkı da haftalıktan günlüğe indi." },
-  { version: "1.2", status: "done", title: "🍀 Pity Sistemi",
-    desc: "Uzun süredir efsanevi/nadir düşmeyene şans yavaşça artar, belli bir noktadan sonra garanti verilir." },
-  { version: "1.2", status: "done", title: "🔥 Streak Bonusu",
-    desc: "Art arda gün kutu açtıkça seri oluşur: 3 günde garanti nadir, 7 günde (ve katlarında) garanti efsanevi bonusu." },
-  { version: "1.2", status: "done", title: "♻️ Toz & Garanti Kutu",
-    desc: "Yeni eşya eskisinin yerini alırken eski eşya toza çevrilir. Biriken tozla garantili Nadir ya da Efsanevi kutu satın alınabilir." },
-  { version: "1.2", status: "done", title: "🎯 Eşit Dağılım Sistemi",
-    desc: "Aynı slotun (örn. hep Kılıç) üst üste çıkması engellendi, düşme şansı diğer slotlara göre otomatik dengeleniyor." },
-  { version: "1.2", status: "done", title: "✨ Epik Kutu Animasyonları",
-    desc: "Nadirlik arttıkça animasyon da büyüyor: parçacık patlamaları, efsanevide ekran flaşı ve daha uzun sahne." },
-  { version: "1.1", status: "done", title: "Yeni İsim & Yana Kaydırmalı Tanıtım",
-    desc: "Oyun adı Pembe Panterler Battle oldu, tanıtım ekranı slaytlarla anlatan bir carousel'e dönüştü." },
-  { version: "1.0", status: "done", title: "Oyunun Temeli",
-    desc: "Kutu açma, kuşanım, savaş, liderlik tablosu ve savaş geçmişi ile ilk sürüm yayında." },
-  { version: "soon", status: "soon", title: "😤 Rövanş Hakkı",
-    desc: "Kaybettiğin savaştan sonra o kişiye özel, günlük cooldown'dan bağımsız bir intikam saldırısı." },
-  { version: "soon", status: "soon", title: "⚖️ Dengeli Hedef Seçimi",
-    desc: "Sadece sıralamada sana yakın olanlara saldırabilme, güçlünün zayıfı ezmesini engelleme." },
-  { version: "soon", status: "soon", title: "🥇 Günün MVP'si",
-    desc: "O gün en iyi performansı gösteren oyuncuya özel rozet." },
-  { version: "soon", status: "soon", title: "🏅 Rozet & Unvan Sistemi",
-    desc: "'3 hafta üst üste 1. oldu', '5 efsanevi eşya topladı' gibi başarımlar profilde görünsün." },
-  { version: "soon", status: "soon", title: "📅 Haftalık/Aylık Sezon",
-    desc: "Liderlik tablosu periyodik sıfırlansın, geçmiş şampiyonlar Hall of Fame listesinde tutulsun." },
-  { version: "soon", status: "soon", title: "🔔 Anlık Bildirimler",
-    desc: "Biri efsanevi eşya bulduğunda ya da sana saldırdığında ekranda anlık bir bildirim çıksın." },
-  { version: "soon", status: "soon", title: "🙂 Karakter Avatarı",
-    desc: "Kayıt olurken emoji/renk seçimi, liderlik tablosunda ve savaş logunda görünsün." },
-  { version: "soon", status: "soon", title: "🔊 Ses Efektleri",
-    desc: "Kutu açılışı ve savaş kazanma/kaybetmede kısa ses efektleri." },
-  { version: "soon", status: "soon", title: "🎉 Confetti Efekti",
-    desc: "Efsanevi eşya çıktığında ekranda altın confetti patlasın." },
-  { version: "soon", status: "soon", title: "🐉 Sunucu Boss'u",
-    desc: "Haftada bir gün herkesin ortak saldırabileceği devasa bir boss çıksın, en çok hasar veren ekstra ödül alsın." }
+const RELEASES = [
+  {
+    version: "1.4",
+    date: "4 Temmuz 2026",
+    items: [
+      "Envanter sistemi: eşyalar artık otomatik kuşanılmıyor. Slot boşsa yeni eşya otomatik kuşanılır, doluysa envantere eklenir ve istediğin eşyayi seçip kuşanabilir veya toza çevirebilirsin.",
+      "Savaş algoritması yeniden dengelendi: güç farkının belirleyiciliği artırıldı, büyük bir stat üstünlüğü artık şansa bakılmaksızın kazandırıyor.",
+      "Günün Olayı sistemi eklendi: her gün tüm oyuncuları aynı anda etkileyen rastgele bir buff, nerf ya da nötr etki devreye giriyor.",
+      "Gizemli Yabancı eklendi: günde belirli bir ihtimalle karşına çıkan, kaybetsen bile risk taşımayan bonus düello.",
+      "Güvenlik: hesap girişine 4 haneli PIN zorunluluğu getirildi, başkasının hesabına yanlışlıkla girilmesi engellendi."
+    ]
+  },
+  {
+    version: "1.3",
+    date: "3 Temmuz 2026",
+    items: [
+      "Puanlama dengesi güncellendi: saldırıp kaybetmenin bedeli 5 puandan 3 puana düşürüldü, savunmada kazanma ödülü 5 puan olarak sabitlendi.",
+      "Eşya Koleksiyon Kitabı eklendi: keşfedilen ve keşfedilmeyen tüm eşyalar tek ekranda takip edilebiliyor.",
+      "Savaş kayıtlarına duruma özel (kazanma / kaybetme / aynı hedefe tekrar saldırma) çeşitlendirilmiş mesajlar eklendi."
+    ]
+  },
+  {
+    version: "1.2",
+    date: "3 Temmuz 2026",
+    items: [
+      "Kutu açma süresi günde 1'den 4 saatte 1'e düşürüldü, buna karşılık nadir ve efsanevi eşya oranları belirgin şekilde azaltıldı.",
+      "Pity sistemi eklendi: uzun süre şanssız kalan oyuncuların olasılığı kademeli olarak artırılıyor.",
+      "Günlük seri (streak) bonusu eklendi.",
+      "Toz ekonomisi ve garantili kutu satın alma seçeneği eklendi.",
+      "Eşit dağılım sistemi eklendi: aynı eşya türünün art arda düşmesi engellendi.",
+      "Kutu açma animasyonları nadirliğe göre zenginleştirildi."
+    ]
+  },
+  {
+    version: "1.1",
+    date: "3 Temmuz 2026",
+    items: [
+      "Oyun adı Pembe Panterler Battle olarak güncellendi.",
+      "Tanıtım ekranı, oyunun sistemlerini adım adım anlatan bir slayt akışına dönüştürüldü."
+    ]
+  },
+  {
+    version: "1.0",
+    date: "3 Temmuz 2026",
+    items: [
+      "İlk sürüm: kutu açma, kuşanım, savaş, liderlik tablosu ve savaş geçmişi sistemleriyle yayına alındı."
+    ]
+  }
+];
+
+const ROADMAP = [
+  "Rövanş hakkı: kaybedilen bir savaşın ardından, günlük cooldown'dan bağımsız bir intikam saldırısı hakkı.",
+  "Dengeli hedef seçimi: sıralamada yakın oyunculara saldırıyı teşvik eden bir kısıtlama.",
+  "Günün MVP'si: günün en iyi performansına özel bir rozet.",
+  "Rozet ve unvan sistemi: oyun içi başarımların profilde gösterilmesi.",
+  "Haftalık/aylık sezonlar ve geçmiş şampiyonların tutulduğu bir arşiv.",
+  "Anlık bildirimler: efsanevi eşya bulunduğunda veya saldırı anında ekran bildirimi.",
+  "Karakter avatarı seçimi.",
+  "Ses efektleri.",
+  "Confetti efekti.",
+  "Sunucu Boss'u: haftalık ortak raid etkinliği."
 ];
 
 function renderUpdatesList() {
-  updatesList.innerHTML = CHANGELOG.map(u => `
-    <div class="update-entry ${u.status}">
-      <div class="update-entry-top">
-        <div class="update-entry-title">${u.title}</div>
-        <span class="update-badge ${u.status}">${u.status === "done" ? "✅ EKLENDİ" : "⏳ YAKINDA"}</span>
+  const releasesHtml = RELEASES.map(r => `
+    <div class="release-block">
+      <div class="release-header">
+        <span class="release-version">v${r.version}</span>
+        <span class="release-date">${r.date}</span>
       </div>
-      <div class="update-entry-desc">${u.desc}</div>
+      <ul class="release-items">${r.items.map(t => `<li>${t}</li>`).join("")}</ul>
     </div>
   `).join("");
+
+  const roadmapHtml = `
+    <div class="roadmap-block">
+      <div class="roadmap-header">🔮 Yol Haritası</div>
+      <ul class="release-items roadmap-items">${ROADMAP.map(t => `<li>${t}</li>`).join("")}</ul>
+    </div>`;
+
+  updatesList.innerHTML = releasesHtml + roadmapHtml;
 }
 
 function refreshUpdatesDot() {
@@ -486,6 +602,103 @@ collectionBtn.onclick = () => {
 closeCollectionBtn.onclick = () => collectionModal.classList.add("hidden");
 
 // ============================================================
+// ENVANTER SİSTEMİ
+// Her slotta artık BİRDEN FAZLA eşya biriktirilebilir. Yeni eşya sadece
+// slot boşsa otomatik kuşanılır; doluysa envantere eklenir ve oyuncu
+// istediği eşyayı manuel olarak kuşanabilir ya da toza çevirebilir.
+// ============================================================
+function getSlotInventory(slot) {
+  const inv = (currentPlayerData?.inventory && currentPlayerData.inventory[slot]) || [];
+  const equipped = currentPlayerData?.equipment && currentPlayerData.equipment[slot];
+  // Bu güncellemeden önce kuşanılmış (id'siz) eşyalar için geriye dönük uyumluluk
+  if (equipped && !inv.some(it => it.id && equipped.id && it.id === equipped.id)) {
+    const legacyId = equipped.id || `legacy-${slot}`;
+    return [{ ...equipped, id: legacyId }, ...inv];
+  }
+  return inv;
+}
+
+async function equipItem(slot, itemId) {
+  if (!currentPlayerData) return;
+  const target = getSlotInventory(slot).find(it => it.id === itemId);
+  if (!target) { alert("Eşya bulunamadı."); return; }
+  const newEquipment = { ...(currentPlayerData.equipment || emptyEquipment()), [slot]: target };
+  const stats = computeStatsFromEquipment(newEquipment);
+  await updateDoc(doc(db, PLAYERS_COL, currentPlayerId), {
+    equipment: newEquipment,
+    attack: stats.attack,
+    defense: stats.defense
+  });
+}
+
+async function disenchantItem(slot, itemId) {
+  if (!currentPlayerData) return;
+  const equippedId = currentPlayerData.equipment?.[slot]?.id;
+  if (equippedId === itemId) { alert("Kuşanılı eşyayı toza çeviremezsin, önce başka bir eşya kuşan."); return; }
+  const target = getSlotInventory(slot).find(it => it.id === itemId);
+  if (!target) { alert("Eşya bulunamadı."); return; }
+  const newInvArr = getSlotInventory(slot).filter(it => it.id !== itemId);
+  const dustGain = Math.round((DUST_FROM_RARITY[target.rarity] || 0) * getTodaysEvent().dustMult);
+  await updateDoc(doc(db, PLAYERS_COL, currentPlayerId), {
+    [`inventory.${slot}`]: newInvArr,
+    dust: (currentPlayerData.dust || 0) + dustGain
+  });
+}
+
+let currentInventorySlot = null;
+
+function openInventoryModal(slot) {
+  currentInventorySlot = slot;
+  renderInventoryModal();
+  inventoryModal.classList.remove("hidden");
+}
+
+function renderInventoryModal() {
+  if (!currentInventorySlot) return;
+  const slot = currentInventorySlot;
+  const s = SLOT_MAP[slot];
+  inventoryModalTitle.textContent = `${s.icon} ${s.label} Envanteri`;
+
+  const rarityOrder = { efsanevi: 0, nadir: 1, standart: 2 };
+  const items = getSlotInventory(slot).slice().sort((a, b) => rarityOrder[a.rarity] - rarityOrder[b.rarity]);
+  const equippedId = currentPlayerData?.equipment?.[slot]?.id;
+
+  if (!items.length) {
+    inventoryList.innerHTML = `<p class="box-status">Bu slotta henüz eşyan yok, kutu aç ve şansını dene!</p>`;
+    return;
+  }
+
+  inventoryList.innerHTML = items.map(it => {
+    const isEquipped = it.id === equippedId;
+    return `
+      <div class="inv-item rarity-${it.rarity}">
+        <div class="inv-item-top">
+          <span class="inv-item-name">${it.name}</span>
+          ${isEquipped ? `<span class="update-badge done">✅ KUŞANILI</span>` : ""}
+        </div>
+        <div class="inv-item-stats">⚔️ +${it.atk} &nbsp; 🛡️ +${it.def} &nbsp; · ${it.rarity.toUpperCase()}</div>
+        ${it.effectDesc ? `<div class="item-popup-passive" style="margin-top:6px;">✨ ${it.effectDesc}</div>` : ""}
+        <div class="inv-item-actions">
+          <button class="btn-mini nadir-mini" data-action="equip" data-id="${it.id}" ${isEquipped ? "disabled" : ""}>Kuşan</button>
+          <button class="btn-mini" data-action="dust" data-id="${it.id}" ${isEquipped ? "disabled" : ""}>Toza Çevir</button>
+        </div>
+      </div>`;
+  }).join("");
+
+  inventoryList.querySelectorAll("button[data-action]").forEach(btn => {
+    btn.onclick = async () => {
+      const id = btn.getAttribute("data-id");
+      const action = btn.getAttribute("data-action");
+      inventoryList.querySelectorAll("button").forEach(b => b.disabled = true);
+      if (action === "equip") await equipItem(slot, id);
+      else await disenchantItem(slot, id);
+      renderInventoryModal();
+    };
+  });
+}
+closeInventoryBtn.onclick = () => { inventoryModal.classList.add("hidden"); currentInventorySlot = null; };
+
+// ============================================================
 // LOGIN / OYUNCU SEÇİMİ
 // ============================================================
 async function loadPlayersOnce() {
@@ -503,7 +716,7 @@ async function showLoginScreen() {
   players.forEach(p => {
     const btn = document.createElement("button");
     btn.innerHTML = `<span>${p.name}</span><span style="color:var(--gold)">${p.points ?? 0} ⭐</span>`;
-    btn.onclick = () => selectPlayer(p.id);
+    btn.onclick = () => askForPin(p.id, p.name);
     playerListLogin.appendChild(btn);
   });
 
@@ -522,8 +735,10 @@ async function showLoginScreen() {
 
 newPlayerBtn.onclick = async () => {
   const name = newPlayerName.value.trim();
+  const pin = newPlayerPin.value.trim();
   if (!name) { loginError.textContent = "Bir isim yaz kral."; return; }
   if (name.length > 16) { loginError.textContent = "İsim çok uzun."; return; }
+  if (!/^\d{4}$/.test(pin)) { loginError.textContent = "4 haneli bir PIN belirle (sadece rakam)."; return; }
 
   const players = await loadPlayersOnce();
   if (players.length >= MAX_PLAYERS) { loginError.textContent = "Kontenjan dolu (7/7)."; return; }
@@ -535,10 +750,12 @@ newPlayerBtn.onclick = async () => {
   try {
     const newDoc = await addDoc(collection(db, PLAYERS_COL), {
       name,
+      pin,
       points: 0,
       attack: BASE_ATTACK,
       defense: BASE_DEFENSE,
       equipment: emptyEquipment(),
+      inventory: { kask: [], zirh: [], kilic: [], eldiven: [], ayakkabi: [] },
       lastBoxOpenTime: 0,
       lastAttackTime: 0,
       curseNextAttack: null,
@@ -551,6 +768,10 @@ newPlayerBtn.onclick = async () => {
       lastAttackedId: null,
       attackStreakOnTarget: 0,
       discoveredItems: [],
+      strangerDay: null,
+      strangerAvailable: false,
+      strangerUsed: false,
+      strangerName: null,
       createdAt: serverTimestamp()
     });
     selectPlayer(newDoc.id);
@@ -566,6 +787,55 @@ function selectPlayer(id) {
   localStorage.setItem("gacha_player_id", id);
   startGame();
 }
+
+// ============================================================
+// PIN DOĞRULAMA
+// Login listesinden bir isme tıklayınca, o oyuncunun 4 haneli PIN'i
+// doğrulanmadan hesaba giriş yapılamaz. Bu sadece arkadaş grubu içinde
+// "yanlışlıkla/şaka olsun diye başkasının hesabına girme" durumunu
+// engellemek içindir, kriptografik güvenlik iddiası taşımaz.
+// ============================================================
+let pendingPlayerId = null;
+
+function askForPin(playerId, playerName) {
+  pendingPlayerId = playerId;
+  pinModalTitle.textContent = `🔒 ${playerName}`;
+  pinInput.value = "";
+  pinError.textContent = "";
+  pinModal.classList.remove("hidden");
+  setTimeout(() => pinInput.focus(), 50);
+}
+
+async function confirmPin() {
+  const val = pinInput.value.trim();
+  if (!/^\d{4}$/.test(val)) { pinError.textContent = "4 haneli PIN gir."; return; }
+
+  pinConfirmBtn.disabled = true;
+  try {
+    const snap = await getDoc(doc(db, PLAYERS_COL, pendingPlayerId));
+    if (!snap.exists()) { pinError.textContent = "Oyuncu bulunamadı."; return; }
+    const existingPin = snap.data().pin;
+
+    // Bu güncellemeden önce oluşturulmuş oyuncuların PIN'i yok.
+    // İlk girişte girdikleri 4 hane, o andan itibaren PIN'leri olarak kaydedilir.
+    if (!existingPin) {
+      await updateDoc(doc(db, PLAYERS_COL, pendingPlayerId), { pin: val });
+      pinModal.classList.add("hidden");
+      selectPlayer(pendingPlayerId);
+      return;
+    }
+
+    if (existingPin !== val) { pinError.textContent = "PIN yanlış."; pinInput.value = ""; pinInput.focus(); return; }
+    pinModal.classList.add("hidden");
+    selectPlayer(pendingPlayerId);
+  } finally {
+    pinConfirmBtn.disabled = false;
+  }
+}
+
+pinConfirmBtn.onclick = confirmPin;
+pinCancelBtn.onclick = () => { pinModal.classList.add("hidden"); pendingPlayerId = null; };
+pinInput.addEventListener("keydown", (e) => { if (e.key === "Enter") confirmPin(); });
 
 switchPlayerBtn.onclick = () => {
   localStorage.removeItem("gacha_player_id");
@@ -591,7 +861,9 @@ async function startGame() {
   gameScreen.classList.remove("hidden");
   currentPlayerNameEl.textContent = snap.data().name;
 
+  renderDailyEventBanner();
   maybeShowTutorial();
+  await ensureStrangerForToday(snap.data());
 
   // Kendi oyuncu belgemi canlı dinle
   onSnapshot(ref, (docSnap) => {
@@ -601,7 +873,9 @@ async function startGame() {
     renderEquipment();
     renderBoxStatus();
     renderAttackTargets();
+    renderStrangerBanner();
     if (!collectionModal.classList.contains("hidden")) renderCollection();
+    if (!inventoryModal.classList.contains("hidden")) renderInventoryModal();
   });
 
   // Tüm oyuncuları canlı dinle (liderlik tablosu + saldırı hedefleri)
@@ -655,18 +929,69 @@ function renderMyStats() {
 // ============================================================
 // RENDER: KUŞANIM
 // ============================================================
+function renderDailyEventBanner() {
+  const event = getTodaysEvent();
+  dailyEventBanner.className = `daily-event-banner type-${event.type}`;
+  dailyEventBanner.innerHTML = `<span class="event-icon">${event.icon}</span><span class="event-text"><b>${event.title}</b> — ${event.desc}</span>`;
+}
+
+// Bugün için henüz karar verilmediyse (yeni gün), gizemli yabancının çıkıp çıkmayacağına
+// deterministik olmayan tek seferlik bir rastgelelikle karar verip Firestore'a yazar.
+async function ensureStrangerForToday(data) {
+  const today = dateStr();
+  if (data.strangerDay === today) return;
+  const appears = Math.random() < STRANGER_APPEAR_CHANCE;
+  await updateDoc(doc(db, PLAYERS_COL, currentPlayerId), {
+    strangerDay: today,
+    strangerAvailable: appears,
+    strangerUsed: false,
+    strangerName: appears ? pick(STRANGER_NAMES) : null
+  });
+}
+
+function renderStrangerBanner() {
+  const show = currentPlayerData?.strangerAvailable && !currentPlayerData?.strangerUsed;
+  strangerBanner.classList.toggle("hidden", !show);
+  if (show) strangerNameEl.textContent = currentPlayerData.strangerName;
+}
+
+strangerDuelBtn.onclick = async () => {
+  if (!currentPlayerData?.strangerAvailable || currentPlayerData.strangerUsed) return;
+  strangerDuelBtn.disabled = true;
+
+  const myPower = ((currentPlayerData.attack || BASE_ATTACK) + (currentPlayerData.defense || BASE_DEFENSE)) / 2;
+  const npcPower = myPower * (0.7 + Math.random() * 0.5);
+  const won = myPower >= npcPower;
+  const reward = won ? STRANGER_DUST_REWARD : 0;
+  const strangerName = currentPlayerData.strangerName;
+
+  await updateDoc(doc(db, PLAYERS_COL, currentPlayerId), {
+    strangerUsed: true,
+    dust: (currentPlayerData.dust || 0) + reward
+  });
+
+  showResultModal({ stranger: true, won, name: strangerName, reward });
+  strangerDuelBtn.disabled = false;
+};
+
 function renderEquipment() {
   const eq = currentPlayerData?.equipment || emptyEquipment();
   equipmentGridEl.innerHTML = SLOTS.map(s => {
     const item = eq[s.key];
     const rarityClass = item ? `rarity-${item.rarity}` : "";
+    const count = getSlotInventory(s.key).length;
     return `
-      <div class="equip-slot ${item ? "filled" : ""} ${rarityClass}">
+      <button type="button" class="equip-slot ${item ? "filled" : ""} ${rarityClass}" data-slot="${s.key}">
         <div class="equip-slot-icon">${s.icon}</div>
         <div class="equip-slot-label">${s.label}</div>
         <div class="equip-slot-item ${item ? "" : "empty"}">${item ? item.name : "Boş"}</div>
-      </div>`;
+        ${count > 0 ? `<div class="equip-slot-count">${count} eşya</div>` : ""}
+      </button>`;
   }).join("");
+
+  equipmentGridEl.querySelectorAll("button[data-slot]").forEach(btn => {
+    btn.onclick = () => openInventoryModal(btn.getAttribute("data-slot"));
+  });
 }
 
 // ============================================================
@@ -675,7 +1000,7 @@ function renderEquipment() {
 function canOpenBoxNow() {
   if (!currentPlayerData) return false;
   const last = currentPlayerData.lastBoxOpenTime || 0;
-  return Date.now() - last >= BOX_COOLDOWN_MS;
+  return Date.now() - last >= getEffectiveBoxCooldown();
 }
 
 function renderBoxStatus() {
@@ -683,9 +1008,9 @@ function renderBoxStatus() {
   openBoxBtn.disabled = !able;
 
   if (able) {
-    boxStatus.textContent = "Kutu açmaya hazır! (4 saatte 1 kez)";
+    boxStatus.textContent = "Kutu açmaya hazır!";
   } else {
-    const remain = BOX_COOLDOWN_MS - (Date.now() - (currentPlayerData.lastBoxOpenTime || 0));
+    const remain = getEffectiveBoxCooldown() - (Date.now() - (currentPlayerData.lastBoxOpenTime || 0));
     boxStatus.textContent = `Sıradaki kutuya ${formatRemaining(remain)} kaldı.`;
   }
 
@@ -736,6 +1061,7 @@ async function performBoxOpen({ forcedRarity = null, costDust = 0, isFree = fals
   itemPopup.classList.add("hidden");
 
   const data = currentPlayerData;
+  const event = getTodaysEvent();
   const pityRare = data.pityRare || 0;
   const pityLegendary = data.pityLegendary || 0;
   const recentSlots = data.recentSlots || [];
@@ -755,7 +1081,7 @@ async function performBoxOpen({ forcedRarity = null, costDust = 0, isFree = fals
   }
 
   const finalForcedRarity = forcedRarity || streakForcedRarity;
-  const rarity = finalForcedRarity || rollRarity(pityRare, pityLegendary);
+  const rarity = finalForcedRarity || rollRarity(pityRare, pityLegendary, event);
   const slot = pickSlotWeighted(recentSlots);
   const item = generateLootItemForRarity(slot, rarity);
 
@@ -767,36 +1093,27 @@ async function performBoxOpen({ forcedRarity = null, costDust = 0, isFree = fals
   const animDuration = item.rarity === "efsanevi" ? 1900 : item.rarity === "nadir" ? 1400 : 1000;
   await new Promise(r => setTimeout(r, animDuration));
 
-  itemPopupInner.className = `item-popup-inner rarity-${item.rarity}`;
-  itemPopupInner.innerHTML = `
-    ${streakBonusFired ? `<div class="streak-bonus-tag">🔥 ${newStreak} Günlük Seri Bonusu!</div>` : ""}
-    <div class="item-popup-icon">${SLOT_MAP[item.slot].icon}</div>
-    <div class="item-popup-name rarity-${item.rarity}">${item.name}</div>
-    <div class="item-popup-stats">⚔️ +${item.atk} &nbsp; 🛡️ +${item.def} &nbsp; · ${item.rarity.toUpperCase()}</div>
-    ${item.effectDesc ? `<div class="item-popup-passive">✨ ${item.effectDesc}</div>` : ""}
-  `;
-  itemPopup.classList.remove("hidden");
+  // Pity sayaçlarını güncelle (günün olayı pity'yi hızlandırabilir)
+  let newPityRare = rarity === "nadir" || rarity === "efsanevi" ? 0 : pityRare + (event.pityMult || 1);
+  let newPityLegendary = rarity === "efsanevi" ? 0 : pityLegendary + (event.pityMult || 1);
 
-  // Pity sayaçlarını güncelle
-  let newPityRare = pityRare + 1;
-  let newPityLegendary = pityLegendary + 1;
-  if (rarity === "nadir" || rarity === "efsanevi") newPityRare = 0;
-  if (rarity === "efsanevi") newPityLegendary = 0;
-
-  // Eski eşya varsa toza çevrilir
-  const oldItem = (data.equipment || emptyEquipment())[slot];
-  const dustGain = oldItem ? (DUST_FROM_RARITY[oldItem.rarity] || 0) : 0;
-  const newDust = Math.max(0, (data.dust || 0) + dustGain - costDust);
+  // Slot boşsa otomatik kuşanılır, doluysa envantere eklenir (oyuncu kendi seçer)
+  const wasEmpty = !(data.equipment && data.equipment[slot]);
+  const newInvArr = [...getSlotInventory(slot), item];
+  const newEquipment = wasEmpty
+    ? { ...(data.equipment || emptyEquipment()), [slot]: item }
+    : (data.equipment || emptyEquipment());
+  const stats = computeStatsFromEquipment(newEquipment);
 
   const newRecentSlots = [...recentSlots, slot].slice(-8);
-  const newEquipment = { ...(data.equipment || emptyEquipment()), [slot]: item };
-  const stats = computeStatsFromEquipment(newEquipment);
   const newDiscovered = Array.from(new Set([...(data.discoveredItems || []), item.name]));
+  const newDust = Math.max(0, (data.dust || 0) - costDust);
 
   const updatePayload = {
     equipment: newEquipment,
     attack: stats.attack,
     defense: stats.defense,
+    [`inventory.${slot}`]: newInvArr,
     pityRare: newPityRare,
     pityLegendary: newPityLegendary,
     dust: newDust,
@@ -811,8 +1128,29 @@ async function performBoxOpen({ forcedRarity = null, costDust = 0, isFree = fals
 
   await updateDoc(doc(db, PLAYERS_COL, currentPlayerId), updatePayload);
 
+  itemPopupInner.className = `item-popup-inner rarity-${item.rarity}`;
+  itemPopupInner.innerHTML = `
+    ${streakBonusFired ? `<div class="streak-bonus-tag">🔥 ${newStreak} Günlük Seri Bonusu!</div>` : ""}
+    <div class="item-popup-icon">${SLOT_MAP[item.slot].icon}</div>
+    <div class="item-popup-name rarity-${item.rarity}">${item.name}</div>
+    <div class="item-popup-stats">⚔️ +${item.atk} &nbsp; 🛡️ +${item.def} &nbsp; · ${item.rarity.toUpperCase()}</div>
+    ${item.effectDesc ? `<div class="item-popup-passive">✨ ${item.effectDesc}</div>` : ""}
+    ${wasEmpty
+      ? `<div class="item-popup-passive" style="color:var(--green)">✅ Boş slota otomatik kuşanıldı!</div>`
+      : `<div class="popup-quick-actions">
+          <button id="popupEquipBtn" class="btn-mini nadir-mini">✅ Şimdi Kuşan</button>
+          <button id="popupDustBtn" class="btn-mini">✨ Toza Çevir</button>
+        </div>`}
+  `;
+  itemPopup.classList.remove("hidden");
+
+  if (!wasEmpty) {
+    document.getElementById("popupEquipBtn").onclick = () => { equipItem(slot, item.id); itemPopup.classList.add("hidden"); };
+    document.getElementById("popupDustBtn").onclick = () => { disenchantItem(slot, item.id); itemPopup.classList.add("hidden"); };
+  }
+
   lootBox.className = "loot-box";
-  setTimeout(() => itemPopup.classList.add("hidden"), 3800);
+  setTimeout(() => itemPopup.classList.add("hidden"), 5000);
 }
 
 openBoxBtn.onclick = () => {
@@ -932,6 +1270,7 @@ function pickBattleMessage({ attackerWins, attackerName, defenderName, winPts, l
 
 async function runAttack(defenderId) {
   attackTargetsEl.querySelectorAll("button").forEach(b => b.disabled = true);
+  const dailyEvent = getTodaysEvent();
 
   try {
     await runTransaction(db, async (tx) => {
@@ -969,48 +1308,63 @@ async function runAttack(defenderId) {
         return { skipped: true };
       }
 
-      // --- Temel güç hesaplama ---
-      let attackPower = attacker.attack * 0.8;
-      let defensePower = defender.defense * 0.8;
+      // --- Temel güç hesaplama (yeni, daha adil algoritma) ---
+      // Zar artık sabit bir sayı değil: her taraf KENDİ gücünün ±%15'i kadar
+      // oransal bir şans payı alıyor. Böylece düşük statlı biri yüksek statlıyı
+      // sürekli yenemiyor, ama yakın maçlarda hâlâ ufak bir sürpriz kalıyor.
+      // Ezici bir stat üstünlüğü (1.5 kat +) varsa şansa bakılmaksızın kazanılır.
+      let baseAttack = attacker.attack;
+      let baseDefense = defender.defense;
 
       // Lanet: defender bir önceki saldırıdan lanetliyse savunması düşer
       if (defender.curseNextAttack && defender.curseNextAttack.active) {
-        defensePower *= (1 - defender.curseNextAttack.reduction);
+        baseDefense *= (1 - defender.curseNextAttack.reduction);
         legendaryLog.push(`${defender.name} üzerindeki Çingene Eldiveni laneti devreye girdi, savunması zayıfladı.`);
       }
 
       // Kambur zırhı / Kıl dönmesi kılıcı çarpanları
       if (getEffect(defender.equipment, "defense_multiplier")) {
-        defensePower *= 1.15;
+        baseDefense *= 1.15;
         legendaryLog.push(`${defender.name}'in Kambur Zırhı savunmasını güçlendirdi.`);
       }
       if (getEffect(attacker.equipment, "attack_multiplier")) {
-        attackPower *= 1.15;
+        baseAttack *= 1.15;
         legendaryLog.push(`${attacker.name}'in Kıl Dönmesi Kılıcı saldırısını güçlendirdi.`);
       }
 
-      // Zarlar
-      let attackerRoll = randInt(1, 10);
-      let defenderRoll = randInt(1, 10);
+      // Günün olayı: küresel saldırı/savunma/şans çarpanları
+      baseAttack *= dailyEvent.attackMult;
+      baseDefense *= dailyEvent.defenseMult;
 
-      // Yeşil kaş kaskı: savunma zarı 2 katı
-      if (getEffect(defender.equipment, "lucky_defense_roll")) {
-        defenderRoll *= 2;
-        legendaryLog.push(`${defender.name}'in Yeşil Kaş Kaskı şansı yaver gitti, zarı 2 katına çıktı.`);
-      }
-
-      attackPower += attackerRoll;
-      defensePower += defenderRoll;
-
-      // Sarı diş kılıcı: %10 anında kazanma
       const critItem = getEffect(attacker.equipment, "crit_instant_win");
-      let attackerWins;
-      let critTriggered = false;
-      if (critItem && Math.random() < 0.1) {
+      const critTriggered = !!(critItem && Math.random() < 0.1);
+
+      let attackPower, defensePower, attackerWins;
+
+      if (critTriggered) {
+        attackPower = baseAttack; defensePower = baseDefense;
         attackerWins = true;
-        critTriggered = true;
         legendaryLog.push(`${attacker.name}'in Sarı Diş Kılıcı aniden ısırdı, hesaplama boşa gitti ve anında kazandı!`);
+      } else if (baseAttack >= baseDefense * DOMINANCE_RATIO) {
+        attackPower = baseAttack; defensePower = baseDefense;
+        attackerWins = true;
+      } else if (baseDefense >= baseAttack * DOMINANCE_RATIO) {
+        attackPower = baseAttack; defensePower = baseDefense;
+        attackerWins = false;
       } else {
+        const spread = 0.15 * dailyEvent.varianceMult;
+        let attackRoll = (1 - spread) + Math.random() * (spread * 2);
+        let defenseRoll = (1 - spread) + Math.random() * (spread * 2);
+
+        // Şanslı savunma eşyaları: zar 2 kez atılır, iyisi sayılır (avantaj mekaniği)
+        if (getEffect(defender.equipment, "lucky_defense_roll")) {
+          const secondRoll = (1 - spread) + Math.random() * (spread * 2);
+          defenseRoll = Math.max(defenseRoll, secondRoll);
+          legendaryLog.push(`${defender.name}'in şanslı eşyası zarı 2 kez attı, iyisini seçti.`);
+        }
+
+        attackPower = baseAttack * attackRoll;
+        defensePower = baseDefense * defenseRoll;
         attackerWins = attackPower >= defensePower;
       }
 
@@ -1024,8 +1378,8 @@ async function runAttack(defenderId) {
       if (attackerWins) {
         let winPts = 10, losePts = 5;
 
-        // Portakal suyu kılıcı: fark 5'ten büyükse ekstra 2 çalar
-        if (!critTriggered && getEffect(attacker.equipment, "steal_extra_on_big_win") && diff > 5) {
+        // Portakal suyu kılıcı: rakip gücünün %30'undan fazla farkla kazanırsa ekstra 2 çalar
+        if (!critTriggered && getEffect(attacker.equipment, "steal_extra_on_big_win") && diff > defensePower * 0.3) {
           winPts += 2; losePts += 2;
           legendaryLog.push(`${attacker.name}'in Portakal Suyu Kılıcı ezici farktan ekstra 2 puan çaldı.`);
         }
@@ -1051,8 +1405,8 @@ async function runAttack(defenderId) {
           legendaryLog.push(`${defender.name}'in Cüce Botları intikam alıp saldırandan 3 puan çaldı.`);
         }
 
-        attackerPoints += winPts;
-        defenderPoints = Math.max(0, defenderPoints - losePts);
+        attackerPoints += Math.round(winPts * dailyEvent.pointsMult);
+        defenderPoints = Math.max(0, defenderPoints - Math.round(losePts * dailyEvent.pointsMult));
 
         // Çingene eldiveni: kazanırsa rakibe lanet
         if (getEffect(attacker.equipment, "curse_defense_next")) {
@@ -1070,8 +1424,8 @@ async function runAttack(defenderId) {
           legendaryLog.push(`${defender.name}'in Dana Kaskı savunma zaferine +5 bonus kattı.`);
         }
 
-        defenderPoints += winPts;
-        attackerPoints = Math.max(0, attackerPoints - losePts);
+        defenderPoints += Math.round(winPts * dailyEvent.pointsMult);
+        attackerPoints = Math.max(0, attackerPoints - Math.round(losePts * dailyEvent.pointsMult));
 
         logDetails.push(pickBattleMessage({ attackerWins: false, attackerName: attacker.name, defenderName: defender.name, winPts, losePts, isRepeat, repeatCount }));
       }
@@ -1118,7 +1472,11 @@ async function runAttack(defenderId) {
 }
 
 function showResultModal(result) {
-  if (result.skipped) {
+  if (result.stranger) {
+    resultContent.innerHTML = `
+      <div class="result-title ${result.won ? "win" : "lose"}">${result.won ? "🏆 Kazandın!" : "🤝 Bu Sefer Olmadı"}</div>
+      <p class="result-line">${result.name} ile girdiğin düellodan ${result.won ? `+${result.reward} toz kazanarak` : "hiçbir kayıp olmadan"} çıktın.</p>`;
+  } else if (result.skipped) {
     resultContent.innerHTML = `
       <div class="result-title lose">💨 Nargile Keyfi</div>
       <p class="result-line">Bugün saldıramadan günün geçti.</p>`;
