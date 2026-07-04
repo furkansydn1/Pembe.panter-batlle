@@ -1920,7 +1920,7 @@ function renderBattleLog(entries) {
 // SES EFEKTLERİ
 // Tasarım prototipindeki gibi, dışarıdan hiçbir ses dosyası kullanılmadan
 // Web Audio API osilatörleriyle anlık üretiliyor. Oyunun mevcut mantığına
-// dokunmadan (skor/kutu/saldırı hesapları aynı), sadece geri bildirim katmanı.
+// (skor/kutu/saldırı hesapları) dokunmuyor, sadece geri bildirim katmanı.
 // ============================================================
 let audioCtx = null;
 let soundOn = localStorage.getItem("gacha_sound_on") !== "0";
@@ -1944,7 +1944,7 @@ function tone(freq, start, dur, type = "sine", gain = 0.18) {
     g.gain.linearRampToValueAtTime(gain, t0 + 0.015);
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
     osc.start(t0); osc.stop(t0 + dur + 0.05);
-  } catch (e) { /* sessiz geç, ses opsiyonel bir katman */ }
+  } catch (e) { /* ses opsiyonel bir katman, hata olursa sessiz geç */ }
 }
 
 function sfxClick() { tone(520, 0, 0.08, "square", 0.10); }
@@ -1972,8 +1972,8 @@ if (soundToggleBtn) {
   };
 }
 
-// Genel tık sesi: mevcut butonların hiçbirinin davranışını değiştirmeden,
-// sadece her buton tıklamasında kısa bir "click" sesi çalar (event delegation).
+// Genel tık sesi: mevcut butonların davranışını değiştirmeden, her buton
+// tıklamasında kısa bir "click" sesi çalar (event delegation).
 document.addEventListener("click", (e) => {
   const btn = e.target.closest("button");
   if (!btn || btn.disabled) return;
@@ -1982,21 +1982,27 @@ document.addEventListener("click", (e) => {
 }, true);
 
 // ============================================================
-// ALT NAVİGASYON BARI (tasarım prototipindeki gibi)
-// Oyunun tek sayfalık grid yapısını bozmadan, ilgili bölüme yumuşak
-// kaydırma yapar ve aktif sekmeyi işaretler.
+// SEKMELER (GERÇEK TAB SİSTEMİ)
+// Her sekme SADECE kendi içeriğini gösterir, diğerleri tamamen gizlenir:
+// Kutu -> yalnız kutu açma + enerji, Görev -> yalnız günlük görevler,
+// Savaş -> yalnız saldırı hedefleri + savaş geçmişi, Sıra -> yalnız
+// liderlik tablosu, Profil -> yalnız kuşanım/envanter ve kendi bilgilerimiz.
 // ============================================================
 const bottomNav = document.getElementById("bottomNav");
-if (bottomNav) {
-  const navButtons = [...bottomNav.querySelectorAll(".nav-btn")];
-  navButtons.forEach(btn => {
-    btn.addEventListener("click", () => {
-      navButtons.forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      const targetId = btn.getAttribute("data-target");
-      const target = document.getElementById(targetId);
-      if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+const tabPanels = [...document.querySelectorAll(".tab-panel")];
+
+function activateTab(targetId) {
+  tabPanels.forEach(panel => panel.classList.toggle("active", panel.id === targetId));
+  if (bottomNav) {
+    bottomNav.querySelectorAll(".nav-btn").forEach(b => {
+      b.classList.toggle("active", b.getAttribute("data-target") === targetId);
     });
+  }
+}
+
+if (bottomNav) {
+  bottomNav.querySelectorAll(".nav-btn").forEach(btn => {
+    btn.addEventListener("click", () => activateTab(btn.getAttribute("data-target")));
   });
 }
 

@@ -151,18 +151,11 @@
     <button id="strangerDuelBtn" class="btn-mini nadir-mini">Düelloya Gir</button>
   </div>
 
-  <main class="main-grid">
+  <main class="tab-container">
 
-    <!-- SOL: Liderlik Tablosu -->
-    <section id="navLeaderboard" class="panel leaderboard-panel">
-      <h2 class="panel-title">🏆 Liderlik Tablosu</h2>
-      <div id="leaderboard" class="leaderboard-list"></div>
-    </section>
-
-    <!-- ORTA: Kutu Açma + Kuşanım -->
-    <section class="panel center-panel">
-
-      <div id="navBox" class="box-area">
+    <!-- SEKME: KUTU (sadece kutu açma + toz/enerji ekonomisi) -->
+    <section id="tabKutu" class="tab-panel active">
+      <div class="panel">
         <div class="box-area-top">
           <h2 class="panel-title">📦 Kutu</h2>
           <span id="streakChip" class="streak-chip hidden">🔥 <b id="myStreak">0</b> gün seri</span>
@@ -185,15 +178,48 @@
         </div>
       </div>
 
-      <div class="energy-area">
+      <div class="panel">
         <h2 class="panel-title">⚡ Enerji</h2>
         <div class="energy-bar-track"><div id="energyBarFill" class="energy-bar-fill"></div></div>
         <p id="energyStatus" class="box-status"></p>
         <p class="equip-hint">👆 Görevlerden birini seç, enerjine göre toz kazan</p>
         <div id="energyTasksRow" class="energy-tasks-row"></div>
       </div>
+    </section>
 
-      <div id="navProfile" class="equipment-area">
+    <!-- SEKME: GÖREV (sadece günlük görevler) -->
+    <section id="tabGorev" class="tab-panel">
+      <div class="panel">
+        <h2 class="panel-title">🎯 Günlük Görevler</h2>
+        <div id="questsList" class="quests-list"></div>
+      </div>
+    </section>
+
+    <!-- SEKME: SAVAŞ (sadece saldırı hedefleri + savaş geçmişi) -->
+    <section id="tabSavas" class="tab-panel">
+      <div class="panel">
+        <h2 class="panel-title">⚔️ Saldırı (Saat Başı)</h2>
+        <div id="attackTargets" class="attack-targets"></div>
+        <p id="attackStatus" class="box-status"></p>
+      </div>
+
+      <div class="panel battlelog-panel">
+        <h2 class="panel-title">📜 Savaş Geçmişi</h2>
+        <div id="battleLog" class="battle-log"></div>
+      </div>
+    </section>
+
+    <!-- SEKME: SIRA (sadece liderlik tablosu) -->
+    <section id="tabSira" class="tab-panel">
+      <div class="panel leaderboard-panel">
+        <h2 class="panel-title">🏆 Liderlik Tablosu</h2>
+        <div id="leaderboard" class="leaderboard-list"></div>
+      </div>
+    </section>
+
+    <!-- SEKME: PROFİL (sadece kuşanım/envanter + bizim bilgilerimiz) -->
+    <section id="tabProfil" class="tab-panel">
+      <div class="panel">
         <h2 class="panel-title">🛡️ Kuşanım</h2>
         <div id="equipmentGrid" class="equipment-grid"></div>
         <p class="equip-hint">👆 Envanterini görmek ve eşya değiştirmek için bir slota dokun</p>
@@ -204,34 +230,16 @@
           <span class="stat-chip dust">✨ Toz: <b id="myDust">0</b></span>
         </div>
       </div>
-
-      <div id="navAttack" class="attack-area">
-        <h2 class="panel-title">⚔️ Saldırı (Saat Başı)</h2>
-        <div id="attackTargets" class="attack-targets"></div>
-        <p id="attackStatus" class="box-status"></p>
-      </div>
-
-      <div id="navQuests" class="quests-area">
-        <h2 class="panel-title">🎯 Günlük Görevler</h2>
-        <div id="questsList" class="quests-list"></div>
-      </div>
-
-    </section>
-
-    <!-- SAĞ: Savaş Geçmişi -->
-    <section class="panel battlelog-panel">
-      <h2 class="panel-title">📜 Savaş Geçmişi</h2>
-      <div id="battleLog" class="battle-log"></div>
     </section>
 
   </main>
 
   <nav id="bottomNav" class="bottom-nav">
-    <button type="button" class="nav-btn active" data-target="navBox"><span class="nav-ic">📦</span>Kutu</button>
-    <button type="button" class="nav-btn" data-target="navQuests"><span class="nav-ic">🎯</span>Görev</button>
-    <button type="button" class="nav-btn" data-target="navAttack"><span class="nav-ic">⚔️</span>Savaş</button>
-    <button type="button" class="nav-btn" data-target="navLeaderboard"><span class="nav-ic">🏆</span>Sıra</button>
-    <button type="button" class="nav-btn" data-target="navProfile"><span class="nav-ic">🐆</span>Profil</button>
+    <button type="button" class="nav-btn active" data-target="tabKutu"><span class="nav-ic">📦</span>Kutu</button>
+    <button type="button" class="nav-btn" data-target="tabGorev"><span class="nav-ic">🎯</span>Görev</button>
+    <button type="button" class="nav-btn" data-target="tabSavas"><span class="nav-ic">⚔️</span>Savaş</button>
+    <button type="button" class="nav-btn" data-target="tabSira"><span class="nav-ic">🏆</span>Sıra</button>
+    <button type="button" class="nav-btn" data-target="tabProfil"><span class="nav-ic">🐆</span>Profil</button>
   </nav>
 </div>
 
