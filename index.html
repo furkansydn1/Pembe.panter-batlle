@@ -41,6 +41,8 @@
 <div id="tutorialModal" class="modal-overlay hidden">
   <div class="modal-card tutorial-card">
 
+    <button id="tutSkipBtn" class="tut-skip-btn" type="button">Atla ✕</button>
+
     <div id="tutorialTrack" class="tutorial-track">
 
       <!-- Slayt 1: Karşılama -->
@@ -120,7 +122,10 @@
 
     <div class="tutorial-nav">
       <button id="tutPrevBtn" class="tut-nav-btn">‹</button>
-      <div id="tutorialDots" class="tutorial-dots"></div>
+      <div class="tutorial-dots-wrap">
+        <div id="tutorialDots" class="tutorial-dots"></div>
+        <span id="tutStepLabel" class="tut-step-label">1 / 6</span>
+      </div>
       <button id="tutNextBtn" class="tut-nav-btn">›</button>
     </div>
 
@@ -155,6 +160,11 @@
 
     <!-- SEKME: KUTU (sadece kutu açma + toz/enerji ekonomisi) -->
     <section id="tabKutu" class="tab-panel active">
+      <div class="tab-hero">
+        <span class="tab-hero-ribbon">📦 Günlük Kutu</span>
+        <p class="tab-hero-sub">Şansını dene, eşya ve toz kazan</p>
+      </div>
+
       <div class="panel">
         <div class="box-area-top">
           <h2 class="panel-title">📦 Kutu</h2>
@@ -189,6 +199,10 @@
 
     <!-- SEKME: GÖREV (sadece günlük görevler) -->
     <section id="tabGorev" class="tab-panel">
+      <div class="tab-hero">
+        <span class="tab-hero-ribbon">🎯 Görevler</span>
+        <p class="tab-hero-sub">Bugünün hedeflerini tamamla, ödülünü al</p>
+      </div>
       <div class="panel">
         <h2 class="panel-title">🎯 Günlük Görevler</h2>
         <div id="questsList" class="quests-list"></div>
@@ -197,6 +211,10 @@
 
     <!-- SEKME: SAVAŞ (sadece saldırı hedefleri + savaş geçmişi) -->
     <section id="tabSavas" class="tab-panel">
+      <div class="tab-hero tab-hero-red">
+        <span class="tab-hero-ribbon">⚔️ Savaş Arenası</span>
+        <p class="tab-hero-sub">Rakibini seç, meydan oku</p>
+      </div>
       <div class="panel">
         <h2 class="panel-title">⚔️ Saldırı (Saat Başı)</h2>
         <div id="attackTargets" class="attack-targets"></div>
@@ -211,24 +229,40 @@
 
     <!-- SEKME: SIRA (sadece liderlik tablosu) -->
     <section id="tabSira" class="tab-panel">
+      <div class="tab-hero tab-hero-gold">
+        <span class="tab-hero-ribbon">🏆 Liderlik Tablosu</span>
+        <p class="tab-hero-sub">Zirveye kim çıkacak?</p>
+      </div>
       <div class="panel leaderboard-panel">
-        <h2 class="panel-title">🏆 Liderlik Tablosu</h2>
         <div id="leaderboard" class="leaderboard-list"></div>
       </div>
     </section>
 
-    <!-- SEKME: PROFİL (sadece kuşanım/envanter + bizim bilgilerimiz) -->
+    <!-- SEKME: PROFİL (karakter üstü ekipman görünümü + kuşanım/envanter + bizim bilgilerimiz) -->
     <section id="tabProfil" class="tab-panel">
-      <div class="panel">
-        <h2 class="panel-title">🛡️ Kuşanım</h2>
-        <div id="equipmentGrid" class="equipment-grid"></div>
-        <p class="equip-hint">👆 Envanterini görmek ve eşya değiştirmek için bir slota dokun</p>
+      <div class="tab-hero tab-hero-blue">
+        <span class="tab-hero-ribbon">🐆 Profilim</span>
+        <p class="tab-hero-sub">Ekipmanın ve istatistiklerin</p>
+      </div>
+
+      <div class="panel char-panel">
+        <div class="char-stage">
+          <div class="char-stage-ring"></div>
+          <div class="char-avatar">🐆</div>
+          <div id="charStageSlots" class="char-stage-slots"></div>
+        </div>
         <div class="stat-summary">
           <span class="stat-chip atk">⚔️ Saldırı: <b id="myAttack">0</b></span>
           <span class="stat-chip def">🛡️ Savunma: <b id="myDefense">0</b></span>
           <span class="stat-chip pts">⭐ Puan: <b id="myPoints">0</b></span>
           <span class="stat-chip dust">✨ Toz: <b id="myDust">0</b></span>
         </div>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">🛡️ Kuşanım &amp; Envanter</h2>
+        <div id="equipmentGrid" class="equipment-grid"></div>
+        <p class="equip-hint">👆 Envanterini görmek ve eşya değiştirmek için bir slota dokun</p>
       </div>
     </section>
 

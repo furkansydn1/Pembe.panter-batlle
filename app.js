@@ -73,6 +73,13 @@ const DUST_COST_LEGENDARY_BOX = 55;
 // Savaşta ezici stat üstünlüğü (bu kat kadar fazla güç) varsa şansa bakılmaksızın kazanılır.
 const DOMINANCE_RATIO = 1.5;
 
+// Aynı oyuncuya art arda saldırma hakkı sınırlı: bir hedefi üst üste bu sayıdan
+// fazla kez seçemezsin, tek bir kurbanın sürekli hedef alınmasını engellemek için.
+const MAX_CONSECUTIVE_ATTACKS_ON_TARGET = 3;
+// Bir hedef üst üste 3 kez vurulduktan sonra kilitlenir; o hedefe tekrar
+// saldırabilmek için önce en az bu kadar BAŞKA savaş yapman gerekir.
+const TARGET_LOCK_COOLDOWN_ATTACKS = 3;
+
 // ============================================================
 // GÜNLÜK GÖREVLER
 // Her gün, her oyuncuya 3 rastgele görev atanır (1'i her zaman "giriş yap").
@@ -444,6 +451,7 @@ const strangerDuelBtn = document.getElementById("strangerDuelBtn");
 const currentPlayerNameEl = document.getElementById("currentPlayerName");
 const leaderboardEl = document.getElementById("leaderboard");
 const equipmentGridEl = document.getElementById("equipmentGrid");
+const charStageSlotsEl = document.getElementById("charStageSlots");
 const myAttackEl = document.getElementById("myAttack");
 const myDefenseEl = document.getElementById("myDefense");
 const myPointsEl = document.getElementById("myPoints");
@@ -482,6 +490,8 @@ const tutorialTrack = document.getElementById("tutorialTrack");
 const tutorialDots = document.getElementById("tutorialDots");
 const tutPrevBtn = document.getElementById("tutPrevBtn");
 const tutNextBtn = document.getElementById("tutNextBtn");
+const tutSkipBtn = document.getElementById("tutSkipBtn");
+const tutStepLabel = document.getElementById("tutStepLabel");
 
 function renderLegendaryShowcase() {
   legendaryShowcase.innerHTML = LEGENDARY_ITEMS.map(it => `
@@ -518,7 +528,11 @@ function goToTutorialSlide(i) {
 
 tutorialTrack.addEventListener("scroll", () => {
   const idx = currentTutorialIndex();
+  const slideCount = tutorialTrack.children.length;
   [...tutorialDots.children].forEach((d, i) => d.classList.toggle("active", i === idx));
+  tutPrevBtn.disabled = idx <= 0;
+  tutNextBtn.disabled = idx >= slideCount - 1;
+  if (tutStepLabel) tutStepLabel.textContent = `${idx + 1} / ${slideCount}`;
 });
 tutPrevBtn.onclick = () => goToTutorialSlide(currentTutorialIndex() - 1);
 tutNextBtn.onclick = () => goToTutorialSlide(currentTutorialIndex() + 1);
@@ -532,13 +546,18 @@ function openTutorial() {
   renderLegendaryShowcase();
   buildTutorialDots();
   tutorialModal.classList.remove("hidden");
+  tutPrevBtn.disabled = true;
+  tutNextBtn.disabled = tutorialTrack.children.length <= 1;
+  if (tutStepLabel) tutStepLabel.textContent = `1 / ${tutorialTrack.children.length}`;
   // Modal ilk kez görünür olduğunda scrollLeft/clientWidth doğru okunsun diye ufak bir gecikme
   requestAnimationFrame(() => { tutorialTrack.scrollLeft = 0; });
 }
-closeTutorialBtn.onclick = () => {
+function closeTutorial() {
   localStorage.setItem("gacha_tutorial_seen", "1");
   tutorialModal.classList.add("hidden");
-};
+}
+closeTutorialBtn.onclick = closeTutorial;
+if (tutSkipBtn) tutSkipBtn.onclick = closeTutorial;
 howToBtn.onclick = () => openTutorial();
 
 // ============================================================
@@ -546,9 +565,24 @@ howToBtn.onclick = () => openTutorial();
 // Her yeni özellik bittiğinde status'u "soon" -> "done" yapıp
 // LATEST_UPDATE_VERSION'ı artırman yeterli, rozet otomatik güncellenir.
 // ============================================================
-const LATEST_UPDATE_VERSION = "1.7";
+const LATEST_UPDATE_VERSION = "1.8";
 
 const RELEASES = [
+  {
+    version: "1.8",
+    date: "5 Temmuz 2026",
+    items: [
+      "Arayüz baştan aşağı gerçek bir sekme (tab) sistemine geçirildi: 📦 Kutu, 🎯 Görev, ⚔️ Savaş, 🏆 Sıra ve 🐆 Profil sekmelerinin her biri artık SADECE kendi içeriğini gösteriyor (örn. Kutu sekmesinde yalnızca kutu açma ve enerji ekranı var, Savaş sekmesinde yalnızca saldırı hedefleri ve savaş geçmişi var, Profil'de yalnızca kuşanım/envanter ve kişisel istatistikler var). Ekranın altına, sekmeler arasında tek dokunuşla geçiş sağlayan sabit bir navigasyon çubuğu eklendi.",
+      "Dengeleme — hedef kilitleme sistemi: aynı oyuncuya art arda en fazla 3 kez saldırılabiliyor. Bir hedef 3. saldırıdan sonra kilitleniyor ve kilidin açılması için önce farklı hedeflere en az 3 savaş daha yapman gerekiyor. Bu sayede tek bir oyuncunun sürekli aynı kurbanı seçerek onu bezdirmesi engellendi; hedef listesinde kilitli oyuncular 🔒 rozetiyle ve kalan savaş sayısıyla birlikte gösteriliyor.",
+      "Profil sekmesine, ekipmanları panterin üstünde anatomik olarak doğru konumlarda gösteren yeni bir 'karakter sahnesi' eklendi: kask başta, zırh gövdede, kılıç ve eldiven ellerde, ayakkabı ayakta. Bu görsel özetin altında, eşyalara dokunup değiştirebileceğin klasik kuşanım/envanter listesi olduğu gibi duruyor.",
+      "Eşyaların nadirliğe göre görsel kimliği güçlendirildi: nadir eşyalarda yumuşak mavi bir parıltı, efsanevi eşyalarda ise sürekli nabız gibi atan altın bir hale animasyonu eklendi. Bu efekt artık kuşanım slotlarında, karakter sahnesinde, envanter listesinde ve kutu açılış popup'ında tutarlı şekilde uygulanıyor.",
+      "Savaş Geçmişi yeniden tasarlandı: her kayıtta artık saldıran/savunan isimleri üstte ayrı bir başlık satırında, KAZANDI / SAVUNDU / PAS GEÇTİ / EFSANEVİ ETKİ rozetleriyle birlikte gösteriliyor; renkli flavor-metin altta daha okunaklı bir şekilde yer alıyor.",
+      "İlk giriş öğreticisi (tutorial) kullanışlı hale getirildi: adım sayacı eklendi (örn. '3 / 6'), ilk ve son slaytlarda ileri/geri okları otomatik pasifleşiyor, sağ üstteki 'Atla ✕' butonuyla öğretici istenildiğinde anında kapatılabiliyor.",
+      "Yenilikler & Yol Haritası ekranı akordeon (aç/kapa) yapısına geçti: en güncel sürüm otomatik açık geliyor ve üstünde 'Yeni' rozetiyle işaretleniyor, eski sürümler tıklanınca açılıp kapanıyor; böylece uzun liste çok daha kolay taranabiliyor.",
+      "Her sekmenin üstüne, o bölümün ne işe yaradığını netleştiren şerit tarzı bir başlık (örn. '⚔️ Savaş Arenası', '🏆 Liderlik Tablosu') eklendi; oyunun genel görsel kimliği (pembe panter teması, kalın 3D butonlar, altıgen slotlar) tüm sekmelere tutarlı şekilde yayıldı.",
+      "Bir önceki sürümde eklenen ses efektleri (kutu açılışı, saldırı, buton tıklamaları) ve ses aç/kapa düğmesi bu sürümde de korunuyor; yeni sekme geçişleri de aynı geri bildirim sesleriyle çalışıyor."
+    ]
+  },
   {
     version: "1.7",
     date: "4 Temmuz 2026",
@@ -641,12 +675,14 @@ const ROADMAP = [
 ];
 
 function renderUpdatesList() {
-  const releasesHtml = RELEASES.map(r => `
-    <div class="release-block">
-      <div class="release-header">
+  const releasesHtml = RELEASES.map((r, i) => `
+    <div class="release-block ${i === 0 ? "open" : ""}">
+      <button type="button" class="release-header" data-idx="${i}">
         <span class="release-version">v${r.version}</span>
         <span class="release-date">${r.date}</span>
-      </div>
+        ${i === 0 ? `<span class="update-badge done">Yeni</span>` : ""}
+        <span class="release-chevron">⌄</span>
+      </button>
       <ul class="release-items">${r.items.map(t => `<li>${t}</li>`).join("")}</ul>
     </div>
   `).join("");
@@ -658,6 +694,10 @@ function renderUpdatesList() {
     </div>`;
 
   updatesList.innerHTML = releasesHtml + roadmapHtml;
+
+  updatesList.querySelectorAll(".release-header").forEach(btn => {
+    btn.onclick = () => btn.closest(".release-block").classList.toggle("open");
+  });
 }
 
 function refreshUpdatesDot() {
@@ -874,6 +914,7 @@ newPlayerBtn.onclick = async () => {
       recentSlots: [],
       lastAttackedId: null,
       attackStreakOnTarget: 0,
+      targetCooldowns: {},
       discoveredItems: [],
       strangerDay: null,
       strangerAvailable: false,
@@ -979,6 +1020,7 @@ async function startGame() {
     currentPlayerData = { id: docSnap.id, ...docSnap.data() };
     renderMyStats();
     renderEquipment();
+    renderCharacterStage();
     renderBoxStatus();
     renderAttackTargets();
     renderStrangerBanner();
@@ -1382,6 +1424,30 @@ function renderEquipment() {
 }
 
 // ============================================================
+// KARAKTER SAHNESİ (Profil sekmesi üstü)
+// Ekipmanları düz bir liste yerine, panterin üstünde anatomik olarak
+// doğru yerlerde gösterir: kask başta, zırh gövdede, kılıç ve eldiven
+// ellerde, ayakkabı ayakta. Salt görsel bir özet; tıklanınca ilgili
+// slotun envanterini açar (equipmentGrid ile aynı davranış).
+// ============================================================
+function renderCharacterStage() {
+  if (!charStageSlotsEl) return;
+  const eq = currentPlayerData?.equipment || emptyEquipment();
+  charStageSlotsEl.innerHTML = SLOTS.map(s => {
+    const item = eq[s.key];
+    const rarityClass = item ? `rarity-${item.rarity}` : "";
+    return `
+      <button type="button" class="char-slot slot-pos-${s.key} ${item ? "filled" : "empty"} ${rarityClass}" data-slot="${s.key}" title="${s.label}${item ? ": " + item.name : " (boş)"}">
+        <span class="char-slot-icon">${s.icon}</span>
+      </button>`;
+  }).join("");
+
+  charStageSlotsEl.querySelectorAll("button[data-slot]").forEach(btn => {
+    btn.onclick = () => openInventoryModal(btn.getAttribute("data-slot"));
+  });
+}
+
+// ============================================================
 // KUTU AÇMA
 // ============================================================
 function canOpenBoxNow() {
@@ -1573,24 +1639,39 @@ function canAttackNow() {
 function renderAttackTargets() {
   if (!currentPlayerData) return;
   const able = canAttackNow();
+  const cooldowns = currentPlayerData.targetCooldowns || {};
+  const anyLocked = Object.values(cooldowns).some(v => v > 0);
 
   if (!able) {
     const windowIdx = getAttackWindowIndex();
     const windowEnd = (windowIdx + 1) * ATTACK_COOLDOWN_MS;
     const remainMs = windowEnd - Date.now();
     attackStatus.textContent = `Bu saatlik saldırı hakkını kullandın. Sıradaki saldırı penceresi ${formatRemaining(remainMs)} sonra açılıyor.`;
+  } else if (anyLocked) {
+    attackStatus.textContent = `Bazı hedefler art arda ${MAX_CONSECUTIVE_ATTACKS_ON_TARGET} saldırı yüzünden kilitli. Kilidi açmak için önce farklı hedeflere saldırmalısın.`;
   } else {
     attackStatus.textContent = "Saldırı hakkın hazır, birini seç! (Kullanmazsan bu pencere kapanır, bir daha kullanamazsın.)";
   }
 
   const targets = allPlayers.filter(p => p.id !== currentPlayerId);
-  attackTargetsEl.innerHTML = targets.map(p => `
-    <div class="attack-target-row">
-      <div class="name">${p.name}</div>
+
+  attackTargetsEl.innerHTML = targets.map(p => {
+    const cooldownLeft = cooldowns[p.id] || 0;
+    const isLocked = cooldownLeft > 0;
+    const canHitThis = able && !isLocked;
+    const isCurrentStreakTarget = !isLocked && p.id === currentPlayerData.lastAttackedId && (currentPlayerData.attackStreakOnTarget || 0) > 0;
+    const badge = isLocked
+      ? `<span class="target-streak-badge locked">🔒 ${cooldownLeft} savaş</span>`
+      : isCurrentStreakTarget
+        ? `<span class="target-streak-badge">${currentPlayerData.attackStreakOnTarget}/${MAX_CONSECUTIVE_ATTACKS_ON_TARGET}</span>`
+        : "";
+    return `
+    <div class="attack-target-row ${isLocked ? "locked" : ""}">
+      <div class="name">${p.name} ${badge}</div>
       <div class="stats">⚔️${p.attack ?? BASE_ATTACK} 🛡️${p.defense ?? BASE_DEFENSE} · ${p.points ?? 0}⭐</div>
-      <button data-id="${p.id}" ${able ? "" : "disabled"} style="${able ? "" : "opacity:.35;cursor:not-allowed;"}">Saldır</button>
-    </div>
-  `).join("");
+      <button data-id="${p.id}" ${canHitThis ? "" : "disabled"} style="${canHitThis ? "" : "opacity:.35;cursor:not-allowed;"}">${isLocked ? "Kilitli" : "Saldır"}</button>
+    </div>`;
+  }).join("");
 
   attackTargetsEl.querySelectorAll("button[data-id]").forEach(btn => {
     btn.onclick = () => runAttack(btn.getAttribute("data-id"));
@@ -1679,6 +1760,16 @@ async function runAttack(defenderId) {
       const currentWindow = getAttackWindowIndex();
       if ((attacker.lastAttackWindow ?? -1) === currentWindow) {
         throw new Error("Bu saatlik saldırı penceresini zaten kullandın.");
+      }
+
+      // Aynı hedefe art arda saldırı sınırı: bir oyuncuyu üst üste 3 kereden
+      // fazla hedef alamazsın. 3'e ulaşınca o hedef kilitlenir; kilidin açılması
+      // için önce başka hedeflere en az TARGET_LOCK_COOLDOWN_ATTACKS kez daha
+      // saldırman (savaşa girmen) gerekir.
+      const targetCooldowns = attacker.targetCooldowns || {};
+      const remainingLock = targetCooldowns[defenderId] || 0;
+      if (remainingLock > 0) {
+        throw new Error(`Bu kişiye tekrar saldırabilmek için önce en az ${remainingLock} savaş daha yapmalısın.`);
       }
 
       const logDetails = [];
@@ -1840,12 +1931,25 @@ async function runAttack(defenderId) {
         attackerQuests = incrementQuestProgress(attackerQuests, "defeat_player", 1, { targetPlayerId: defenderId });
       }
 
+      // Aynı hedefe art arda saldırı sınırı için cooldown haritasını güncelle:
+      // diğer kilitli hedeflerin kilidi bu savaş sayıldığı için 1 azalır,
+      // bu savaşta aynı kişiye 3. kez üst üste vurulduysa o hedef kilitlenir.
+      const newTargetCooldowns = {};
+      for (const [tid, remain] of Object.entries(targetCooldowns)) {
+        const dec = (remain || 0) - 1;
+        if (dec > 0) newTargetCooldowns[tid] = dec;
+      }
+      if (isRepeat && repeatCount >= MAX_CONSECUTIVE_ATTACKS_ON_TARGET) {
+        newTargetCooldowns[defenderId] = TARGET_LOCK_COOLDOWN_ATTACKS;
+      }
+
       tx.update(attackerRef, {
         points: attackerPoints,
         lastAttackTime: Date.now(),
         lastAttackWindow: currentWindow,
         lastAttackedId: defenderId,
         attackStreakOnTarget: repeatCount,
+        targetCooldowns: newTargetCooldowns,
         ...(attacker.curseNextAttack ? { curseNextAttack: null } : {}),
         ...(attackerQuests !== attacker.dailyQuests ? { dailyQuests: attackerQuests } : {})
       });
@@ -1912,7 +2016,23 @@ function renderBattleLog(entries) {
   battleLogEl.innerHTML = entries.map(e => {
     const cls = e.legendary ? "legendary-trigger" : (e.winner ? "win" : "");
     const time = e.timestamp ? new Date(e.timestamp).toLocaleString("tr-TR") : "";
-    return `<div class="log-entry ${cls}">${e.message}<span class="log-time">${time}</span></div>`;
+    const attackerWon = e.winner && e.winner === e.attacker;
+
+    let badge;
+    if (!e.winner) badge = `<span class="log-badge skip">💨 Pas Geçti</span>`;
+    else if (attackerWon) badge = `<span class="log-badge win">🏆 Kazandı</span>`;
+    else badge = `<span class="log-badge lose">🛡️ Savundu</span>`;
+    const legendaryBadge = e.legendary ? `<span class="log-badge legendary">✨ Efsanevi Etki</span>` : "";
+
+    return `
+      <div class="log-entry ${cls}">
+        <div class="log-entry-top">
+          <span class="log-fighters">${e.attacker} <span class="log-vs">⚔️</span> ${e.defender}</span>
+          <span class="log-badges">${badge}${legendaryBadge}</span>
+        </div>
+        <p class="log-message">${e.message}</p>
+        <span class="log-time">🕐 ${time}</span>
+      </div>`;
   }).join("");
 }
 

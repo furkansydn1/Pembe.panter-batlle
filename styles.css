@@ -378,13 +378,30 @@ input{font-family:inherit;}
   animation: itemBounceIn .6s cubic-bezier(.34,1.56,.64,1);
   min-width: 200px;
 }
-.item-popup-inner.rarity-nadir{ border-color: var(--blue); box-shadow: 0 10px 0 rgba(0,0,0,.3), 0 0 34px #4d9bff66; }
-.item-popup-inner.rarity-efsanevi{ border-color: var(--gold); box-shadow: 0 10px 0 rgba(0,0,0,.3), 0 0 44px #ffcc4d88; }
+.item-popup-inner.rarity-nadir{ border-color: var(--blue); box-shadow: 0 10px 0 rgba(0,0,0,.3), 0 0 34px #4d9bff66; animation: itemBounceIn .6s cubic-bezier(.34,1.56,.64,1), nadirPulsePopup 2.2s ease-in-out infinite .6s; }
+.item-popup-inner.rarity-efsanevi{ border-color: var(--gold); box-shadow: 0 10px 0 rgba(0,0,0,.3), 0 0 44px #ffcc4d88; animation: itemBounceIn .6s cubic-bezier(.34,1.56,.64,1), efsaneviPulsePopup 1.8s ease-in-out infinite .6s; }
 @keyframes itemBounceIn{
   0%{transform: translateY(60px) scale(.4); opacity:0;}
   60%{transform: translateY(-10px) scale(1.08); opacity:1;}
   80%{transform: translateY(4px) scale(.97);}
   100%{transform: translateY(0) scale(1);}
+}
+/* ---- Nadirliğe göre sürekli "nabız" animasyonları ---- */
+@keyframes nadirPulse{
+  0%,100%{ box-shadow: 0 0 0 2px var(--blue) inset, 0 0 10px #4d9bff44; }
+  50%{ box-shadow: 0 0 0 2px var(--blue) inset, 0 0 22px #4d9bff99; }
+}
+@keyframes efsaneviPulse{
+  0%,100%{ box-shadow: 0 0 0 2px var(--gold) inset, 0 0 14px #ffcc4d55; transform: scale(1); }
+  50%{ box-shadow: 0 0 0 2px var(--gold) inset, 0 0 30px #ffcc4dcc; transform: scale(1.02); }
+}
+@keyframes nadirPulsePopup{
+  0%,100%{ box-shadow: 0 10px 0 rgba(0,0,0,.3), 0 0 34px #4d9bff66; }
+  50%{ box-shadow: 0 10px 0 rgba(0,0,0,.3), 0 0 50px #4d9bffcc; }
+}
+@keyframes efsaneviPulsePopup{
+  0%,100%{ box-shadow: 0 10px 0 rgba(0,0,0,.3), 0 0 44px #ffcc4d88; }
+  50%{ box-shadow: 0 10px 0 rgba(0,0,0,.3), 0 0 64px #ffcc4dee; }
 }
 .item-popup-icon{font-size:2.4rem;}
 .item-popup-name{font-weight:900; margin-top:4px;}
@@ -497,8 +514,8 @@ input{font-family:inherit;}
   font-size: .72rem; color: var(--text-dim); text-align:center; margin: -4px 0 0; font-weight:600;
 }
 .equip-slot.view-only{ cursor:default; }
-.equip-slot.filled.rarity-nadir{ box-shadow: 0 0 0 2px var(--blue) inset, 0 0 14px #4d9bff55; }
-.equip-slot.filled.rarity-efsanevi{ box-shadow: 0 0 0 2px var(--gold) inset, 0 0 18px #ffcc4d66; }
+.equip-slot.filled.rarity-nadir{ box-shadow: 0 0 0 2px var(--blue) inset, 0 0 14px #4d9bff55; animation: nadirPulse 2.2s ease-in-out infinite; }
+.equip-slot.filled.rarity-efsanevi{ box-shadow: 0 0 0 2px var(--gold) inset, 0 0 18px #ffcc4d66; animation: efsaneviPulse 1.8s ease-in-out infinite; }
 .equip-slot-icon{font-size:1.5rem;}
 .equip-slot-label{font-size:.62rem; color: rgba(255,255,255,.75); margin-top:3px; font-weight:700; text-transform:uppercase;}
 .equip-slot-item{font-size:.7rem; font-weight:800; margin-top:4px; line-height:1.2; color:var(--text);}
@@ -887,8 +904,8 @@ button.equip-slot{ font-family: inherit; cursor:pointer; width:100%; }
   background: var(--bg-panel-alt); border: 1px solid rgba(255,255,255,.08);
   border-radius: 14px; padding: 12px 14px;
 }
-.inv-item.rarity-nadir{ border-color: var(--blue); }
-.inv-item.rarity-efsanevi{ border-color: var(--gold); box-shadow: 0 0 10px #ffcc4d22; }
+.inv-item.rarity-nadir{ border-color: var(--blue); animation: nadirPulse 2.2s ease-in-out infinite; }
+.inv-item.rarity-efsanevi{ border-color: var(--gold); box-shadow: 0 0 10px #ffcc4d22; animation: efsaneviPulse 1.8s ease-in-out infinite; }
 .inv-item-top{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:4px; }
 .inv-item-name{ font-weight:800; font-size:.86rem; }
 .inv-item-stats{ font-size:.75rem; color: var(--text-dim); font-weight:600; }
@@ -896,3 +913,169 @@ button.equip-slot{ font-family: inherit; cursor:pointer; width:100%; }
 .inv-item-actions .btn-mini{ flex:1; min-width:0; }
 .popup-quick-actions{ display:flex; gap:8px; margin-top:10px; }
 .popup-quick-actions .btn-mini{ flex:1; min-width:0; }
+
+/* ============================================================
+   v1.8 TASARIM GÜNCELLEMESİ
+   Sekme başlıkları (tab-hero), karakter sahnesi (paper-doll),
+   savaş geçmişi rozetleri, öğretici/güncellemeler iyileştirmeleri
+   ============================================================ */
+
+/* ---------- SEKME BAŞLIKLARI (Clash Royale tarzı şerit banner) ---------- */
+.tab-hero{
+  text-align:center;
+  padding: 4px 0 2px;
+}
+.tab-hero-ribbon{
+  display:inline-block;
+  font-size: 1.05rem;
+  font-weight: 900;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  padding: 9px 22px;
+  color: var(--text);
+  background: linear-gradient(180deg, var(--accent-2), var(--accent) 55%, var(--pink-dark));
+  border-radius: 14px;
+  border-bottom: 4px solid var(--pink-dark);
+  box-shadow: 0 6px 0 rgba(0,0,0,.25), 0 10px 22px -6px #ff2d8755;
+  transform: rotate(-1deg);
+  text-shadow: 0 2px 0 #8a0044, 0 4px 10px rgba(0,0,0,.4);
+}
+.tab-hero-sub{
+  margin: 8px 0 0;
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+.tab-hero-red .tab-hero-ribbon{
+  background: linear-gradient(180deg, #ff8a93, var(--red) 55%, var(--red-dark));
+  border-bottom-color: var(--red-dark);
+  box-shadow: 0 6px 0 rgba(0,0,0,.25), 0 10px 22px -6px #ff5c6c55;
+}
+.tab-hero-gold .tab-hero-ribbon{
+  background: linear-gradient(180deg, #ffe08a, var(--gold) 55%, var(--gold-dark));
+  border-bottom-color: var(--gold-dark);
+  box-shadow: 0 6px 0 rgba(0,0,0,.25), 0 10px 22px -6px #ffcc4d55;
+  color: var(--ink);
+  text-shadow: none;
+}
+.tab-hero-blue .tab-hero-ribbon{
+  background: linear-gradient(180deg, #9de2ff, var(--blue) 55%, var(--blue-dark));
+  border-bottom-color: var(--blue-dark);
+  box-shadow: 0 6px 0 rgba(0,0,0,.25), 0 10px 22px -6px #4d9bff55;
+}
+
+/* ---------- KARAKTER SAHNESİ (Profil sekmesi, paper-doll düzeni) ---------- */
+.char-panel{ align-items:center; }
+.char-stage{
+  position: relative;
+  width: 100%;
+  max-width: 320px;
+  height: 260px;
+  margin: 4px auto 6px;
+}
+.char-stage-ring{
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  width:180px; height:180px; border-radius:50%;
+  background: radial-gradient(circle at 40% 30%, #5a1f7a, #26093f 70%);
+  border: 1px solid rgba(255,255,255,.08);
+  box-shadow: inset 0 0 30px rgba(0,0,0,.4);
+}
+.char-avatar{
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  font-size: 4.4rem;
+  filter: drop-shadow(0 10px 14px rgba(0,0,0,.5));
+  animation: idleBob 2.6s ease-in-out infinite;
+}
+.char-stage-slots{ position:absolute; inset:0; }
+.char-slot{
+  position:absolute;
+  width: 56px; height:56px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, var(--panel-light), var(--panel-edge));
+  border: 2px solid rgba(255,255,255,.12);
+  display:flex; align-items:center; justify-content:center;
+  box-shadow: 0 3px 0 rgba(0,0,0,.3);
+  transition: transform .1s ease, filter .15s ease;
+}
+.char-slot:hover{ filter: brightness(1.2); }
+.char-slot:active{ transform: scale(.93); }
+.char-slot-icon{ font-size:1.5rem; filter: drop-shadow(0 2px 2px rgba(0,0,0,.4)); }
+.char-slot.empty{ opacity:.5; border-style:dashed; }
+.char-slot.filled.rarity-nadir{ border-color: var(--blue); animation: nadirPulse 2.2s ease-in-out infinite; }
+.char-slot.filled.rarity-efsanevi{ border-color: var(--gold); animation: efsaneviPulse 1.8s ease-in-out infinite; }
+
+/* Anatomik konumlar: kask başta, zırh gövdede, kılıç ve eldiven ellerde, ayakkabı ayakta */
+.char-slot.slot-pos-kask{ top: -6px; left: 50%; transform: translateX(-50%); }
+.char-slot.slot-pos-zirh{ top: 50%; left: 50%; transform: translate(-50%, -50%); }
+.char-slot.slot-pos-kilic{ top: 46%; right: 4px; transform: translateY(-50%) rotate(6deg); }
+.char-slot.slot-pos-eldiven{ top: 46%; left: 4px; transform: translateY(-50%) rotate(-6deg); }
+.char-slot.slot-pos-ayakkabi{ bottom: -6px; left: 50%; transform: translateX(-50%); }
+.char-slot.slot-pos-kilic:active{ transform: translateY(-50%) rotate(6deg) scale(.93); }
+.char-slot.slot-pos-eldiven:active{ transform: translateY(-50%) rotate(-6deg) scale(.93); }
+
+/* ---------- SAVAŞ GEÇMİŞİ ROZETLERİ ---------- */
+.log-entry{ animation: logFadeIn .3s ease; }
+@keyframes logFadeIn{
+  from{ opacity:0; transform: translateY(6px); }
+  to{ opacity:1; transform: translateY(0); }
+}
+.log-entry-top{
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  flex-wrap:wrap;
+  margin-bottom: 4px;
+}
+.log-fighters{ font-weight:900; font-size:.82rem; color: var(--text); }
+.log-vs{ color: var(--text-dim); margin: 0 3px; font-weight:400; }
+.log-badges{ display:flex; gap:5px; flex-wrap:wrap; }
+.log-badge{
+  font-size:.6rem; font-weight:900; text-transform:uppercase; letter-spacing:.2px;
+  padding: 3px 9px; border-radius:999px; white-space:nowrap;
+}
+.log-badge.win{ background:#4dd68a22; color:var(--green); border:1px solid #4dd68a55; }
+.log-badge.lose{ background:#ff5c6c22; color:var(--red); border:1px solid #ff5c6c55; }
+.log-badge.legendary{ background:#ffcc4d22; color:var(--gold); border:1px solid #ffcc4d55; }
+.log-badge.skip{ background:rgba(255,255,255,.07); color:var(--text-dim); border:1px solid rgba(255,255,255,.1); }
+.log-message{ margin:0; font-size:.78rem; line-height:1.45; color:var(--text-dim); font-weight:600; }
+
+/* ---------- SALDIRI HEDEFİ: STREAK/KİLİT ROZETİ ---------- */
+.attack-target-row .name{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.target-streak-badge{
+  font-size:.6rem; font-weight:800; text-transform:uppercase;
+  padding: 2px 7px; border-radius:999px;
+  background: #ffcc4d22; color: var(--gold); border:1px solid #ffcc4d55;
+}
+.target-streak-badge.locked{
+  background: rgba(255,255,255,.07); color: var(--text-dim); border:1px solid rgba(255,255,255,.12);
+}
+.attack-target-row.locked{ opacity:.7; }
+
+/* ---------- ÖĞRETİCİ: ATLA BUTONU + ADIM SAYACI ---------- */
+.tut-skip-btn{
+  position:absolute; top:14px; right:14px; z-index:5;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.15);
+  color: var(--text-dim);
+  font-size:.68rem; font-weight:800; text-transform:uppercase;
+  padding: 6px 12px; border-radius:999px;
+  transition: background .15s ease, color .15s ease;
+}
+.tut-skip-btn:hover{ background: rgba(255,255,255,.16); color: var(--text); }
+.tutorial-dots-wrap{ display:flex; flex-direction:column; align-items:center; gap:6px; }
+.tut-step-label{ font-size:.68rem; font-weight:700; color: var(--text-dim); }
+.tut-nav-btn:disabled{ opacity:.3; cursor:not-allowed; box-shadow:none; transform:none; }
+
+/* ---------- GÜNCELLEMELER: AKORDEON ---------- */
+.release-header{
+  width:100%;
+  display:flex; align-items:baseline; gap:10px;
+  margin-bottom:0; padding-bottom:6px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  background:none; border-top:none; border-left:none; border-right:none;
+  color: inherit; font: inherit; text-align:left; cursor:pointer;
+}
+.release-chevron{ margin-left:auto; color: var(--text-dim); transition: transform .2s ease; }
+.release-block .release-items{ display:none; margin:10px 0 0; }
+.release-block.open .release-items{ display:flex; }
+.release-block.open .release-chevron{ transform: rotate(180deg); color: var(--accent-2); }
+.roadmap-block .release-items{ display:flex; }
