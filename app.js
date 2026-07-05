@@ -295,14 +295,11 @@ async function ensureWeeklyLeaderboardReset() {
       const metaSnap = await tx.get(metaRef);
       const meta = metaSnap.exists() ? metaSnap.data() : null;
 
-      if (!meta) {
-        // Sistem ilk kez çalışıyor: henüz gerçek bir hafta kapanmadı, sadece
-        // şu anki haftayı referans olarak kaydet, kimsenin puanına dokunma.
-        // Gerçek sıfırlama ancak bir sonraki Pazar 00:00 geçildiğinde olur.
-        tx.set(metaRef, { lastProcessedWeek: currentWeekId, processedAt: Date.now() }, { merge: true });
-        return;
-      }
-      if (meta.lastProcessedWeek === currentWeekId) return; // zaten işlendi
+      // Not: bugün (5 Temmuz 2026) zaten Pazar olduğu için meta doküman hiç
+      // yoksa bile aşağıdaki mantık ilk sıfırlamayı hemen bu haftaya (bu gece)
+      // uygular; bir sonraki sıfırlama ise doğal olarak gelecek Pazar 00:00'da
+      // (yeni hafta id'si değiştiğinde) tetiklenir.
+      if (meta && meta.lastProcessedWeek === currentWeekId) return; // zaten işlendi
 
       // Tüm okumalar (yazmalardan önce) tamamlanmalı.
       const freshPlayers = [];
@@ -947,7 +944,7 @@ tutNextBtn.onclick = () => goToTutorialSlide(currentTutorialIndex() + 1);
 const NEW_FEATURE_SLIDES = {
   "1.12": [
     { icon: "🆕", title: "v1.12 Yenilikleri!", text: "Bu güncelleme oyuna sezonluk bir rekabet katıyor: Haftalık Liderlik Tablosu ve Rozetler geldi. Hadi bakalım." },
-    { icon: "🏆", title: "Haftalık Liderlik Sıfırlaması", text: "Liderlik tablosu artık her Pazar 00:00'da sıfırlanıyor! O haftayı 1. bitiren oyuncu toz + garanti bir nadir eşya kazanıyor. ÖNEMLİ: sıfırlama anında HERKESİN puanı (1. hariç) 0'a dönüyor, yani her hafta sıfırdan yeni bir yarış başlıyor." },
+    { icon: "🏆", title: "Haftalık Liderlik Sıfırlaması", text: "Liderlik tablosu artık her Pazar 00:00'da sıfırlanıyor! O haftayı 1. bitiren oyuncu toz + garanti bir nadir eşya kazanıyor. ÖNEMLİ: sıfırlama anında kazanan da dahil HERKESİN puanı 0'a dönüyor, yani her hafta sıfırdan yeni bir yarış başlıyor." },
     { icon: "🎖️", title: "Rozetler", text: "Profil altındaki İstatistik sekmesine yeni bir 🎖️ Rozetler paneli eklendi. Toplam 44 farklı rozet var: galibiyet serileri, efsanevi eşya koleksiyonu, Kahin Bahsi'nde 'Bahis Baronu' olmak, Kelle Avcısı'nda 'Cellat' olmak, haftanın birinciliği ve daha fazlası. Rozetler otomatik hesaplanıyor, kazandıkça anında açılıyor." }
   ],
   "1.11": [
@@ -1076,7 +1073,7 @@ const RELEASES = [
     version: "1.12",
     date: "5 Temmuz 2026",
     items: [
-      "🏆 Haftalık Liderlik Tablosu eklendi: liderlik tablosu artık her Pazar 00:00'da otomatik sıfırlanıyor. O haftayı 1. bitiren oyuncu toz + garanti bir nadir eşya kazanıyor ve 'haftalık şampiyonluk' sayacı +1 oluyor. Sıfırlama anında (kazanan hariç) HERKESİN puanı 0'a dönüyor, yeni hafta sıfırdan başlıyor. Liderlik sekmesinde geçen haftanın şampiyonu ve bir sonraki sıfırlamaya kalan süre gösteriliyor.",
+      "🏆 Haftalık Liderlik Tablosu eklendi: liderlik tablosu artık her Pazar 00:00'da otomatik sıfırlanıyor. O haftayı 1. bitiren oyuncu toz + garanti bir nadir eşya kazanıyor ve 'haftalık şampiyonluk' sayacı +1 oluyor. Sıfırlama anında kazanan da dahil HERKESİN puanı 0'a dönüyor, yeni hafta sıfırdan başlıyor. Liderlik sekmesinde geçen haftanın şampiyonu ve bir sonraki sıfırlamaya kalan süre gösteriliyor.",
       "🎖️ Rozetler eklendi (İstatistik sekmesi): toplam 44 farklı rozet. Galibiyet sayısı ve serisi, efsanevi eşya koleksiyonu, aynı anda kuşanılan efsanevi eşya sayısı, kutu açma, toz biriktirme, haftalık şampiyonluk, Kahin Bahsi ('Bahis Baronu'na kadar), Kelle Avcısı ('Cellat'a kadar), Gizemli Yabancı, Şanslı Çark jackpot'u ve koleksiyon tamamlama gibi kategorilerde. Rozetler otomatik hesaplanıyor, ekstra bir işlem gerekmiyor."
     ]
   },
