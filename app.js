@@ -942,6 +942,12 @@ tutNextBtn.onclick = () => goToTutorialSlide(currentTutorialIndex() + 1);
 // ama bu sürümü henüz görmemiş herkese otomatik gösterilir.
 // ============================================================
 const NEW_FEATURE_SLIDES = {
+  "1.13": [
+    { icon: "🆕", title: "v1.13 Yenilikleri!", text: "Bu güncelleme oyunun görünüşüne ve kulağa gelişine odaklanıyor, ayrıca can sıkan bir haftalık liderlik hatası da düzeltildi. Hadi bakalım." },
+    { icon: "🔤", title: "Yeni Yazı Tipleri", text: "Oyunun geneli artık daha yuvarlak ve kalın bir fontla (Fredoka) yazılıyor. Logo ve büyük başlık şeritleri ise Clash Royale'e en yakın kalın fontlardan biri olan Luckiest Guy ile gösteriliyor." },
+    { icon: "🔊", title: "Gerçek Ses Efektleri", text: "Buton tıklaması, saldırı anı, savaş/Kahin Bahsi/Gizemli Yabancı sonuçlarındaki kazanma-kaybetme sesleri ve Şanslı Çark'ın dönüşü artık sentetik biplerden gerçek ses kayıtlarına geçti." },
+    { icon: "🏆", title: "Haftalık Liderlik Sıfırlaması Düzeltildi", text: "Sıfırlama artık sadece girişte değil, oyun açıkken de dakikada bir otomatik kontrol ediliyor. Pazar 00:00 geldiğinde uygulama açık kalsa bile puanlar gerçekten sıfırlanıp şampiyon ödülünü kapıyor." }
+  ],
   "1.12": [
     { icon: "🆕", title: "v1.12 Yenilikleri!", text: "Bu güncelleme oyuna sezonluk bir rekabet katıyor: Haftalık Liderlik Tablosu ve Rozetler geldi. Hadi bakalım." },
     { icon: "🏆", title: "Haftalık Liderlik Sıfırlaması", text: "Liderlik tablosu artık her Pazar 00:00'da sıfırlanıyor! O haftayı 1. bitiren oyuncu toz + garanti bir nadir eşya kazanıyor. ÖNEMLİ: sıfırlama anında kazanan da dahil HERKESİN puanı 0'a dönüyor, yani her hafta sıfırdan yeni bir yarış başlıyor." },
@@ -1066,9 +1072,18 @@ howToBtn.onclick = () => openTutorial();
 // Her yeni özellik bittiğinde status'u "soon" -> "done" yapıp
 // LATEST_UPDATE_VERSION'ı artırman yeterli, rozet otomatik güncellenir.
 // ============================================================
-const LATEST_UPDATE_VERSION = "1.12";
+const LATEST_UPDATE_VERSION = "1.13";
 
 const RELEASES = [
+  {
+    version: "1.13",
+    date: "5 Temmuz 2026",
+    items: [
+      "🔤 Yeni yazı tipleri: Oyunun geneli artık yuvarlak, kalın ve daha 'oyunsu' bir fontla (Fredoka) yazılıyor; logo ve büyük başlık şeritleri (🐆 Pembe Panterler Battle, sekme başlıkları, öğretici ve yenilikler ekranlarındaki başlıklar) ise Clash Royale tarzına en yakın kalın font olan Luckiest Guy ile gösteriliyor.",
+      "🔊 Gerçek ses efektleri: Genel buton tıklaması, saldırı anı (2 farklı ses arasında rastgele seçiliyor), savaş/Kahin Bahsi/Gizemli Yabancı sonuçlarında kazanma-kaybetme sesleri ve Şanslı Çark'ın dönüş sesi artık sentetik bip yerine gerçek ses kayıtlarıyla çalıyor.",
+      "🏆 Haftalık Liderlik Tablosu düzeltmesi: sıfırlama kontrolü önceden sadece oyuna giriş yapıldığında çalışıyordu, bu yüzden uygulama Pazar 00:00'ı açık bir sekmede geçirenlerde hiç tetiklenmiyordu. Artık oyun açıkken de dakikada bir otomatik kontrol ediliyor, hafta döndüğü an puanlar gerçekten sıfırlanıp şampiyon ödülünü kapıyor."
+    ]
+  },
   {
     version: "1.12",
     date: "5 Temmuz 2026",
@@ -1650,6 +1665,18 @@ function renderWeeklyLeaderboardInfo() {
   `;
 }
 setInterval(renderWeeklyLeaderboardInfo, 60000);
+// ÖNEMLİ DÜZELTME: ensureWeeklyLeaderboardReset() önceden SADECE startGame()
+// içinde, yani girişte bir kez çağrılıyordu. Pazar 00:00'ı uygulama açıkken
+// (sekme kapatılmadan) geçiren biri için bu satır bir daha hiç çalışmıyordu;
+// sadece yukarıdaki 60 saniyelik interval ekrandaki geri sayımı ("bir sonraki
+// pazara ... kaldı") güncellediği için sıfırlama sanki olmuş gibi görünüyordu,
+// ama Firestore'daki puanlar hiç sıfırlanmıyordu. Artık oyun açıkken de her
+// dakika kontrol ediliyor; hafta değiştiği an (transaction içindeki
+// lastProcessedWeek kontrolü sayesinde tek seferlik ve güvenli şekilde) puanlar
+// gerçekten sıfırlanıp şampiyon ödülü veriliyor.
+setInterval(() => {
+  if (currentPlayerId) ensureWeeklyLeaderboardReset().catch((e) => console.error("Haftalık sıfırlama kontrolü hatası:", e));
+}, 60000);
 
 function renderLeaderboard() {
   leaderboardEl.innerHTML = allPlayers.map((p, i) => {
@@ -1996,7 +2023,7 @@ async function spinTheWheel() {
   luckyWheel.style.transition = `transform ${spinDurationMs / 1000}s cubic-bezier(.17,.67,.2,1)`;
   luckyWheel.style.transform = `rotate(${targetRotation}deg)`;
   luckyWheel.dataset.rotation = String(targetRotation);
-  sfxShake();
+  playSound("wheel");
 
   // Dönüş sırasında her segment sınırını geçtiğinde kısa bir "tık" sesi çal
   const endTime = Date.now() + spinDurationMs + 100;
@@ -3092,6 +3119,7 @@ async function runAttack(defenderId) {
 
 function showResultModal(result) {
   if (result.oracle) {
+    playSound(result.won ? "win" : "lose");
     resultContent.innerHTML = `
       <div class="result-title ${result.won ? "win" : "lose"}">${result.won ? "🔮 Kahin Haklı Çıktı!" : "🔮 Kahin Yanıldı"}</div>
       <p class="result-line">${result.targetName} için ${result.amount} toz yatırmıştın.</p>
@@ -3100,6 +3128,7 @@ function showResultModal(result) {
     return;
   }
   if (result.stranger) {
+    playSound(result.won ? "win" : "lose");
     resultContent.innerHTML = `
       <div class="result-title ${result.won ? "win" : "lose"}">${result.won ? "🏆 Kazandın!" : "🤝 Bu Sefer Olmadı"}</div>
       <p class="result-line">${result.name} ile girdiğin düellodan ${result.won ? `+${result.reward} toz kazanarak` : "hiçbir kayıp olmadan"} çıktın.</p>`;
@@ -3109,6 +3138,7 @@ function showResultModal(result) {
       <p class="result-line">Bu sefer saldıramadan hakkın harcandı.</p>`;
   } else {
     const won = result.attackerWins;
+    playSound(won ? "win" : "lose");
     resultContent.innerHTML = `
       <div class="result-title ${won ? "win" : "lose"}">${won ? "🏆 Kazandın!" : "💀 Kaybettin!"}</div>
       <p class="result-line">Senin Gücün: ${result.attackPower} &nbsp;|&nbsp; Rakip Gücü: ${result.defensePower}</p>
@@ -3159,6 +3189,47 @@ function renderBattleLog(entries) {
 let audioCtx = null;
 let soundOn = localStorage.getItem("gacha_sound_on") !== "0";
 
+// ============================================================
+// GERÇEK SES DOSYALARI
+// Aşağıdaki dosyaları index.html ile AYNI klasöre koy (veya yolları
+// kendi klasör yapına göre güncelle, örn. "sounds/Click_Sesi.ogg").
+// Sadece bu 5 aksiyon gerçek ses dosyasıyla değiştirildi (tıklama,
+// saldırı, kazanma, kaybetme, çark); kutu açma efektleri hâlâ
+// Web Audio ile sentezleniyor (o dosyalar ayrıca eklenecek).
+// ============================================================
+const SOUND_FILES = {
+  click: "Click_Sesi.ogg",
+  attack: "Saldırma_sesi.mp3",
+  attack2: "Saldırma_Sesi_2.wav",
+  win: "Kazanma_Sesi.mp3",
+  lose: "Kaybetme_sesi.mp3",
+  wheel: "Çark_sesi.mp3"
+};
+
+const audioCache = {};
+function getAudio(key) {
+  const file = SOUND_FILES[key];
+  if (!file) return null;
+  if (!audioCache[key]) {
+    const a = new Audio(encodeURI(file));
+    a.preload = "auto";
+    audioCache[key] = a;
+  }
+  return audioCache[key];
+}
+// Aynı ses üst üste hızlı tetiklenebildiği için (örn. art arda tık) her
+// çalışta node klonlanıyor, böylece önceki çalma kesilmeden yenisi başlıyor.
+function playSound(key, { volume = 1 } = {}) {
+  if (!soundOn) return;
+  const base = getAudio(key);
+  if (!base) return;
+  try {
+    const node = base.cloneNode(true);
+    node.volume = volume;
+    node.play().catch(() => {});
+  } catch (e) { /* ses opsiyonel bir katman, hata olursa sessiz geç */ }
+}
+
 function ensureAudioCtx() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   if (audioCtx.state === "suspended") audioCtx.resume();
@@ -3181,10 +3252,9 @@ function tone(freq, start, dur, type = "sine", gain = 0.18) {
   } catch (e) { /* ses opsiyonel bir katman, hata olursa sessiz geç */ }
 }
 
-// Nazik, rahatsız etmeyen genel tık sesi (yumuşak sinüs, kısa ve tatlı).
+// Genel tık sesi: kullanıcının sağladığı gerçek ses dosyası.
 function sfxClick() {
-  tone(880, 0, 0.055, "sine", 0.05);
-  tone(1320, 0.018, 0.05, "sine", 0.032);
+  playSound("click");
 }
 function sfxShake() { tone(140, 0, 0.09, "sawtooth", 0.12); tone(110, 0.06, 0.09, "sawtooth", 0.10); }
 function sfxOpenStandart() { tone(660, 0, 0.12, "triangle"); tone(880, 0.08, 0.15, "triangle"); }
@@ -3214,12 +3284,10 @@ function getWheelRotationDeg(el) {
 function buildWheelSpokesGradient() {
   return `repeating-conic-gradient(rgba(20,4,32,.55) 0deg 2deg, transparent 2deg ${WHEEL_SEGMENT_ANGLE}deg)`;
 }
-// Kılıç çarpışması: metalik "çınnn" (yüksek, hızlı sönen tiz tonlar) + altında kısa bir vuruş sesi.
+// Saldırı sesi: kullanıcının sağladığı 2 gerçek ses dosyasından rastgele biri
+// çalınır, böylece art arda saldırılarda ses tekdüze olmaz.
 function sfxAttack() {
-  tone(1900, 0, 0.05, "square", 0.11);
-  tone(2500, 0.01, 0.09, "triangle", 0.10);
-  tone(3300, 0.02, 0.16, "sine", 0.07);
-  tone(160, 0, 0.06, "sawtooth", 0.10);
+  playSound(Math.random() < 0.5 ? "attack" : "attack2");
 }
 
 const soundToggleBtn = document.getElementById("soundToggleBtn");
