@@ -925,7 +925,7 @@ button.equip-slot{ font-family: inherit; cursor:pointer; width:100%; }
    savaş geçmişi rozetleri, öğretici/güncellemeler iyileştirmeleri
    ============================================================ */
 
-/* ---------- SEKME BAŞLIKLARI (Clash Royale tarzı şerit banner) ---------- */
+/* ---------- SEKME BAŞLIKLARI (kalın şerit banner) ---------- */
 .tab-hero{
   text-align:center;
   padding: 4px 0 2px;

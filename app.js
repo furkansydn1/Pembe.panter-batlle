@@ -944,7 +944,7 @@ tutNextBtn.onclick = () => goToTutorialSlide(currentTutorialIndex() + 1);
 const NEW_FEATURE_SLIDES = {
   "1.13": [
     { icon: "🆕", title: "v1.13 Yenilikleri!", text: "Bu güncelleme oyunun görünüşüne ve kulağa gelişine odaklanıyor, ayrıca can sıkan bir haftalık liderlik hatası da düzeltildi. Hadi bakalım." },
-    { icon: "🔤", title: "Yeni Yazı Tipleri", text: "Oyunun geneli artık daha yuvarlak ve kalın bir fontla (Fredoka) yazılıyor. Logo ve büyük başlık şeritleri ise Clash Royale'e en yakın kalın fontlardan biri olan Luckiest Guy ile gösteriliyor." },
+    { icon: "🔤", title: "Yeni Yazı Tipleri", text: "Oyunun geneli artık daha yuvarlak ve kalın bir fontla (Fredoka) yazılıyor. Logo ve büyük başlık şeritleri ise daha iddialı, kalın bir font olan Luckiest Guy ile gösteriliyor." },
     { icon: "🔊", title: "Gerçek Ses Efektleri", text: "Buton tıklaması, saldırı anı, savaş/Kahin Bahsi/Gizemli Yabancı sonuçlarındaki kazanma-kaybetme sesleri ve Şanslı Çark'ın dönüşü artık sentetik biplerden gerçek ses kayıtlarına geçti." },
     { icon: "🏆", title: "Haftalık Liderlik Sıfırlaması Düzeltildi", text: "Sıfırlama artık sadece girişte değil, oyun açıkken de dakikada bir otomatik kontrol ediliyor. Pazar 00:00 geldiğinde uygulama açık kalsa bile puanlar gerçekten sıfırlanıp şampiyon ödülünü kapıyor." }
   ],
@@ -1079,7 +1079,7 @@ const RELEASES = [
     version: "1.13",
     date: "5 Temmuz 2026",
     items: [
-      "🔤 Yeni yazı tipleri: Oyunun geneli artık yuvarlak, kalın ve daha 'oyunsu' bir fontla (Fredoka) yazılıyor; logo ve büyük başlık şeritleri (🐆 Pembe Panterler Battle, sekme başlıkları, öğretici ve yenilikler ekranlarındaki başlıklar) ise Clash Royale tarzına en yakın kalın font olan Luckiest Guy ile gösteriliyor.",
+      "🔤 Yeni yazı tipleri: Oyunun geneli artık yuvarlak, kalın ve daha 'oyunsu' bir fontla (Fredoka) yazılıyor; logo ve büyük başlık şeritleri (🐆 Pembe Panterler Battle, sekme başlıkları, öğretici ve yenilikler ekranlarındaki başlıklar) ise daha iddialı, kalın bir font olan Luckiest Guy ile gösteriliyor.",
       "🔊 Gerçek ses efektleri: Genel buton tıklaması, saldırı anı (2 farklı ses arasında rastgele seçiliyor), savaş/Kahin Bahsi/Gizemli Yabancı sonuçlarında kazanma-kaybetme sesleri ve Şanslı Çark'ın dönüş sesi artık sentetik bip yerine gerçek ses kayıtlarıyla çalıyor.",
       "🏆 Haftalık Liderlik Tablosu düzeltmesi: sıfırlama kontrolü önceden sadece oyuna giriş yapıldığında çalışıyordu, bu yüzden uygulama Pazar 00:00'ı açık bir sekmede geçirenlerde hiç tetiklenmiyordu. Artık oyun açıkken de dakikada bir otomatik kontrol ediliyor, hafta döndüğü an puanlar gerçekten sıfırlanıp şampiyon ödülünü kapıyor."
     ]
@@ -3192,13 +3192,13 @@ let soundOn = localStorage.getItem("gacha_sound_on") !== "0";
 // ============================================================
 // GERÇEK SES DOSYALARI
 // Aşağıdaki dosyaları index.html ile AYNI klasöre koy (veya yolları
-// kendi klasör yapına göre güncelle, örn. "sounds/Click_Sesi.ogg").
+// kendi klasör yapına göre güncelle, örn. "sounds/Click_Sesi.mp3").
 // Sadece bu 5 aksiyon gerçek ses dosyasıyla değiştirildi (tıklama,
 // saldırı, kazanma, kaybetme, çark); kutu açma efektleri hâlâ
 // Web Audio ile sentezleniyor (o dosyalar ayrıca eklenecek).
 // ============================================================
 const SOUND_FILES = {
-  click: "Click_Sesi.ogg",
+  click: "Click_Sesi.mp3",
   attack: "Saldırma_sesi.mp3",
   attack2: "Saldırma_Sesi_2.wav",
   win: "Kazanma_Sesi.mp3",
@@ -3226,8 +3226,8 @@ function playSound(key, { volume = 1 } = {}) {
   try {
     const node = base.cloneNode(true);
     node.volume = volume;
-    node.play().catch(() => {});
-  } catch (e) { /* ses opsiyonel bir katman, hata olursa sessiz geç */ }
+    node.play().catch((err) => console.warn(`Ses çalınamadı (${SOUND_FILES[key]}):`, err.message));
+  } catch (e) { console.warn(`Ses çalınamadı (${SOUND_FILES[key]}):`, e.message); }
 }
 
 function ensureAudioCtx() {
