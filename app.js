@@ -746,6 +746,54 @@ function applyEnchant(slotInfo, atk, def, rarity) {
   return { atk, def, enchantPct };
 }
 
+// ============================================================
+// UFAK PASİF ÖZELLİKLER (Standart & Nadir eşyalar için)
+// Efsanevi eşyalardaki gibi güçlü/spesifik pasifler DEĞİL: her standart/nadir
+// eşya, düştüğü anda bu havuzdan rastgele TEK bir "çeşni" özelliği kazanır.
+// Büyüklükler kasıtlı olarak küçük tutuldu (efsanevi çarpanların ~%15'inin
+// çok altında) ve nadirlik arttıkça sadece hafifçe büyüyor. Amaç: standart/
+// nadir eşyaları biraz daha karakterli/eğlenceli yapmak, dengeyi bozmamak.
+// Efsanevi eşyalar bu sistemi kullanmaz, kendi özel "effect" alanları var.
+// ============================================================
+const MINOR_TRAIT_POOL = [
+  { id: "atk_boost", icon: "⚔️", name: "Keskin",
+    range: { standart: [2, 4], nadir: [4, 7] },
+    desc: (pct) => `Saldırı gücünü savaşta %${pct} artırır.` },
+  { id: "def_boost", icon: "🛡️", name: "Sağlam",
+    range: { standart: [2, 4], nadir: [4, 7] },
+    desc: (pct) => `Savunma gücünü savaşta %${pct} artırır.` },
+  { id: "oracle_boost", icon: "🔮", name: "Kahin Dostu",
+    range: { standart: [4, 8], nadir: [8, 14] },
+    desc: (pct) => `Kahin Bahsi'ni kazanırsan ödülüne %${pct} bonus katar.` },
+  { id: "bounty_boost", icon: "💀", name: "Ödül Avcısı",
+    range: { standart: [4, 8], nadir: [8, 14] },
+    desc: (pct) => `Kelle Avcısı ödülünü kaparsan %${pct} fazla toz kazandırır.` },
+  { id: "dust_boost", icon: "✨", name: "Tozlu",
+    range: { standart: [8, 15], nadir: [15, 25] },
+    desc: (pct) => `Bu eşyayı toza çevirirsen %${pct} fazla toz verir.` }
+];
+
+// Efsanevi eşyalar bu sistemi kullanmadığı için sadece standart/nadir için çağrılır.
+function rollMinorTrait(rarity) {
+  const def = pick(MINOR_TRAIT_POOL);
+  const [min, max] = def.range[rarity];
+  const pct = randInt(min, max);
+  return { id: def.id, icon: def.icon, name: def.name, pct, desc: def.desc(pct) };
+}
+
+// Bir oyuncunun kuşandığı TÜM eşyalar arasında, belirli bir ufak pasif
+// özelliğe sahip olanların yüzdelerini toplar (birden fazla eşyada aynı
+// özellik varsa üst üste biner, ama her biri zaten küçük olduğu için
+// toplamı da makul kalır).
+function getMinorTraitBonusPct(equipment, traitId) {
+  let total = 0;
+  for (const s of SLOTS) {
+    const item = equipment?.[s.key];
+    if (item?.minorTrait?.id === traitId) total += item.minorTrait.pct;
+  }
+  return total;
+}
+
 function generateLootItemForRarity(slot, rarity) {
   const slotInfo = SLOT_MAP[slot];
   const id = genItemId();
@@ -757,7 +805,8 @@ function generateLootItemForRarity(slot, rarity) {
     return {
       id, name: base.name, slot, rarity,
       atk, def, enchantPct,
-      effect: base.effect, effectDesc: base.desc
+      effect: base.effect, effectDesc: base.desc,
+      minorTrait: null
     };
   }
 
@@ -771,7 +820,8 @@ function generateLootItemForRarity(slot, rarity) {
     return {
       id, name, slot, rarity,
       atk, def, enchantPct,
-      effect: null, effectDesc: null
+      effect: null, effectDesc: null,
+      minorTrait: rollMinorTrait(rarity)
     };
   }
 
@@ -785,7 +835,8 @@ function generateLootItemForRarity(slot, rarity) {
   return {
     id, name, slot, rarity,
     atk, def, enchantPct,
-    effect: null, effectDesc: null
+    effect: null, effectDesc: null,
+    minorTrait: rollMinorTrait(rarity)
   };
 }
 
@@ -1435,7 +1486,10 @@ async function disenchantItem(slot, itemId) {
   const target = getSlotInventory(slot).find(it => it.id === itemId);
   if (!target) { alert("Eşya bulunamadı."); return; }
   const newInvArr = getSlotInventory(slot).filter(it => it.id !== itemId);
-  const dustGain = Math.round((DUST_FROM_RARITY[target.rarity] || 0) * getTodaysEvent().dustMult);
+  let dustGain = Math.round((DUST_FROM_RARITY[target.rarity] || 0) * getTodaysEvent().dustMult);
+  if (target.minorTrait?.id === "dust_boost") {
+    dustGain = Math.round(dustGain * (1 + target.minorTrait.pct / 100));
+  }
   await updateDoc(doc(db, PLAYERS_COL, currentPlayerId), {
     [`inventory.${slot}`]: newInvArr,
     dust: (currentPlayerData.dust || 0) + dustGain
@@ -1498,6 +1552,7 @@ function renderInventoryModal() {
           ${it.enchantPct ? `<span class="inv-stat-pill enchant">✨ Efsun +%${it.enchantPct} ${statLabel}</span>` : ""}
         </div>
         ${it.effectDesc ? `<div class="item-popup-passive" style="margin-top:6px;">✨ ${it.effectDesc}</div>` : ""}
+        ${it.minorTrait ? `<div class="item-popup-passive minor-passive" style="margin-top:6px;">${it.minorTrait.icon} <b>${it.minorTrait.name}:</b> ${it.minorTrait.desc}</div>` : ""}
         <div class="inv-item-actions">
           <button class="btn-mini nadir-mini" data-action="equip" data-id="${it.id}" ${isEquipped ? "disabled" : ""}>Kuşan</button>
           <button class="btn-mini" data-action="dust" data-id="${it.id}" ${isEquipped ? "disabled" : ""}>Toza Çevir</button>
@@ -1842,7 +1897,7 @@ function openViewEquipment(player) {
         <div class="equip-slot-icon">${s.icon}</div>
         <div class="equip-slot-label">${s.label}</div>
         <div class="equip-slot-item ${item ? "" : "empty"}">${item ? item.name : "Boş"}</div>
-        ${item ? `<div class="equip-slot-count">⚔️${item.atk} 🛡️${item.def}${item.enchantPct ? ` · ✨+%${item.enchantPct}` : ""}</div>` : ""}
+        ${item ? `<div class="equip-slot-count">⚔️${item.atk} 🛡️${item.def}${item.enchantPct ? ` · ✨+%${item.enchantPct}` : ""}${item.minorTrait ? ` · ${item.minorTrait.icon}%${item.minorTrait.pct}` : ""}</div>` : ""}
       </div>`;
   }).join("");
   viewEquipmentModal.classList.remove("hidden");
@@ -2318,7 +2373,8 @@ async function ensureOracleBetResolved() {
   try {
     const topId = allPlayers[0]?.id;
     const won = bet.targetId === topId;
-    const reward = won ? (bet.amount || 0) * 2 : 0;
+    const oracleBoostPct = won ? getMinorTraitBonusPct(currentPlayerData.equipment, "oracle_boost") : 0;
+    const reward = won ? Math.round((bet.amount || 0) * 2 * (1 + oracleBoostPct / 100)) : 0;
     const oracleWeeklyQuests = won ? incrementQuestProgress(currentPlayerData.weeklyQuests, "oracle_win", 1) : currentPlayerData.weeklyQuests;
     const oracleMonthlyQuests = won ? incrementQuestProgress(currentPlayerData.monthlyQuests, "oracle_win", 1) : currentPlayerData.monthlyQuests;
     await updateDoc(doc(db, PLAYERS_COL, currentPlayerId), {
@@ -2564,6 +2620,7 @@ async function claimQuest(period, questId) {
       <div class="item-popup-stats">⚔️ +${grantedItem.atk} &nbsp; 🛡️ +${grantedItem.def} &nbsp; · ${grantedItem.rarity.toUpperCase()} (${RARITY_CHANCE_LABELS[grantedItem.rarity]} şans)</div>
       ${grantedItem.enchantPct ? `<div class="item-popup-passive" style="color:var(--accent-2)">✨ Efsun: +%${grantedItem.enchantPct} ${SLOT_MAP[grantedItem.slot].type === "atk" ? "Saldırı" : "Savunma"}</div>` : ""}
       ${grantedItem.effectDesc ? `<div class="item-popup-passive">✨ ${grantedItem.effectDesc}</div>` : ""}
+      ${grantedItem.minorTrait ? `<div class="item-popup-passive minor-passive">${grantedItem.minorTrait.icon} ${grantedItem.minorTrait.name}: ${grantedItem.minorTrait.desc}</div>` : ""}
     `;
     itemPopup.classList.remove("hidden");
     setTimeout(() => itemPopup.classList.add("hidden"), 5000);
@@ -2781,6 +2838,7 @@ async function performBoxOpen({ forcedRarity = null, costDust = 0, isFree = fals
     <div class="item-popup-stats">⚔️ +${item.atk} &nbsp; 🛡️ +${item.def} &nbsp; · ${item.rarity.toUpperCase()} (${RARITY_CHANCE_LABELS[item.rarity]} şans)</div>
     ${item.enchantPct ? `<div class="item-popup-passive" style="color:var(--accent-2)">✨ Efsun: +%${item.enchantPct} ${SLOT_MAP[item.slot].type === "atk" ? "Saldırı" : "Savunma"}</div>` : ""}
     ${item.effectDesc ? `<div class="item-popup-passive">✨ ${item.effectDesc}</div>` : ""}
+    ${item.minorTrait ? `<div class="item-popup-passive minor-passive">${item.minorTrait.icon} ${item.minorTrait.name}: ${item.minorTrait.desc}</div>` : ""}
     ${wasEmpty
       ? `<div class="item-popup-passive" style="color:var(--green)">✅ Boş slota otomatik kuşanıldı!</div>`
       : `<div class="popup-quick-actions">
@@ -3039,6 +3097,14 @@ async function runAttack(defenderId) {
         legendaryLog.push(`${attacker.name}'in ${atkMultItem.name} saldırısını güçlendirdi.`);
       }
 
+      // Standart/Nadir eşyalardaki ufak "Keskin/Sağlam" pasifleri: efsanevi
+      // çarpanların (~%15) çok altında kalan küçük çeşni bonusları (%2-7 arası,
+      // eşya başına). Savaş logunu kalabalıklaştırmamak için sessizce uygulanır.
+      const minorAtkPct = getMinorTraitBonusPct(attacker.equipment, "atk_boost");
+      if (minorAtkPct > 0) baseAttack *= (1 + minorAtkPct / 100);
+      const minorDefPct = getMinorTraitBonusPct(defender.equipment, "def_boost");
+      if (minorDefPct > 0) baseDefense *= (1 + minorDefPct / 100);
+
       // Günün olayı: küresel saldırı/savunma/şans çarpanları
       baseAttack *= dailyEvent.attackMult;
       baseDefense *= dailyEvent.defenseMult;
@@ -3153,9 +3219,10 @@ async function runAttack(defenderId) {
       let attackerDustGain = 0;
       let bountyClearPayload = null;
       if (attackerWins && bounty && bounty.active && bounty.targetId === defenderId) {
-        attackerDustGain = bounty.amount || 0;
+        const bountyBoostPct = getMinorTraitBonusPct(attacker.equipment, "bounty_boost");
+        attackerDustGain = Math.round((bounty.amount || 0) * (1 + bountyBoostPct / 100));
         bountyClearPayload = { active: false, targetId: null, targetName: null, amount: 0, placedById: null, placedByName: null };
-        legendaryLog.push(`💀 ${attacker.name}, ${defender.name}'in kellesindeki ${bounty.amount} tozluk ödülü kaptı!`);
+        legendaryLog.push(`💀 ${attacker.name}, ${defender.name}'in kellesindeki ödülü kapıp ${attackerDustGain} toz kazandı!`);
       }
 
       // ---- Kariyer istatistikleri (İstatistik sekmesi) ve günlük galibiyet/mağlubiyet sayaçları ----

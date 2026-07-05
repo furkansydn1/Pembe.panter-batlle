@@ -1380,3 +1380,14 @@ button.equip-slot{ font-family: inherit; cursor:pointer; width:100%; }
 .bag-slot.rarity-nadir{ box-shadow: 0 0 0 2px var(--blue) inset, 0 0 10px #4d9bff44; animation: nadirPulse 2.2s ease-in-out infinite; }
 .bag-slot.rarity-efsanevi{ box-shadow: 0 0 0 2px var(--gold) inset, 0 0 14px #ffcc4d55; animation: efsaneviPulse 1.8s ease-in-out infinite; }
 .bag-slot-icon{ filter: drop-shadow(0 2px 2px rgba(0,0,0,.4)); }
+
+/* ---------- STANDART/NADİR EŞYALARDAKİ UFAK PASİF ÖZELLİKLER ---------- */
+/* Efsanevi eşyaların altın renkli, güçlü pasifleriyle karışmasın diye
+   ayrı, daha sakin bir renk kullanılıyor. */
+.item-popup-passive.minor-passive{
+  color: var(--text-dim);
+  background: rgba(255,255,255,.04);
+  border-radius: 10px;
+  padding: 6px 10px;
+}
+.item-popup-passive.minor-passive b{ color: var(--accent-2); }
