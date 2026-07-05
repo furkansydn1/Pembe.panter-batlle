@@ -122,7 +122,117 @@ const QUEST_TIER_REWARDS = {
   orta: { dustMin: 4, dustMax: 7, pointsMin: 3, pointsMax: 5, itemChance: 0.2 },
   zor: { dustMin: 9, dustMax: 14, pointsMin: 6, pointsMax: 10, itemChance: 1 }
 };
-const QUEST_TIER_LABELS = { kolay: "Kolay", orta: "Orta", zor: "Zor" };
+const QUEST_TIER_LABELS = { kolay: "Kolay", orta: "Orta", zor: "Zor", efsanevi: "Efsanevi" };
+
+// ============================================================
+// HAFTALIK & AYLIK GÖREVLER
+// Günlük görevlerden ayrı bir havuz: aynı tiplere (kutu aç, savaşa gir vb.)
+// dokunmadan, ayrıca Kahin Bahsi ve Kelle Avcısı'na özel niş görev tipleri
+// de eklendi (oracle_win, bounty_win). Zorluk günlükten belirgin şekilde
+// yüksek tutuldu; ödüller de buna göre ölçeklendi. Aylık görevlerden
+// SADECE en zoru (tier "efsanevi") garanti efsanevi eşya veriyor, geri
+// kalan tüm haftalık/aylık ödüller toz + puan (+ bazen garanti/şanslı
+// nadir eşya) şeklinde.
+// ============================================================
+const WEEKLY_TIER_REWARDS = {
+  orta: { dustMin: 10, dustMax: 16, pointsMin: 8, pointsMax: 12, itemChance: 0.35 },
+  zor: { dustMin: 18, dustMax: 26, pointsMin: 14, pointsMax: 20, itemChance: 0.6 }
+};
+const MONTHLY_TIER_REWARDS = {
+  zor: { dustMin: 30, dustMax: 45, pointsMin: 20, pointsMax: 30, itemChance: 1 },
+  efsanevi: { dustMin: 40, dustMax: 60, pointsMin: 25, pointsMax: 35, itemChance: 0, legendary: true }
+};
+
+// Haftada 3 görev: aşağıdaki havuzdan rastgele, birbirinden farklı 3 tip seçilir.
+const WEEKLY_QUEST_TEMPLATES = [
+  { type: "open_box", tier: "orta", icon: "📦", target: 15, label: (t) => `${t} kutu aç` },
+  { type: "attack_count", tier: "orta", icon: "⚔️", target: 12, label: (t) => `${t} savaşa gir` },
+  { type: "battle_win", tier: "zor", icon: "🏆", target: 6, label: (t) => `${t} savaş kazan` },
+  { type: "energy_task", tier: "orta", icon: "⚡", target: 15, label: (t) => `${t} kez enerji görevi yap` },
+  { type: "oracle_win", tier: "zor", icon: "🔮", target: 3, label: (t) => `${t} kez Kahin Bahsi'ni doğru bil` },
+  { type: "bounty_win", tier: "zor", icon: "💀", target: 2, label: (t) => `${t} kez Kelle Avcısı ödülünü kap` }
+];
+
+// Ayda her zaman bu en zor görev atanır (efsanevi eşya ödülü sadece bunda var).
+const MONTHLY_HARD_TEMPLATE = { type: "battle_win", tier: "efsanevi", icon: "👑", target: 30, label: (t) => `Bu ay ${t} savaş kazan` };
+// Bunun yanına, aşağıdaki havuzdan rastgele 2 farklı tip daha eklenir (toz/puan/garanti nadir eşya verir).
+const MONTHLY_QUEST_POOL = [
+  { type: "open_box", tier: "zor", icon: "📦", target: 60, label: (t) => `Bu ay ${t} kutu aç` },
+  { type: "attack_count", tier: "zor", icon: "⚔️", target: 40, label: (t) => `Bu ay ${t} savaşa gir` },
+  { type: "oracle_win", tier: "zor", icon: "🔮", target: 10, label: (t) => `Bu ay ${t} kez Kahin Bahsi'ni doğru bil` },
+  { type: "bounty_win", tier: "zor", icon: "💀", target: 5, label: (t) => `Bu ay ${t} kez Kelle Avcısı ödülünü kap` },
+  { type: "energy_task", tier: "zor", icon: "⚡", target: 45, label: (t) => `Bu ay ${t} kez enerji görevi yap` }
+];
+
+function rollQuestRewardGeneric(table, tier) {
+  const r = table[tier];
+  return {
+    dust: randInt(r.dustMin, r.dustMax),
+    points: randInt(r.pointsMin, r.pointsMax),
+    item: !r.legendary && Math.random() < r.itemChance,
+    legendary: !!r.legendary
+  };
+}
+
+function buildPeriodQuest(template, idx, rewardTable, prefix) {
+  const reward = rollQuestRewardGeneric(rewardTable, template.tier);
+  let label = template.label;
+  if (typeof label === "function") label = label(template.target);
+  return {
+    id: `${prefix}${idx}_${template.type}`, type: template.type, tier: template.tier, icon: template.icon,
+    label, target: template.target, progress: 0, completed: false, claimed: false,
+    rewardDust: reward.dust, rewardPoints: reward.points, rewardItem: reward.item, rewardLegendary: reward.legendary
+  };
+}
+
+function getWeekStartDate(d = new Date()) {
+  const day = d.getDay();
+  const diff = (day === 0 ? -6 : 1 - day);
+  const monday = new Date(d);
+  monday.setHours(0, 0, 0, 0);
+  monday.setDate(d.getDate() + diff);
+  return monday;
+}
+function weekIdStr(d = new Date()) { return dateStr(getWeekStartDate(d)); }
+function monthIdStr(d = new Date()) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; }
+
+function shuffleArr(arr) { return [...arr].sort(() => Math.random() - 0.5); }
+
+async function ensureWeeklyQuestsForThisWeek(data) {
+  const wk = weekIdStr();
+  if (data.questsWeek === wk && Array.isArray(data.weeklyQuests) && data.weeklyQuests.length) return;
+
+  const shuffled = shuffleArr(WEEKLY_QUEST_TEMPLATES);
+  const chosenTypes = new Set();
+  const picked = [];
+  for (const t of shuffled) {
+    if (chosenTypes.has(t.type)) continue;
+    chosenTypes.add(t.type);
+    picked.push(t);
+    if (picked.length === 3) break;
+  }
+  const quests = picked.map((t, i) => buildPeriodQuest(t, i, WEEKLY_TIER_REWARDS, "w"));
+
+  await updateDoc(doc(db, PLAYERS_COL, currentPlayerId), {
+    weeklyQuests: quests,
+    questsWeek: wk
+  });
+}
+
+async function ensureMonthlyQuestsForThisMonth(data) {
+  const mo = monthIdStr();
+  if (data.questsMonth === mo && Array.isArray(data.monthlyQuests) && data.monthlyQuests.length) return;
+
+  const shuffled = shuffleArr(MONTHLY_QUEST_POOL);
+  const picked = shuffled.slice(0, 2);
+  const templatesToUse = [MONTHLY_HARD_TEMPLATE, ...picked];
+  const quests = templatesToUse.map((t, i) => buildPeriodQuest(t, i, MONTHLY_TIER_REWARDS, "m"));
+
+  await updateDoc(doc(db, PLAYERS_COL, currentPlayerId), {
+    monthlyQuests: quests,
+    questsMonth: mo
+  });
+}
 
 const QUEST_TEMPLATES = [
   { type: "login", tier: "kolay", icon: "👋", label: "Bugün giriş yap", target: 1, autoComplete: true },
@@ -506,6 +616,8 @@ const attackTargetsEl = document.getElementById("attackTargets");
 const attackStatus = document.getElementById("attackStatus");
 
 const questsListEl = document.getElementById("questsList");
+const weeklyQuestsListEl = document.getElementById("weeklyQuestsList");
+const monthlyQuestsListEl = document.getElementById("monthlyQuestsList");
 
 const topPerformersBanner = document.getElementById("topPerformersBanner");
 const tpBestName = document.getElementById("tpBestName");
@@ -528,6 +640,15 @@ const bountyStatus = document.getElementById("bountyStatus");
 const statsOverviewEl = document.getElementById("statsOverview");
 const statsOpponentsEl = document.getElementById("statsOpponents");
 const statsStreakEl = document.getElementById("statsStreak");
+
+const oraclePending = document.getElementById("oraclePending");
+const oracleTargetLabel = document.getElementById("oracleTargetLabel");
+const oracleAmountLabel = document.getElementById("oracleAmountLabel");
+const oracleForm = document.getElementById("oracleForm");
+const oracleTargetSelect = document.getElementById("oracleTargetSelect");
+const oracleAmountInput = document.getElementById("oracleAmountInput");
+const placeOracleBtn = document.getElementById("placeOracleBtn");
+const oracleStatus = document.getElementById("oracleStatus");
 
 const newFeaturesModal = document.getElementById("newFeaturesModal");
 const newFeaturesTrack = document.getElementById("newFeaturesTrack");
@@ -607,6 +728,18 @@ tutNextBtn.onclick = () => goToTutorialSlide(currentTutorialIndex() + 1);
 // ama bu sürümü henüz görmemiş herkese otomatik gösterilir.
 // ============================================================
 const NEW_FEATURE_SLIDES = {
+  "1.11": [
+    { icon: "🆕", title: "v1.11 Yenilikleri!", text: "Bu güncellemede görev sistemine yeni bir katman eklendi ve Kahin Bahsi'nde birkaç önemli kural netleşti. Hadi bakalım neler değişti." },
+    { icon: "🗓️", title: "Haftalık Görevler", text: "Görev sekmesine yeni bir 🗓️ Haftalık Görevler paneli eklendi. Her hafta Pazartesi sıfırlanan bu görevlerden 3 tanesi rastgele atanıyor (örn. çokça kutu aç, savaş kazan, Kahin Bahsi'ni doğru bil, Kelle Avcısı ödülünü kap). Zorluk günlük görevlerden belirgin şekilde yüksek, ödüller de (toz + puan + bazen garanti/şanslı nadir eşya) buna göre büyütüldü." },
+    { icon: "📅", title: "Aylık Görevler", text: "Yeni 📅 Aylık Görevler panelinde her ay 3 görev var. Bunlardan biri her zaman sabit ve gerçekten zor: 'Bu ay 30 savaş kazan'. Bu görevi tamamlayan tek ödül olarak garanti bir efsanevi eşya kazanıyor! Diğer iki aylık görev ise (kutu açma, saldırı, Kahin Bahsi veya Kelle Avcısı temelli) büyük miktarda toz, puan ve garanti nadir eşya veriyor." },
+    { icon: "🔮", title: "Kahin Bahsi'nde Netleşen Kurallar", text: "Kahin Bahsi'nde artık kendine bahis oynayamıyorsun, hedef listende kendi ismin görünmüyor. Ayrıca tek seferde yatırabileceğin toz miktarı en fazla 10 toz ile sınırlandı. Bu değişiklikler bahsin herkes için adil ve dengeli kalması içindi." },
+    { icon: "🔊", title: "Ses Efektleri Sağlam", text: "Bir önceki güncellemede eklenen yumuşak buton tıklama sesi ve saldırıdaki metalik 'çınnn' efekti bu sürümde de aynen korunuyor, sağlam ve sorunsuz çalışıyor." }
+  ],
+  "1.10": [
+    { icon: "🆕", title: "v1.10 Yenilikleri!", text: "Bu güncellemede 1 yeni sistem ve oyunun kulaklara daha iyi gelmesi için bir ses güncellemesi var. Hadi bakalım." },
+    { icon: "🔮", title: "Kahin Bahsi", text: "Yeni 🔮 Kahin Bahsi, Sıra sekmesine eklendi. Günün sonunda liderlik tablosunun 1.'sinin kim olacağını tahmin edip toz yatırıyorsun. Günde 1 hakkın var: doğru bilirsen yatırdığın toz 2 katına çıkar, yanlış bilirsen gider. Sonucu bir sonraki girişinde otomatik öğrenirsin." },
+    { icon: "🔊", title: "Daha Tatlı Sesler", text: "Genel buton tıklama sesi artık çok daha yumuşak ve kulak yormuyor. Saldırı butonuna basınca ise gerçek bir kılıç çarpışması gibi metalik bir 'çınnn' sesi duyuyorsun." }
+  ],
   "1.9": [
     { icon: "🆕", title: "v1.9 Yenilikleri!", text: "Bu güncellemede oyuna 4 yepyeni sistem ve ana ekrana günlük bir performans panosu eklendi. Hadi hızlıca gezelim." },
     { icon: "📊", title: "Kişisel İstatistik", text: "Yeni 📊 İstatistik sekmesinde toplam kazanma/kaybetme oranını, en çok yendiğin ve en çok yenildiğin kişiyi, şu anki ve şimdiye kadarki en uzun kazanma serini görebilirsin." },
@@ -714,9 +847,27 @@ howToBtn.onclick = () => openTutorial();
 // Her yeni özellik bittiğinde status'u "soon" -> "done" yapıp
 // LATEST_UPDATE_VERSION'ı artırman yeterli, rozet otomatik güncellenir.
 // ============================================================
-const LATEST_UPDATE_VERSION = "1.9";
+const LATEST_UPDATE_VERSION = "1.11";
 
 const RELEASES = [
+  {
+    version: "1.11",
+    date: "5 Temmuz 2026",
+    items: [
+      "🗓️ Haftalık Görevler eklendi (Görev sekmesi): her hafta Pazartesi sıfırlanan, günlük görevlerden belirgin şekilde zor 3 rastgele görev atanıyor (kutu açma, savaşa girme, savaş kazanma, enerji görevi, Kahin Bahsi'ni doğru bilme veya Kelle Avcısı ödülü kapma temelli). Ödüller de zorluğa göre büyütüldü: daha fazla toz/puan ve şansa bağlı ya da garanti nadir eşya.",
+      "📅 Aylık Görevler eklendi (Görev sekmesi): her ay 3 görev atanıyor. Bunlardan biri her zaman sabit ve gerçekten zorlayıcı: 'Bu ay 30 savaş kazan'. Bu görevi tamamlayan TEK ödül olarak garanti bir efsanevi eşya kazanıyor. Diğer iki aylık görev ise büyük miktarda toz, puan ve garanti nadir eşya veriyor.",
+      "🔮 Kahin Bahsi'nde denge güncellemesi: artık kimse kendine bahis oynayamıyor (hedef listesinde kendi ismin görünmüyor) ve tek seferde yatırılabilecek toz miktarı en fazla 10 toz ile sınırlandırıldı.",
+      "🔊 Ses efektleri (buton tıklaması ve saldırı çınlaması) bu sürümde de değişmeden, sağlam şekilde korunuyor."
+    ]
+  },
+  {
+    version: "1.10",
+    date: "5 Temmuz 2026",
+    items: [
+      "🔮 Kahin Bahsi eklendi (Sıra sekmesi): günün sonunda liderlik tablosunun 1.'sinin kim olacağını tahmin edip toz yatırabilirsin. Günde 1 tahmin hakkın var, doğru bilirsen yatırdığın toz 2 katına çıkıyor, yanlış bilirsen yatırdığın toz gidiyor. Sonuç, ertesi gün oyuna giriş yapınca otomatik açıklanıyor.",
+      "🔊 Ses efektleri iyileştirildi: genel buton tıklama sesi çok daha yumuşak ve kulak yormayan bir 'tık' sesine çevrildi. Saldırı butonuna basınca artık gerçek bir kılıç çarpışması gibi metalik bir 'çınnn' + vuruş sesi çalıyor."
+    ]
+  },
   {
     version: "1.9",
     date: "5 Temmuz 2026",
@@ -1081,9 +1232,14 @@ newPlayerBtn.onclick = async () => {
       strangerUsed: false,
       strangerName: null,
       lastWheelSpinTime: 0,
+      oracleBet: null,
       dailyStatsDay: null,
       dailyWins: 0,
       dailyLosses: 0,
+      weeklyQuests: [],
+      questsWeek: null,
+      monthlyQuests: [],
+      questsMonth: null,
       stats: {
         totalWins: 0,
         totalLosses: 0,
@@ -1190,6 +1346,8 @@ async function startGame() {
   if (!openedTutorial) maybeShowNewFeatures();
   await ensureStrangerForToday(snap.data());
   await ensureDailyQuestsForToday(snap.data());
+  await ensureWeeklyQuestsForThisWeek(snap.data());
+  await ensureMonthlyQuestsForThisMonth(snap.data());
 
   // Kendi oyuncu belgemi canlı dinle
   onSnapshot(ref, (docSnap) => {
@@ -1205,6 +1363,8 @@ async function startGame() {
     renderQuests();
     renderWheel();
     renderStatsTab();
+    renderOraclePanel();
+    ensureOracleBetResolved();
     if (!collectionModal.classList.contains("hidden")) renderCollection();
     if (!inventoryModal.classList.contains("hidden")) renderInventoryModal();
   });
@@ -1217,6 +1377,8 @@ async function startGame() {
     renderAttackTargets();
     renderTopPerformers();
     renderBountyForm();
+    renderOracleForm();
+    ensureOracleBetResolved();
   });
 
   // Kelle Avcısı ilanını (paylaşımlı doküman) canlı dinle
@@ -1401,12 +1563,16 @@ async function useEnergyAction(taskId) {
   const dustGain = bonus ? task.bonusDust : randInt(task.dustMin, task.dustMax);
 
   const newQuests = incrementQuestProgress(currentPlayerData.dailyQuests, "energy_task", 1);
+  const newWeeklyQuests = incrementQuestProgress(currentPlayerData.weeklyQuests, "energy_task", 1);
+  const newMonthlyQuests = incrementQuestProgress(currentPlayerData.monthlyQuests, "energy_task", 1);
 
   await updateDoc(doc(db, PLAYERS_COL, currentPlayerId), {
     energy: current - task.cost,
     lastEnergyUpdate: Date.now(),
     dust: (currentPlayerData.dust || 0) + dustGain,
-    ...(newQuests !== currentPlayerData.dailyQuests ? { dailyQuests: newQuests } : {})
+    ...(newQuests !== currentPlayerData.dailyQuests ? { dailyQuests: newQuests } : {}),
+    ...(newWeeklyQuests !== currentPlayerData.weeklyQuests ? { weeklyQuests: newWeeklyQuests } : {}),
+    ...(newMonthlyQuests !== currentPlayerData.monthlyQuests ? { monthlyQuests: newMonthlyQuests } : {})
   });
 
   energyStatus.textContent = bonus
@@ -1629,6 +1795,100 @@ if (placeBountyBtn) {
 }
 
 // ============================================================
+// KAHİN BAHSİ
+// Gün başında, günün sonunda liderlik tablosunun 1.'sinin kim olacağını
+// tahmin edip toz yatırıyorsun. Doğru bilirsen yatırdığın toz 2 katına
+// çıkıyor, yanlışsa yatırdığın toz gidiyor. Günde sadece 1 tahmin hakkı var.
+// Sonuç, ertesi gün oyuna giriş yapınca (o anki liderlik tablosuyla
+// kıyaslanarak) otomatik açıklanır.
+// ============================================================
+let oracleResolving = false;
+
+const ORACLE_MAX_BET = 10;
+
+function renderOracleForm() {
+  if (!oracleTargetSelect || !currentPlayerId) return;
+  // Kimse kendine bahis oynayamasın diye seçim listesinden kendi ismi çıkarılıyor.
+  const options = allPlayers.filter(p => p.id !== currentPlayerId);
+  oracleTargetSelect.innerHTML = options.map(p => `<option value="${p.id}">${p.name}</option>`).join("");
+  if (oracleAmountInput) oracleAmountInput.max = String(ORACLE_MAX_BET);
+}
+
+function renderOraclePanel() {
+  if (!oraclePending || !currentPlayerData) return;
+  const bet = currentPlayerData.oracleBet;
+  const hasBetToday = bet && bet.day === dateStr();
+  oraclePending.classList.toggle("hidden", !hasBetToday);
+  oracleForm.classList.toggle("hidden", !!hasBetToday);
+  if (hasBetToday) {
+    oracleTargetLabel.textContent = bet.targetName;
+    oracleAmountLabel.textContent = bet.amount;
+  }
+}
+
+if (placeOracleBtn) {
+  placeOracleBtn.onclick = async () => {
+    if (!currentPlayerData) return;
+    const today = dateStr();
+    if (currentPlayerData.oracleBet && currentPlayerData.oracleBet.day === today) {
+      oracleStatus.textContent = "Bugün için zaten bir tahminin var."; return;
+    }
+    const targetId = oracleTargetSelect.value;
+    const targetPlayer = allPlayers.find(p => p.id === targetId);
+    const amount = parseInt(oracleAmountInput.value, 10);
+
+    if (!targetPlayer) { oracleStatus.textContent = "Bir oyuncu seç."; return; }
+    if (targetId === currentPlayerId) { oracleStatus.textContent = "Kendine bahis oynayamazsın."; return; }
+    if (!amount || amount < 1) { oracleStatus.textContent = "Geçerli bir toz miktarı gir."; return; }
+    if (amount > ORACLE_MAX_BET) { oracleStatus.textContent = `En fazla ${ORACLE_MAX_BET} toz yatırabilirsin.`; return; }
+    if ((currentPlayerData.dust || 0) < amount) { oracleStatus.textContent = "Yeterli tozun yok."; return; }
+
+    placeOracleBtn.disabled = true;
+    try {
+      await updateDoc(doc(db, PLAYERS_COL, currentPlayerId), {
+        dust: (currentPlayerData.dust || 0) - amount,
+        oracleBet: { day: today, targetId, targetName: targetPlayer.name, amount }
+      });
+      oracleStatus.textContent = "Tahminin kaydedildi, yarın sonucunu öğreneceksin!";
+      oracleAmountInput.value = "";
+    } catch (e) {
+      oracleStatus.textContent = "Bir hata oldu: " + e.message;
+    } finally {
+      placeOracleBtn.disabled = false;
+    }
+  };
+}
+
+// Önceki günden kalan bir tahmin varsa, o anki liderlik tablosuyla kıyaslayıp
+// sonucu açıklar ve tahmini temizler. Hem kendi oyuncu dokümanı hem de tüm
+// oyuncular listesi yüklendiğinde (iki ayrı onSnapshot) tetiklenmesi güvenlidir.
+async function ensureOracleBetResolved() {
+  if (!currentPlayerData || !allPlayers.length || oracleResolving) return;
+  const bet = currentPlayerData.oracleBet;
+  if (!bet || bet.day === dateStr()) return;
+
+  oracleResolving = true;
+  try {
+    const topId = allPlayers[0]?.id;
+    const won = bet.targetId === topId;
+    const reward = won ? (bet.amount || 0) * 2 : 0;
+    const oracleWeeklyQuests = won ? incrementQuestProgress(currentPlayerData.weeklyQuests, "oracle_win", 1) : currentPlayerData.weeklyQuests;
+    const oracleMonthlyQuests = won ? incrementQuestProgress(currentPlayerData.monthlyQuests, "oracle_win", 1) : currentPlayerData.monthlyQuests;
+    await updateDoc(doc(db, PLAYERS_COL, currentPlayerId), {
+      dust: (currentPlayerData.dust || 0) + reward,
+      oracleBet: null,
+      ...(oracleWeeklyQuests !== currentPlayerData.weeklyQuests ? { weeklyQuests: oracleWeeklyQuests } : {}),
+      ...(oracleMonthlyQuests !== currentPlayerData.monthlyQuests ? { monthlyQuests: oracleMonthlyQuests } : {})
+    });
+    showResultModal({
+      oracle: true, won, targetName: bet.targetName, amount: bet.amount, reward
+    });
+  } finally {
+    oracleResolving = false;
+  }
+}
+
+// ============================================================
 // GÜNLÜK GÖREVLER — mantık
 // ============================================================
 function rollQuestReward(tier) {
@@ -1740,47 +2000,53 @@ function buildItemGrantPayload(data, rarity) {
   };
 }
 
-function renderQuests() {
-  if (!currentPlayerData || !questsListEl) return;
-  const quests = currentPlayerData.dailyQuests || [];
-  if (!quests.length) {
-    questsListEl.innerHTML = `<p class="box-status">Bugünkü görevler yükleniyor...</p>`;
-    return;
-  }
-
-  questsListEl.innerHTML = quests.map(q => {
-    const pct = Math.min(100, Math.round(((q.progress || 0) / q.target) * 100));
-    const readyToClaim = q.completed && !q.claimed;
-    return `
+function questCardHtml(q) {
+  const pct = Math.min(100, Math.round(((q.progress || 0) / q.target) * 100));
+  const readyToClaim = q.completed && !q.claimed;
+  return `
       <div class="quest-card tier-${q.tier} ${q.claimed ? "claimed" : ""} ${readyToClaim ? "ready" : ""}">
         <div class="quest-top">
           <span class="quest-icon">${q.icon}</span>
           <span class="quest-label">${q.label}</span>
-          <span class="quest-tier-badge tier-${q.tier}">${QUEST_TIER_LABELS[q.tier]}</span>
+          <span class="quest-tier-badge tier-${q.tier}">${QUEST_TIER_LABELS[q.tier] || q.tier}</span>
         </div>
         <div class="quest-progress-track"><div class="quest-progress-fill" style="width:${pct}%"></div></div>
         <div class="quest-bottom">
           <span class="quest-progress-text">${q.progress || 0}/${q.target}</span>
-          <span class="quest-reward">✨${q.rewardDust} · ⭐${q.rewardPoints}${q.rewardItem ? " · 🔷 Nadir Eşya" : ""}</span>
+          <span class="quest-reward">✨${q.rewardDust} · ⭐${q.rewardPoints}${q.rewardItem ? " · 🔷 Nadir Eşya" : ""}${q.rewardLegendary ? " · 🌟 Efsanevi Eşya" : ""}</span>
           ${q.claimed
             ? `<span class="quest-claimed-tag">✅ Alındı</span>`
             : `<button class="btn-mini nadir-mini quest-claim-btn" data-id="${q.id}" ${readyToClaim ? "" : "disabled"}>Ödülü Al</button>`}
         </div>
       </div>`;
-  }).join("");
+}
 
-  questsListEl.querySelectorAll(".quest-claim-btn").forEach(btn => {
-    btn.onclick = () => claimQuest(btn.getAttribute("data-id"));
+function renderQuestList(container, quests, period, emptyMsg) {
+  if (!container) return;
+  if (!quests.length) {
+    container.innerHTML = `<p class="box-status">${emptyMsg}</p>`;
+    return;
+  }
+  container.innerHTML = quests.map(questCardHtml).join("");
+  container.querySelectorAll(".quest-claim-btn").forEach(btn => {
+    btn.onclick = () => claimQuest(period, btn.getAttribute("data-id"));
   });
 }
 
-async function claimQuest(questId) {
+function renderQuests() {
   if (!currentPlayerData) return;
-  const quests = currentPlayerData.dailyQuests || [];
+  renderQuestList(questsListEl, currentPlayerData.dailyQuests || [], "dailyQuests", "Bugünkü görevler yükleniyor...");
+  renderQuestList(weeklyQuestsListEl, currentPlayerData.weeklyQuests || [], "weeklyQuests", "Haftalık görevler yükleniyor...");
+  renderQuestList(monthlyQuestsListEl, currentPlayerData.monthlyQuests || [], "monthlyQuests", "Aylık görevler yükleniyor...");
+}
+
+async function claimQuest(period, questId) {
+  if (!currentPlayerData) return;
+  const quests = currentPlayerData[period] || [];
   const quest = quests.find(q => q.id === questId);
   if (!quest || !quest.completed || quest.claimed) return;
 
-  questsListEl.querySelectorAll(".quest-claim-btn").forEach(b => b.disabled = true);
+  document.querySelectorAll(".quest-claim-btn").forEach(b => b.disabled = true);
 
   let payload = {
     dust: (currentPlayerData.dust || 0) + (quest.rewardDust || 0),
@@ -1788,7 +2054,12 @@ async function claimQuest(questId) {
   };
 
   let grantedItem = null;
-  if (quest.rewardItem) {
+  if (quest.rewardLegendary) {
+    const itemGrant = buildItemGrantPayload(currentPlayerData, "efsanevi");
+    grantedItem = itemGrant._grantedItem;
+    delete itemGrant._grantedItem;
+    payload = { ...payload, ...itemGrant };
+  } else if (quest.rewardItem) {
     const itemGrant = buildItemGrantPayload(currentPlayerData, "nadir");
     grantedItem = itemGrant._grantedItem;
     delete itemGrant._grantedItem;
@@ -1796,7 +2067,7 @@ async function claimQuest(questId) {
   }
 
   const newQuests = quests.map(q => q.id === questId ? { ...q, claimed: true } : q);
-  payload.dailyQuests = newQuests;
+  payload[period] = newQuests;
 
   await updateDoc(doc(db, PLAYERS_COL, currentPlayerId), payload);
 
@@ -1977,6 +2248,8 @@ async function performBoxOpen({ forcedRarity = null, costDust = 0, isFree = fals
   const newDiscovered = Array.from(new Set([...(data.discoveredItems || []), item.name]));
   const newDust = Math.max(0, (data.dust || 0) - costDust);
   const newQuests = incrementQuestProgress(data.dailyQuests, "open_box", 1);
+  const newWeeklyQuests = incrementQuestProgress(data.weeklyQuests, "open_box", 1);
+  const newMonthlyQuests = incrementQuestProgress(data.monthlyQuests, "open_box", 1);
 
   const updatePayload = {
     equipment: newEquipment,
@@ -1988,7 +2261,9 @@ async function performBoxOpen({ forcedRarity = null, costDust = 0, isFree = fals
     dust: newDust,
     recentSlots: newRecentSlots,
     discoveredItems: newDiscovered,
-    ...(newQuests !== data.dailyQuests ? { dailyQuests: newQuests } : {})
+    ...(newQuests !== data.dailyQuests ? { dailyQuests: newQuests } : {}),
+    ...(newWeeklyQuests !== data.weeklyQuests ? { weeklyQuests: newWeeklyQuests } : {}),
+    ...(newMonthlyQuests !== data.monthlyQuests ? { monthlyQuests: newMonthlyQuests } : {})
   };
   if (isFree) {
     updatePayload.lastBoxOpenTime = Date.now();
@@ -2205,10 +2480,14 @@ async function runAttack(defenderId) {
       const chillItem = getEffect(attacker.equipment, "chill_risk");
       if (chillItem && Math.random() < 0.2) {
         const skippedQuests = incrementQuestProgress(attacker.dailyQuests, "attack_count", 1);
+        const skippedWeeklyQuests = incrementQuestProgress(attacker.weeklyQuests, "attack_count", 1);
+        const skippedMonthlyQuests = incrementQuestProgress(attacker.monthlyQuests, "attack_count", 1);
         tx.update(attackerRef, {
           lastAttackTime: Date.now(),
           lastAttackWindow: currentWindow,
-          ...(skippedQuests !== attacker.dailyQuests ? { dailyQuests: skippedQuests } : {})
+          ...(skippedQuests !== attacker.dailyQuests ? { dailyQuests: skippedQuests } : {}),
+          ...(skippedWeeklyQuests !== attacker.weeklyQuests ? { weeklyQuests: skippedWeeklyQuests } : {}),
+          ...(skippedMonthlyQuests !== attacker.monthlyQuests ? { monthlyQuests: skippedMonthlyQuests } : {})
         });
         logDetails.push(`${attacker.name}, Nargile Kılıcı'nın keyfine daldı ve saldıramadan bu seferki hakkını harcadı.`);
         tx.set(doc(collection(db, LOG_COL)), {
@@ -2395,9 +2674,17 @@ async function runAttack(defenderId) {
       // Günlük görev ilerlemesi: her saldırı denemesi, kazanılan savaş, ve
       // varsa "şu oyuncuyu yen" hedefi
       let attackerQuests = incrementQuestProgress(attacker.dailyQuests, "attack_count", 1);
+      let attackerWeeklyQuests = incrementQuestProgress(attacker.weeklyQuests, "attack_count", 1);
+      let attackerMonthlyQuests = incrementQuestProgress(attacker.monthlyQuests, "attack_count", 1);
       if (attackerWins) {
         attackerQuests = incrementQuestProgress(attackerQuests, "battle_win", 1);
         attackerQuests = incrementQuestProgress(attackerQuests, "defeat_player", 1, { targetPlayerId: defenderId });
+        attackerWeeklyQuests = incrementQuestProgress(attackerWeeklyQuests, "battle_win", 1);
+        attackerMonthlyQuests = incrementQuestProgress(attackerMonthlyQuests, "battle_win", 1);
+      }
+      if (attackerDustGain > 0) {
+        attackerWeeklyQuests = incrementQuestProgress(attackerWeeklyQuests, "bounty_win", 1);
+        attackerMonthlyQuests = incrementQuestProgress(attackerMonthlyQuests, "bounty_win", 1);
       }
 
       // Aynı hedefe art arda saldırı sınırı için cooldown haritasını güncelle:
@@ -2425,7 +2712,9 @@ async function runAttack(defenderId) {
         dailyWins: attackerDailyWins,
         dailyLosses: attackerDailyLosses,
         ...(attacker.curseNextAttack ? { curseNextAttack: null } : {}),
-        ...(attackerQuests !== attacker.dailyQuests ? { dailyQuests: attackerQuests } : {})
+        ...(attackerQuests !== attacker.dailyQuests ? { dailyQuests: attackerQuests } : {}),
+        ...(attackerWeeklyQuests !== attacker.weeklyQuests ? { weeklyQuests: attackerWeeklyQuests } : {}),
+        ...(attackerMonthlyQuests !== attacker.monthlyQuests ? { monthlyQuests: attackerMonthlyQuests } : {})
       });
       tx.update(defenderRef, {
         points: defenderPoints,
@@ -2466,6 +2755,14 @@ async function runAttack(defenderId) {
 }
 
 function showResultModal(result) {
+  if (result.oracle) {
+    resultContent.innerHTML = `
+      <div class="result-title ${result.won ? "win" : "lose"}">${result.won ? "🔮 Kahin Haklı Çıktı!" : "🔮 Kahin Yanıldı"}</div>
+      <p class="result-line">${result.targetName} için ${result.amount} toz yatırmıştın.</p>
+      <p class="result-line">${result.won ? `Tahminin doğru çıktı, +${result.reward} toz kazandın!` : "Bu sefer tutmadı, yatırdığın toz gitti."}</p>`;
+    resultModal.classList.remove("hidden");
+    return;
+  }
   if (result.stranger) {
     resultContent.innerHTML = `
       <div class="result-title ${result.won ? "win" : "lose"}">${result.won ? "🏆 Kazandın!" : "🤝 Bu Sefer Olmadı"}</div>
@@ -2548,7 +2845,11 @@ function tone(freq, start, dur, type = "sine", gain = 0.18) {
   } catch (e) { /* ses opsiyonel bir katman, hata olursa sessiz geç */ }
 }
 
-function sfxClick() { tone(520, 0, 0.08, "square", 0.10); }
+// Nazik, rahatsız etmeyen genel tık sesi (yumuşak sinüs, kısa ve tatlı).
+function sfxClick() {
+  tone(880, 0, 0.055, "sine", 0.05);
+  tone(1320, 0.018, 0.05, "sine", 0.032);
+}
 function sfxShake() { tone(140, 0, 0.09, "sawtooth", 0.12); tone(110, 0.06, 0.09, "sawtooth", 0.10); }
 function sfxOpenStandart() { tone(660, 0, 0.12, "triangle"); tone(880, 0.08, 0.15, "triangle"); }
 function sfxOpenRare() { tone(520, 0, 0.1, "triangle"); tone(780, 0.09, 0.12, "triangle"); tone(1040, 0.18, 0.2, "triangle"); }
@@ -2556,7 +2857,13 @@ function sfxOpenLegendary() {
   [523, 659, 784, 1046, 1318].forEach((f, i) => tone(f, i * 0.09, 0.35, "triangle", 0.16));
   tone(1568, 0.45, 0.5, "sine", 0.14);
 }
-function sfxAttack() { tone(200, 0, 0.05, "sawtooth", 0.15); tone(90, 0.05, 0.18, "sawtooth", 0.18); }
+// Kılıç çarpışması: metalik "çınnn" (yüksek, hızlı sönen tiz tonlar) + altında kısa bir vuruş sesi.
+function sfxAttack() {
+  tone(1900, 0, 0.05, "square", 0.11);
+  tone(2500, 0.01, 0.09, "triangle", 0.10);
+  tone(3300, 0.02, 0.16, "sine", 0.07);
+  tone(160, 0, 0.06, "sawtooth", 0.10);
+}
 
 const soundToggleBtn = document.getElementById("soundToggleBtn");
 function refreshSoundBtn() {

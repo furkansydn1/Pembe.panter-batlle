@@ -464,6 +464,7 @@ input{font-family:inherit;}
 }
 .quest-card.tier-orta{ border-color:#4d9bff44; }
 .quest-card.tier-zor{ border-color:#ffcc4d44; }
+.quest-card.tier-efsanevi{ border-color:#ffcc4d88; box-shadow: 0 0 0 1px #ffcc4d33 inset, 0 3px 0 rgba(0,0,0,.2); }
 .quest-card.ready{ box-shadow: 0 0 0 1px var(--green) inset, 0 3px 0 rgba(0,0,0,.2); }
 .quest-card.claimed{ opacity:.5; }
 .quest-top{ display:flex; align-items:center; gap:8px; }
@@ -475,6 +476,7 @@ input{font-family:inherit;}
 }
 .quest-tier-badge.tier-orta{ color: var(--blue); border-color:#4d9bff55; }
 .quest-tier-badge.tier-zor{ color: var(--gold); border-color:#ffcc4d55; }
+.quest-tier-badge.tier-efsanevi{ color: var(--gold); border-color:#ffcc4d55; background:#ffcc4d1a; }
 .quest-progress-track{
   height:8px; border-radius:999px; overflow:hidden;
   background: var(--panel-edge); border:1px solid rgba(255,255,255,.08);
@@ -1180,3 +1182,16 @@ button.equip-slot{ font-family: inherit; cursor:pointer; width:100%; }
 .stats-opp-label{ font-size:.68rem; color: var(--text-dim); font-weight:700; text-transform:uppercase; }
 .stats-opp-value{ font-size:.86rem; color: var(--text); font-weight:700; margin-top:2px; }
 .stats-opp-value b{ color: var(--gold); }
+
+/* ============================================================
+   v1.10 GÜNCELLEMESİ — Kahin Bahsi
+   ============================================================ */
+.oracle-panel{ border: 1px solid #4d9bff33; }
+.oracle-pending{
+  background: linear-gradient(135deg, #4d9bff22, var(--bg-panel-alt));
+  border: 1px solid #4d9bff55;
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.oracle-amount-inline{ color: var(--gold); }
+.oracle-form{ display:flex; gap:8px; flex-wrap:wrap; }

@@ -267,6 +267,16 @@
         <h2 class="panel-title">🎯 Günlük Görevler</h2>
         <div id="questsList" class="quests-list"></div>
       </div>
+
+      <div class="panel">
+        <h2 class="panel-title">🗓️ Haftalık Görevler</h2>
+        <div id="weeklyQuestsList" class="quests-list"></div>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">📅 Aylık Görevler</h2>
+        <div id="monthlyQuestsList" class="quests-list"></div>
+      </div>
     </section>
 
     <!-- SEKME: SAVAŞ (sadece saldırı hedefleri + savaş geçmişi) -->
@@ -309,6 +319,20 @@
       </div>
       <div class="panel leaderboard-panel">
         <div id="leaderboard" class="leaderboard-list"></div>
+      </div>
+
+      <div class="panel oracle-panel">
+        <h2 class="panel-title">🔮 Kahin Bahsi</h2>
+        <p class="tut-text small" style="margin:0 0 4px;">Günün sonunda kimin 1. olacağını tahmin et, tozunu ikiye katla. Günde 1 tahmin hakkın var, en fazla 10 toz yatırabilirsin ve kendine bahis oynayamazsın.</p>
+        <div id="oraclePending" class="oracle-pending hidden">
+          <p class="tut-text small" style="margin:0;">Bugünkü tahminin: <b id="oracleTargetLabel"></b> 1. olacak — <b id="oracleAmountLabel" class="oracle-amount-inline"></b> toz yatırdın.</p>
+        </div>
+        <div id="oracleForm" class="oracle-form">
+          <select id="oracleTargetSelect" class="bounty-select"></select>
+          <input id="oracleAmountInput" type="number" min="1" placeholder="Toz miktarı" class="bounty-input">
+          <button id="placeOracleBtn" class="btn-mini nadir-mini">Tahmin Et</button>
+        </div>
+        <p id="oracleStatus" class="box-status"></p>
       </div>
     </section>
 
