@@ -97,6 +97,19 @@ const META_COL = "gameMeta";
 const BOUNTY_DOC_ID = "bounty";
 
 // ============================================================
+// HAFTALIK LİDERLİK TABLOSU
+// Her hafta Pazar 00:00'da (bir sonraki Pazar 00:00'a kadar) o haftanın
+// liderlik tablosu kapanır: 1. olan oyuncuya toz + garanti nadir eşya
+// verilir ve haftalık şampiyonluk sayacı +1 olur, ardından HERKESİN puanı
+// sıfırlanır ve yeni hafta 0'dan başlar. Paylaşımlı tek bir gameMeta
+// dokümanı (weeklyLeaderboard) hangi haftanın işlendiğini tutar; hangi
+// client önce fark ederse sıfırlamayı o yapar, diğerleri "zaten işlendi"
+// deyip pas geçer (Kelle Avcısı ilanıyla aynı desen).
+// ============================================================
+const WEEKLY_LEADERBOARD_DOC_ID = "weeklyLeaderboard";
+const WEEKLY_CHAMPION_DUST_REWARD = 25;
+
+// ============================================================
 // 1.LİK AVI
 // Liderlik tablosunun zirvesindeki oyuncuyu saldırıda yenen kişi, normal
 // kazanma ödülünün üstüne ekstra bonus puan alır. Kimse zirvede rahat oturamasın.
@@ -200,6 +213,24 @@ function getWeekStartDate(d = new Date()) {
 function weekIdStr(d = new Date()) { return dateStr(getWeekStartDate(d)); }
 function monthIdStr(d = new Date()) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; }
 
+// Haftalık LİDERLİK sıfırlaması, görev haftasından (Pazartesi başlangıç) FARKLI
+// olarak Pazar 00:00'da başlayıp bir sonraki Pazar 00:00'da biter. Yani "hafta"
+// burada Pazar-Cumartesi aralığıdır; sınır tam Pazar gece yarısıdır.
+function getSundayStartDate(d = new Date()) {
+  const day = d.getDay(); // 0 = Pazar
+  const start = new Date(d);
+  start.setHours(0, 0, 0, 0);
+  start.setDate(d.getDate() - day);
+  return start;
+}
+function leaderboardWeekIdStr(d = new Date()) { return dateStr(getSundayStartDate(d)); }
+function getMsUntilNextSunday(d = new Date()) {
+  const start = getSundayStartDate(d);
+  const next = new Date(start);
+  next.setDate(start.getDate() + 7);
+  return next - d;
+}
+
 function shuffleArr(arr) { return [...arr].sort(() => Math.random() - 0.5); }
 
 // Görev hedefleri/ödülleri her değiştirildiğinde bu sürüm numarası da artırılmalı.
@@ -244,6 +275,78 @@ async function ensureMonthlyQuestsForThisMonth(data) {
     monthlyQuests: quests,
     questsMonth: mo
   });
+}
+
+// Paylaşımlı gameMeta/weeklyLeaderboard dokümanı hangi haftanın işlendiğini
+// tutar. Hangi client bu haftanın henüz işlenmediğini fark ederse sıfırlamayı
+// O yapar (transaction ile "önce ben kaptım" garantisi); diğer client'lar
+// transaction içinde "zaten işlenmiş" görüp hiçbir şey yapmadan çıkar.
+async function ensureWeeklyLeaderboardReset() {
+  const currentWeekId = leaderboardWeekIdStr();
+  const metaRef = doc(db, META_COL, WEEKLY_LEADERBOARD_DOC_ID);
+
+  // Oyuncu listesinin referanslarını transaction dışında al (Firestore
+  // transaction'ları serbest sorgu değil, bilinen doküman referansları ister).
+  const playersSnap = await getDocs(collection(db, PLAYERS_COL));
+  const playerRefs = playersSnap.docs.map(d => doc(db, PLAYERS_COL, d.id));
+
+  try {
+    await runTransaction(db, async (tx) => {
+      const metaSnap = await tx.get(metaRef);
+      const meta = metaSnap.exists() ? metaSnap.data() : null;
+
+      if (!meta) {
+        // Sistem ilk kez çalışıyor: henüz gerçek bir hafta kapanmadı, sadece
+        // şu anki haftayı referans olarak kaydet, kimsenin puanına dokunma.
+        // Gerçek sıfırlama ancak bir sonraki Pazar 00:00 geçildiğinde olur.
+        tx.set(metaRef, { lastProcessedWeek: currentWeekId, processedAt: Date.now() }, { merge: true });
+        return;
+      }
+      if (meta.lastProcessedWeek === currentWeekId) return; // zaten işlendi
+
+      // Tüm okumalar (yazmalardan önce) tamamlanmalı.
+      const freshPlayers = [];
+      for (let i = 0; i < playerRefs.length; i++) {
+        const snap = await tx.get(playerRefs[i]);
+        if (snap.exists()) freshPlayers.push({ ref: playerRefs[i], id: playersSnap.docs[i].id, data: snap.data() });
+      }
+
+      if (!freshPlayers.length) {
+        tx.set(metaRef, { lastProcessedWeek: currentWeekId, processedAt: Date.now() }, { merge: true });
+        return;
+      }
+
+      // Kazananı belirle: en yüksek puana sahip oyuncu (0 puanla kimse "kazanmış" sayılmaz).
+      const winner = freshPlayers.reduce((a, b) => (b.data.points || 0) > (a.data.points || 0) ? b : a, freshPlayers[0]);
+      const hasWinner = (winner.data.points || 0) > 0;
+
+      if (hasWinner) {
+        const itemGrant = buildItemGrantPayloadGeneric(winner.data, "nadir");
+        delete itemGrant._grantedItem;
+        tx.update(winner.ref, {
+          ...itemGrant,
+          dust: (winner.data.dust || 0) + WEEKLY_CHAMPION_DUST_REWARD,
+          weeklyChampionCount: (winner.data.weeklyChampionCount || 0) + 1,
+          points: 0
+        });
+      }
+
+      // Kazanan hariç (kazanan zaten yukarıda points:0 ile güncellendi) herkesin puanı sıfırlanır.
+      for (const p of freshPlayers) {
+        if (hasWinner && p.id === winner.id) continue;
+        tx.update(p.ref, { points: 0 });
+      }
+
+      tx.set(metaRef, {
+        lastProcessedWeek: currentWeekId,
+        processedAt: Date.now(),
+        lastWinnerName: hasWinner ? winner.data.name : null,
+        lastWinnerPoints: hasWinner ? (winner.data.points || 0) : 0
+      }, { merge: true });
+    });
+  } catch (e) {
+    console.error("Haftalık liderlik sıfırlama hatası:", e);
+  }
 }
 
 const QUEST_TEMPLATES = [
@@ -347,6 +450,104 @@ const ALL_ITEMS_BY_SLOT = Object.fromEntries(SLOTS.map(s => {
   return [s.key, items];
 }));
 const TOTAL_ITEM_COUNT = Object.values(ALL_ITEMS_BY_SLOT).reduce((sum, arr) => sum + arr.length, 0);
+
+// ============================================================
+// ROZETLER
+// Tamamen mevcut/kalıcı sayaçlardan türetilir, ayrı bir "kazanıldı" listesi
+// tutmaya gerek yok: her rozetin check(data) fonksiyonu, oyuncunun güncel
+// verisine bakıp o an hak edilip edilmediğini anlık hesaplar. Böylece geriye
+// dönük de (eski oyuncular için) otomatik doğru çalışır.
+// ============================================================
+function countDiscoveredLegendary(data) {
+  const discovered = new Set(data.discoveredItems || []);
+  return LEGENDARY_ITEMS.filter(it => discovered.has(it.name)).length;
+}
+function countEquippedLegendary(data) {
+  const eq = data.equipment || {};
+  return SLOTS.filter(s => eq[s.key] && eq[s.key].rarity === "efsanevi").length;
+}
+function collectionPct(data) {
+  return Math.floor(((data.discoveredItems || []).length / TOTAL_ITEM_COUNT) * 100);
+}
+
+const BADGES = [
+  // ---- Savaş galibiyetleri ----
+  { id: "win_10", icon: "⚔️", name: "Çaylak Savaşçı", desc: "Toplam 10 savaş kazan.", check: (d) => (d.stats?.totalWins || 0) >= 10 },
+  { id: "win_30", icon: "🗡️", name: "Otuzlar Kulübü", desc: "Toplam 30 savaş kazan.", check: (d) => (d.stats?.totalWins || 0) >= 30 },
+  { id: "win_75", icon: "🛡️", name: "Savaş Ustası", desc: "Toplam 75 savaş kazan.", check: (d) => (d.stats?.totalWins || 0) >= 75 },
+  { id: "win_150", icon: "🎖️", name: "Yüz Elli Kılıç", desc: "Toplam 150 savaş kazan.", check: (d) => (d.stats?.totalWins || 0) >= 150 },
+  { id: "win_300", icon: "🏆", name: "Efsanevi Şampiyon", desc: "Toplam 300 savaş kazan.", check: (d) => (d.stats?.totalWins || 0) >= 300 },
+
+  // ---- Galibiyet serisi ----
+  { id: "streak_5", icon: "🔥", name: "Isınıyor", desc: "5 galibiyetlik seri yakala.", check: (d) => (d.stats?.longestStreak || 0) >= 5 },
+  { id: "streak_10", icon: "🔥", name: "Ateş Hattı", desc: "10 galibiyetlik seri yakala.", check: (d) => (d.stats?.longestStreak || 0) >= 10 },
+  { id: "streak_20", icon: "☄️", name: "Durdurulamaz", desc: "20 galibiyetlik seri yakala.", check: (d) => (d.stats?.longestStreak || 0) >= 20 },
+  { id: "streak_30", icon: "🌋", name: "Kıyamet Serisi", desc: "30 galibiyetlik seri yakala.", check: (d) => (d.stats?.longestStreak || 0) >= 30 },
+
+  // ---- Efsanevi eşya koleksiyonu (keşfedilen) ----
+  { id: "legendary_1", icon: "🌟", name: "Efsane Avcısı", desc: "En az 1 efsanevi eşya keşfet.", check: (d) => countDiscoveredLegendary(d) >= 1 },
+  { id: "legendary_3", icon: "✨", name: "Efsane Koleksiyoncusu", desc: "En az 3 farklı efsanevi eşya keşfet.", check: (d) => countDiscoveredLegendary(d) >= 3 },
+  { id: "legendary_6", icon: "💫", name: "Efsane Kâşifi", desc: "En az 6 farklı efsanevi eşya keşfet.", check: (d) => countDiscoveredLegendary(d) >= 6 },
+  { id: "legendary_10", icon: "🌠", name: "Efsane Mimarı", desc: "En az 10 farklı efsanevi eşya keşfet.", check: (d) => countDiscoveredLegendary(d) >= 10 },
+  { id: "legendary_all", icon: "👑", name: "Efsanelerin Efendisi", desc: "Tüm efsanevi eşyaları keşfet.", check: (d) => countDiscoveredLegendary(d) >= LEGENDARY_ITEMS.length },
+
+  // ---- Aynı anda kuşanılı efsanevi eşya ----
+  { id: "equip_legendary_1", icon: "🛡️", name: "Efsane Kuşanımı", desc: "Aynı anda 1 efsanevi eşya kuşan.", check: (d) => countEquippedLegendary(d) >= 1 },
+  { id: "equip_legendary_3", icon: "⚡", name: "3 Efsaneye Sahip", desc: "Aynı anda 3 efsanevi eşyaya sahip ol (kuşanılı).", check: (d) => countEquippedLegendary(d) >= 3 },
+  { id: "equip_legendary_5", icon: "🐆", name: "Tam Donanımlı Panter", desc: "Aynı anda tüm 5 slotu efsanevi eşyayla kuşan.", check: (d) => countEquippedLegendary(d) >= 5 },
+
+  // ---- Kutu açma ----
+  { id: "box_50", icon: "📦", name: "Kutu Meraklısı", desc: "Toplamda 50 kutu aç.", check: (d) => (d.totalBoxesOpened || 0) >= 50 },
+  { id: "box_150", icon: "📦", name: "Kutu Bağımlısı", desc: "Toplamda 150 kutu aç.", check: (d) => (d.totalBoxesOpened || 0) >= 150 },
+  { id: "box_300", icon: "📦", name: "Kutu Canavarı", desc: "Toplamda 300 kutu aç.", check: (d) => (d.totalBoxesOpened || 0) >= 300 },
+  { id: "box_600", icon: "📦", name: "Kutu Efendisi", desc: "Toplamda 600 kutu aç.", check: (d) => (d.totalBoxesOpened || 0) >= 600 },
+
+  // ---- Toz biriktirme ----
+  { id: "dust_100", icon: "✨", name: "Toz Biriktiren", desc: "Aynı anda 100 toza sahip ol.", check: (d) => (d.dust || 0) >= 100 },
+  { id: "dust_300", icon: "✨", name: "Toz Zengini", desc: "Aynı anda 300 toza sahip ol.", check: (d) => (d.dust || 0) >= 300 },
+  { id: "dust_600", icon: "💰", name: "Toz Kralı", desc: "Aynı anda 600 toza sahip ol.", check: (d) => (d.dust || 0) >= 600 },
+
+  // ---- Haftalık liderlik şampiyonluğu ----
+  { id: "weekly_1", icon: "🥇", name: "Haftanın Birincisi", desc: "Bir haftayı liderlik tablosunun 1.si olarak bitir.", check: (d) => (d.weeklyChampionCount || 0) >= 1 },
+  { id: "weekly_3", icon: "👑", name: "Taht Sahibi", desc: "3 kez haftanın birincisi ol.", check: (d) => (d.weeklyChampionCount || 0) >= 3 },
+  { id: "weekly_5", icon: "👑", name: "Hanedan", desc: "5 kez haftanın birincisi ol.", check: (d) => (d.weeklyChampionCount || 0) >= 5 },
+  { id: "weekly_10", icon: "🏰", name: "Sonsuz Saltanat", desc: "10 kez haftanın birincisi ol.", check: (d) => (d.weeklyChampionCount || 0) >= 10 },
+
+  // ---- Kahin Bahsi ----
+  { id: "oracle_5", icon: "🔮", name: "Kahin Çırağı", desc: "Kahin Bahsi'ni 5 kez doğru bil.", check: (d) => (d.oracleWinsTotal || 0) >= 5 },
+  { id: "oracle_15", icon: "🔮", name: "Falcı Ustası", desc: "Kahin Bahsi'ni 15 kez doğru bil.", check: (d) => (d.oracleWinsTotal || 0) >= 15 },
+  { id: "oracle_30", icon: "🔮", name: "Bahis Baronu", desc: "Kahin Bahsi'ni 30 kez doğru bil.", check: (d) => (d.oracleWinsTotal || 0) >= 30 },
+
+  // ---- Kelle Avcısı ----
+  { id: "bounty_3", icon: "💀", name: "Kelle Toplayıcı", desc: "3 kez Kelle Avcısı ödülünü kap.", check: (d) => (d.bountyWinsTotal || 0) >= 3 },
+  { id: "bounty_10", icon: "💀", name: "Ödül Avcısı", desc: "10 kez Kelle Avcısı ödülünü kap.", check: (d) => (d.bountyWinsTotal || 0) >= 10 },
+  { id: "bounty_25", icon: "⚰️", name: "Cellat", desc: "25 kez Kelle Avcısı ödülünü kap.", check: (d) => (d.bountyWinsTotal || 0) >= 25 },
+
+  // ---- Gizemli Yabancı ----
+  { id: "stranger_5", icon: "🕵️", name: "Yabancı Avcısı", desc: "Gizemli Yabancı'yı 5 kez yen.", check: (d) => (d.strangerWinsTotal || 0) >= 5 },
+  { id: "stranger_15", icon: "🕶️", name: "Gölge Takipçisi", desc: "Gizemli Yabancı'yı 15 kez yen.", check: (d) => (d.strangerWinsTotal || 0) >= 15 },
+
+  // ---- Şanslı Çark ----
+  { id: "jackpot_1", icon: "🎡", name: "Jackpot Avcısı", desc: "Şanslı Çark'ta 1 kez jackpot vur.", check: (d) => (d.wheelJackpotsTotal || 0) >= 1 },
+  { id: "jackpot_3", icon: "🎰", name: "Çark Ustası", desc: "Şanslı Çark'ta 3 kez jackpot vur.", check: (d) => (d.wheelJackpotsTotal || 0) >= 3 },
+
+  // ---- Koleksiyon tamamlama ----
+  { id: "collect_25", icon: "📖", name: "Çırak Koleksiyoncu", desc: "Tüm eşyaların %25'ini keşfet.", check: (d) => collectionPct(d) >= 25 },
+  { id: "collect_50", icon: "📖", name: "Kıdemli Koleksiyoncu", desc: "Tüm eşyaların %50'sini keşfet.", check: (d) => collectionPct(d) >= 50 },
+  { id: "collect_75", icon: "📚", name: "Uzman Koleksiyoncu", desc: "Tüm eşyaların %75'ini keşfet.", check: (d) => collectionPct(d) >= 75 },
+  { id: "collect_100", icon: "🏛️", name: "Tam Koleksiyoncu", desc: "Oyundaki tüm eşyaları keşfet.", check: (d) => collectionPct(d) >= 100 },
+
+  // ---- Kazanma oranı / dayanıklılık ----
+  {
+    id: "unbeatable", icon: "🦁", name: "Yenilmez", desc: "En az 20 savaşta %70+ kazanma oranı yakala.",
+    check: (d) => {
+      const s = d.stats || {};
+      const total = (s.totalWins || 0) + (s.totalLosses || 0);
+      return total >= 20 && (s.totalWins || 0) / total >= 0.7;
+    }
+  },
+  { id: "resilient", icon: "🥊", name: "Vazgeçmeyen", desc: "Toplamda 50 kere kaybet ama oynamaya devam et.", check: (d) => (d.stats?.totalLosses || 0) >= 50 }
+];
 
 // ============================================================
 // GÜNÜN OLAYI
@@ -602,6 +803,7 @@ const strangerDuelBtn = document.getElementById("strangerDuelBtn");
 
 const currentPlayerNameEl = document.getElementById("currentPlayerName");
 const leaderboardEl = document.getElementById("leaderboard");
+const weeklyLeaderboardInfoEl = document.getElementById("weeklyLeaderboardInfo");
 const equipmentGridEl = document.getElementById("equipmentGrid");
 const charStageSlotsEl = document.getElementById("charStageSlots");
 const myAttackEl = document.getElementById("myAttack");
@@ -652,6 +854,8 @@ const bountyStatus = document.getElementById("bountyStatus");
 const statsOverviewEl = document.getElementById("statsOverview");
 const statsOpponentsEl = document.getElementById("statsOpponents");
 const statsStreakEl = document.getElementById("statsStreak");
+const badgesGridEl = document.getElementById("badgesGrid");
+const badgesProgressEl = document.getElementById("badgesProgress");
 
 const oraclePending = document.getElementById("oraclePending");
 const oracleTargetLabel = document.getElementById("oracleTargetLabel");
@@ -672,6 +876,7 @@ const nfStepLabel = document.getElementById("nfStepLabel");
 const closeNewFeaturesBtn = document.getElementById("closeNewFeaturesBtn");
 
 let currentBounty = null; // gameMeta/bounty dokümanının canlı kopyası
+let weeklyLeaderboardMeta = null; // gameMeta/weeklyLeaderboard dokümanının canlı kopyası
 
 const resultModal = document.getElementById("resultModal");
 const resultContent = document.getElementById("resultContent");
@@ -740,6 +945,11 @@ tutNextBtn.onclick = () => goToTutorialSlide(currentTutorialIndex() + 1);
 // ama bu sürümü henüz görmemiş herkese otomatik gösterilir.
 // ============================================================
 const NEW_FEATURE_SLIDES = {
+  "1.12": [
+    { icon: "🆕", title: "v1.12 Yenilikleri!", text: "Bu güncelleme oyuna sezonluk bir rekabet katıyor: Haftalık Liderlik Tablosu ve Rozetler geldi. Hadi bakalım." },
+    { icon: "🏆", title: "Haftalık Liderlik Sıfırlaması", text: "Liderlik tablosu artık her Pazar 00:00'da sıfırlanıyor! O haftayı 1. bitiren oyuncu toz + garanti bir nadir eşya kazanıyor. ÖNEMLİ: sıfırlama anında HERKESİN puanı (1. hariç) 0'a dönüyor, yani her hafta sıfırdan yeni bir yarış başlıyor." },
+    { icon: "🎖️", title: "Rozetler", text: "Profil altındaki İstatistik sekmesine yeni bir 🎖️ Rozetler paneli eklendi. Toplam 44 farklı rozet var: galibiyet serileri, efsanevi eşya koleksiyonu, Kahin Bahsi'nde 'Bahis Baronu' olmak, Kelle Avcısı'nda 'Cellat' olmak, haftanın birinciliği ve daha fazlası. Rozetler otomatik hesaplanıyor, kazandıkça anında açılıyor." }
+  ],
   "1.11": [
     { icon: "🆕", title: "v1.11 Yenilikleri!", text: "Bu güncellemede görev sistemine yeni bir katman eklendi ve Kahin Bahsi'nde birkaç önemli kural netleşti. Hadi bakalım neler değişti." },
     { icon: "🗓️", title: "Haftalık Görevler", text: "Görev sekmesine yeni bir 🗓️ Haftalık Görevler paneli eklendi. Her hafta Pazartesi sıfırlanan bu görevlerden 3 tanesi rastgele atanıyor (örn. çokça kutu aç, savaş kazan, Kahin Bahsi'ni doğru bil, Kelle Avcısı ödülünü kap). Zorluk günlük görevlerden belirgin şekilde yüksek, ödüller de (toz + puan + bazen garanti/şanslı nadir eşya) buna göre büyütüldü." },
@@ -859,9 +1069,17 @@ howToBtn.onclick = () => openTutorial();
 // Her yeni özellik bittiğinde status'u "soon" -> "done" yapıp
 // LATEST_UPDATE_VERSION'ı artırman yeterli, rozet otomatik güncellenir.
 // ============================================================
-const LATEST_UPDATE_VERSION = "1.11";
+const LATEST_UPDATE_VERSION = "1.12";
 
 const RELEASES = [
+  {
+    version: "1.12",
+    date: "5 Temmuz 2026",
+    items: [
+      "🏆 Haftalık Liderlik Tablosu eklendi: liderlik tablosu artık her Pazar 00:00'da otomatik sıfırlanıyor. O haftayı 1. bitiren oyuncu toz + garanti bir nadir eşya kazanıyor ve 'haftalık şampiyonluk' sayacı +1 oluyor. Sıfırlama anında (kazanan hariç) HERKESİN puanı 0'a dönüyor, yeni hafta sıfırdan başlıyor. Liderlik sekmesinde geçen haftanın şampiyonu ve bir sonraki sıfırlamaya kalan süre gösteriliyor.",
+      "🎖️ Rozetler eklendi (İstatistik sekmesi): toplam 44 farklı rozet. Galibiyet sayısı ve serisi, efsanevi eşya koleksiyonu, aynı anda kuşanılan efsanevi eşya sayısı, kutu açma, toz biriktirme, haftalık şampiyonluk, Kahin Bahsi ('Bahis Baronu'na kadar), Kelle Avcısı ('Cellat'a kadar), Gizemli Yabancı, Şanslı Çark jackpot'u ve koleksiyon tamamlama gibi kategorilerde. Rozetler otomatik hesaplanıyor, ekstra bir işlem gerekmiyor."
+    ]
+  },
   {
     version: "1.11",
     date: "5 Temmuz 2026",
@@ -1252,6 +1470,12 @@ newPlayerBtn.onclick = async () => {
       questsWeek: null,
       monthlyQuests: [],
       questsMonth: null,
+      totalBoxesOpened: 0,
+      oracleWinsTotal: 0,
+      bountyWinsTotal: 0,
+      strangerWinsTotal: 0,
+      wheelJackpotsTotal: 0,
+      weeklyChampionCount: 0,
       stats: {
         totalWins: 0,
         totalLosses: 0,
@@ -1360,6 +1584,7 @@ async function startGame() {
   await ensureDailyQuestsForToday(snap.data());
   await ensureWeeklyQuestsForThisWeek(snap.data());
   await ensureMonthlyQuestsForThisMonth(snap.data());
+  await ensureWeeklyLeaderboardReset();
 
   // Kendi oyuncu belgemi canlı dinle
   onSnapshot(ref, (docSnap) => {
@@ -1375,6 +1600,7 @@ async function startGame() {
     renderQuests();
     renderWheel();
     renderStatsTab();
+    renderBadges();
     renderOraclePanel();
     ensureOracleBetResolved();
     if (!collectionModal.classList.contains("hidden")) renderCollection();
@@ -1399,6 +1625,12 @@ async function startGame() {
     renderBounty();
   });
 
+  // Haftalık liderlik meta dokümanını (geçen haftanın şampiyonu) canlı dinle
+  onSnapshot(doc(db, META_COL, WEEKLY_LEADERBOARD_DOC_ID), (docSnap) => {
+    weeklyLeaderboardMeta = docSnap.exists() ? docSnap.data() : null;
+    renderWeeklyLeaderboardInfo();
+  });
+
   // Savaş geçmişini canlı dinle
   const logQuery = query(collection(db, LOG_COL), orderBy("timestamp", "desc"), limit(40));
   onSnapshot(logQuery, (snap) => {
@@ -1409,6 +1641,19 @@ async function startGame() {
 // ============================================================
 // RENDER: LİDERLİK TABLOSU
 // ============================================================
+// Geçen haftanın şampiyonu + bir sonraki Pazar 00:00'a kalan süre.
+function renderWeeklyLeaderboardInfo() {
+  if (!weeklyLeaderboardInfoEl) return;
+  const msLeft = getMsUntilNextSunday();
+  const champion = weeklyLeaderboardMeta?.lastWinnerName;
+  const championPts = weeklyLeaderboardMeta?.lastWinnerPoints;
+  weeklyLeaderboardInfoEl.innerHTML = `
+    ${champion ? `<div class="wl-champion">🏆 Geçen haftanın şampiyonu: <b>${champion}</b> (${championPts} puan) — ödül olarak toz + garanti nadir eşya kazandı!</div>` : ""}
+    <div class="wl-countdown">⏳ Liderlik tablosu her Pazar 00:00'da sıfırlanır, 1. olan toz + garanti nadir eşya kazanır. Kalan süre: <b>${formatRemaining(msLeft)}</b></div>
+  `;
+}
+setInterval(renderWeeklyLeaderboardInfo, 60000);
+
 function renderLeaderboard() {
   leaderboardEl.innerHTML = allPlayers.map((p, i) => {
     const isMe = p.id === currentPlayerId;
@@ -1525,6 +1770,29 @@ function renderStatsTab() {
       <span class="stat-chip pts">🔥 Şu Anki Seri: <b>${s.currentStreak}</b></span>
       <span class="stat-chip atk">👑 En Uzun Seri: <b>${s.longestStreak}</b></span>
     </div>`;
+}
+
+// ============================================================
+// RENDER: ROZETLER
+// Tamamen anlık hesaplanır (bkz. BADGES tanımı), ekstra bir doküman
+// alanı gerektirmez.
+// ============================================================
+function renderBadges() {
+  if (!currentPlayerData || !badgesGridEl) return;
+  const unlocked = BADGES.filter(b => b.check(currentPlayerData));
+  const unlockedIds = new Set(unlocked.map(b => b.id));
+
+  if (badgesProgressEl) badgesProgressEl.textContent = `${unlocked.length} / ${BADGES.length} rozet kazanıldı`;
+
+  badgesGridEl.innerHTML = BADGES.map(b => {
+    const owned = unlockedIds.has(b.id);
+    return `
+      <div class="badge-chip ${owned ? "owned" : "locked"}">
+        <span class="badge-icon">${owned ? b.icon : "🔒"}</span>
+        <span class="badge-name">${b.name}</span>
+        <span class="badge-desc">${b.desc}</span>
+      </div>`;
+  }).join("");
 }
 
 // ============================================================
@@ -1655,7 +1923,8 @@ strangerDuelBtn.onclick = async () => {
 
   await updateDoc(doc(db, PLAYERS_COL, currentPlayerId), {
     strangerUsed: true,
-    dust: (currentPlayerData.dust || 0) + reward
+    dust: (currentPlayerData.dust || 0) + reward,
+    ...(won ? { strangerWinsTotal: (currentPlayerData.strangerWinsTotal || 0) + 1 } : {})
   });
 
   showResultModal({ stranger: true, won, name: strangerName, reward });
@@ -1735,7 +2004,8 @@ async function spinTheWheel() {
   await updateDoc(doc(db, PLAYERS_COL, currentPlayerId), {
     lastWheelSpinTime: Date.now(),
     dust: (currentPlayerData.dust || 0) + seg.dust,
-    points: (currentPlayerData.points || 0) + seg.points
+    points: (currentPlayerData.points || 0) + seg.points,
+    ...(seg.type === "combo" ? { wheelJackpotsTotal: (currentPlayerData.wheelJackpotsTotal || 0) + 1 } : {})
   });
 
   wheelStatus.textContent = seg.type === "combo"
@@ -1889,6 +2159,7 @@ async function ensureOracleBetResolved() {
     await updateDoc(doc(db, PLAYERS_COL, currentPlayerId), {
       dust: (currentPlayerData.dust || 0) + reward,
       oracleBet: null,
+      ...(won ? { oracleWinsTotal: (currentPlayerData.oracleWinsTotal || 0) + 1 } : {}),
       ...(oracleWeeklyQuests !== currentPlayerData.weeklyQuests ? { weeklyQuests: oracleWeeklyQuests } : {}),
       ...(oracleMonthlyQuests !== currentPlayerData.monthlyQuests ? { monthlyQuests: oracleMonthlyQuests } : {})
     });
@@ -1995,6 +2266,42 @@ function buildItemGrantPayload(data, rarity) {
   const item = generateLootItemForRarity(slot, rarity);
   const wasEmpty = !(data.equipment && data.equipment[slot]);
   const newInvArr = [...getSlotInventory(slot), item];
+  const newEquipment = wasEmpty
+    ? { ...(data.equipment || emptyEquipment()), [slot]: item }
+    : (data.equipment || emptyEquipment());
+  const stats = computeStatsFromEquipment(newEquipment);
+  const newDiscovered = Array.from(new Set([...(data.discoveredItems || []), item.name]));
+  const newRecentSlots = [...recentSlots, slot].slice(-8);
+  return {
+    equipment: newEquipment,
+    attack: stats.attack,
+    defense: stats.defense,
+    [`inventory.${slot}`]: newInvArr,
+    discoveredItems: newDiscovered,
+    recentSlots: newRecentSlots,
+    _grantedItem: item
+  };
+}
+
+// buildItemGrantPayload'ın currentPlayerData'ya bağımlı olmayan genel hali:
+// haftalık liderlik şampiyonu gibi, o an giriş yapmış oyuncu OLMAYABİLECEK
+// başka bir oyuncuya eşya vermek için kullanılır (getSlotInventory yerine
+// doğrudan verilen "data" parametresinden envanteri okur).
+function getSlotInventoryGeneric(data, slot) {
+  const inv = (data?.inventory && data.inventory[slot]) || [];
+  const equipped = data?.equipment && data.equipment[slot];
+  if (equipped && !inv.some(it => it.id && equipped.id && it.id === equipped.id)) {
+    const legacyId = equipped.id || `legacy-${slot}`;
+    return [{ ...equipped, id: legacyId }, ...inv];
+  }
+  return inv;
+}
+function buildItemGrantPayloadGeneric(data, rarity) {
+  const recentSlots = data.recentSlots || [];
+  const slot = pickSlotWeighted(recentSlots);
+  const item = generateLootItemForRarity(slot, rarity);
+  const wasEmpty = !(data.equipment && data.equipment[slot]);
+  const newInvArr = [...getSlotInventoryGeneric(data, slot), item];
   const newEquipment = wasEmpty
     ? { ...(data.equipment || emptyEquipment()), [slot]: item }
     : (data.equipment || emptyEquipment());
@@ -2273,6 +2580,7 @@ async function performBoxOpen({ forcedRarity = null, costDust = 0, isFree = fals
     dust: newDust,
     recentSlots: newRecentSlots,
     discoveredItems: newDiscovered,
+    totalBoxesOpened: (data.totalBoxesOpened || 0) + 1,
     ...(newQuests !== data.dailyQuests ? { dailyQuests: newQuests } : {}),
     ...(newWeeklyQuests !== data.weeklyQuests ? { weeklyQuests: newWeeklyQuests } : {}),
     ...(newMonthlyQuests !== data.monthlyQuests ? { monthlyQuests: newMonthlyQuests } : {})
@@ -2723,6 +3031,7 @@ async function runAttack(defenderId) {
         dailyStatsDay: today,
         dailyWins: attackerDailyWins,
         dailyLosses: attackerDailyLosses,
+        ...(attackerDustGain > 0 ? { bountyWinsTotal: (attacker.bountyWinsTotal || 0) + 1 } : {}),
         ...(attacker.curseNextAttack ? { curseNextAttack: null } : {}),
         ...(attackerQuests !== attacker.dailyQuests ? { dailyQuests: attackerQuests } : {}),
         ...(attackerWeeklyQuests !== attacker.weeklyQuests ? { weeklyQuests: attackerWeeklyQuests } : {}),
