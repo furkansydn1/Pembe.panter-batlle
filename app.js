@@ -2990,7 +2990,7 @@ async function runAttack(defenderId) {
           ...(skippedWeeklyQuests !== attacker.weeklyQuests ? { weeklyQuests: skippedWeeklyQuests } : {}),
           ...(skippedMonthlyQuests !== attacker.monthlyQuests ? { monthlyQuests: skippedMonthlyQuests } : {})
         });
-        logDetails.push(`${attacker.name}, Nargile Kılıcı'nın keyfine daldı ve saldıramadan bu seferki hakkını harcadı.`);
+        logDetails.push(`${attacker.name}, ${chillItem.name}'in keyfine daldı ve saldıramadan bu seferki hakkını harcadı.`);
         tx.set(doc(collection(db, LOG_COL)), {
           attacker: attacker.name, defender: defender.name,
           message: logDetails.join(" "),
@@ -3022,17 +3022,21 @@ async function runAttack(defenderId) {
       // Lanet: defender bir önceki saldırıdan lanetliyse savunması düşer
       if (defender.curseNextAttack && defender.curseNextAttack.active) {
         baseDefense *= (1 - defender.curseNextAttack.reduction);
-        legendaryLog.push(`${defender.name} üzerindeki Çingene Eldiveni laneti devreye girdi, savunması zayıfladı.`);
+        const curseItemName = defender.curseNextAttack.itemName || "Lanet";
+        legendaryLog.push(`${defender.name} üzerindeki ${curseItemName} laneti devreye girdi, savunması zayıfladı.`);
       }
 
-      // Kambur zırhı / Kıl dönmesi kılıcı çarpanları
-      if (getEffect(defender.equipment, "defense_multiplier")) {
+      // Kambur zırhı / Kaymağın kalkanı: savunma çarpanı
+      const defMultItem = getEffect(defender.equipment, "defense_multiplier");
+      if (defMultItem) {
         baseDefense *= 1.15;
-        legendaryLog.push(`${defender.name}'in Kambur Zırhı savunmasını güçlendirdi.`);
+        legendaryLog.push(`${defender.name}'in ${defMultItem.name} savunmasını güçlendirdi.`);
       }
-      if (getEffect(attacker.equipment, "attack_multiplier")) {
+      // Kıl dönmesi kılıcı / Emrenin yamuk parmak eldiveni / Gıcık komşunun kolyesi: saldırı çarpanı
+      const atkMultItem = getEffect(attacker.equipment, "attack_multiplier");
+      if (atkMultItem) {
         baseAttack *= 1.15;
-        legendaryLog.push(`${attacker.name}'in Kıl Dönmesi Kılıcı saldırısını güçlendirdi.`);
+        legendaryLog.push(`${attacker.name}'in ${atkMultItem.name} saldırısını güçlendirdi.`);
       }
 
       // Günün olayı: küresel saldırı/savunma/şans çarpanları
@@ -3047,7 +3051,7 @@ async function runAttack(defenderId) {
       if (critTriggered) {
         attackPower = baseAttack; defensePower = baseDefense;
         attackerWins = true;
-        legendaryLog.push(`${attacker.name}'in Sarı Diş Kılıcı aniden ısırdı, hesaplama boşa gitti ve anında kazandı!`);
+        legendaryLog.push(`${attacker.name}'in ${critItem.name} aniden ısırdı, hesaplama boşa gitti ve anında kazandı!`);
       } else if (baseAttack >= baseDefense * DOMINANCE_RATIO) {
         attackPower = baseAttack; defensePower = baseDefense;
         attackerWins = true;
@@ -3081,40 +3085,45 @@ async function runAttack(defenderId) {
       if (attackerWins) {
         let winPts = 10, losePts = 5;
 
-        // Portakal suyu kılıcı: rakip gücünün %30'undan fazla farkla kazanırsa ekstra 2 çalar
-        if (!critTriggered && getEffect(attacker.equipment, "steal_extra_on_big_win") && diff > defensePower * 0.3) {
+        // Portakal suyu kılıcı / Sarhoş amcanın küpesi: rakip gücünün %30'undan fazla farkla kazanırsa ekstra 2 çalar
+        const stealItem = getEffect(attacker.equipment, "steal_extra_on_big_win");
+        if (!critTriggered && stealItem && diff > defensePower * 0.3) {
           winPts += 2; losePts += 2;
-          legendaryLog.push(`${attacker.name}'in Portakal Suyu Kılıcı ezici farktan ekstra 2 puan çaldı.`);
+          legendaryLog.push(`${attacker.name}'in ${stealItem.name} ezici farktan ekstra 2 puan çaldı.`);
         }
-        // Nargile kılıcı: kazanırsa +3 ekstra
-        if (getEffect(attacker.equipment, "chill_risk")) {
+        // Nargile kılıcı / Gay eldiveni / Keyifli akşamın kolyesi: kazanırsa +3 ekstra
+        if (chillItem) {
           winPts += 3;
-          legendaryLog.push(`${attacker.name}'in Nargile Kılıcı keyifli bir zafer bonusu verdi (+3).`);
+          legendaryLog.push(`${attacker.name}'in ${chillItem.name} keyifli bir zafer bonusu verdi (+3).`);
         }
-        // Yasin ercile zırhı: defender kaybetse de puan kaybetmez
-        if (getEffect(defender.equipment, "no_loss_on_defense_lose")) {
+        // Yasin ercile zırhı / Götün zırhı / Devrik minderin kalkanı: defender kaybetse de puan kaybetmez
+        const noLossItem = getEffect(defender.equipment, "no_loss_on_defense_lose");
+        const reducedLossItem = getEffect(defender.equipment, "reduced_loss");
+        if (noLossItem) {
           losePts = 0;
-          legendaryLog.push(`${defender.name}'in Yasin Ercile Zırhı sayesinde hiç puan kaybetmedi.`);
+          legendaryLog.push(`${defender.name}'in ${noLossItem.name} sayesinde hiç puan kaybetmedi.`);
         }
         // Yırtık menüsküs: kaybederse sadece 2 kaybeder
-        else if (getEffect(defender.equipment, "reduced_loss")) {
+        else if (reducedLossItem) {
           losePts = Math.min(losePts, 2);
-          legendaryLog.push(`${defender.name}'in Yırtık Menüsküs Ayakkabıları sayesinde daha az puan kaybetti.`);
+          legendaryLog.push(`${defender.name}'in ${reducedLossItem.name} sayesinde daha az puan kaybetti.`);
         }
-        // Cüce botları: defender kaybetse bile intikamla 3 puan çalar
-        if (getEffect(defender.equipment, "revenge_steal")) {
+        // Cüce botları / Karanın Airpodsları Kaskı: defender kaybetse bile intikamla 3 puan çalar
+        const revengeItem = getEffect(defender.equipment, "revenge_steal");
+        if (revengeItem) {
           winPts = Math.max(0, winPts - 3);
           defenderPoints += 3;
-          legendaryLog.push(`${defender.name}'in Cüce Botları intikam alıp saldırandan 3 puan çaldı.`);
+          legendaryLog.push(`${defender.name}'in ${revengeItem.name} intikam alıp saldırandan 3 puan çaldı.`);
         }
 
         attackerPoints += Math.round(winPts * dailyEvent.pointsMult);
         defenderPoints = Math.max(0, defenderPoints - Math.round(losePts * dailyEvent.pointsMult));
 
-        // Çingene eldiveni: kazanırsa rakibe lanet
-        if (getEffect(attacker.equipment, "curse_defense_next")) {
-          newCurseForDefenderTarget = { active: true, reduction: 0.2 };
-          legendaryLog.push(`${attacker.name}'in Çingene Eldiveni ${defender.name}'e lanet okudu.`);
+        // Çingene eldiveni / Nazarlıklı amcanın kolyesi: kazanırsa rakibe lanet
+        const curseItem = getEffect(attacker.equipment, "curse_defense_next");
+        if (curseItem) {
+          newCurseForDefenderTarget = { active: true, reduction: 0.2, itemName: curseItem.name };
+          legendaryLog.push(`${attacker.name}'in ${curseItem.name} ${defender.name}'e lanet okudu.`);
         }
 
         logDetails.push(pickBattleMessage({ attackerWins: true, attackerName: attacker.name, defenderName: defender.name, winPts, losePts, isRepeat, repeatCount }));
@@ -3122,9 +3131,10 @@ async function runAttack(defenderId) {
         let winPts = 5, losePts = 3;
 
         // Dana kaskı: savunmada kazanırsa +5 ekstra
-        if (getEffect(defender.equipment, "bonus_win_defense")) {
+        const bonusDefItem = getEffect(defender.equipment, "bonus_win_defense");
+        if (bonusDefItem) {
           winPts += 5;
-          legendaryLog.push(`${defender.name}'in Dana Kaskı savunma zaferine +5 bonus kattı.`);
+          legendaryLog.push(`${defender.name}'in ${bonusDefItem.name} savunma zaferine +5 bonus kattı.`);
         }
 
         defenderPoints += Math.round(winPts * dailyEvent.pointsMult);
