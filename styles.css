@@ -31,6 +31,11 @@
 
   --radius: 20px;
   font-size: 15px;
+
+  /* ---- Ekipman SVG ikonları: nadirlik renkleri (yeni ekipman görselleri) ---- */
+  --item-standart: #94a3b8;
+  --item-nadir: #3b82f6;
+  --item-efsanevi: #fbbf24;
 }
 
 *{box-sizing:border-box;}
@@ -1391,3 +1396,34 @@ button.equip-slot{ font-family: inherit; cursor:pointer; width:100%; }
   padding: 6px 10px;
 }
 .item-popup-passive.minor-passive b{ color: var(--accent-2); }
+
+/* ============================================================
+   YENİ EKİPMAN GÖRSELLERİ (SVG ikonlar)
+   Her eşya artık emoji yerine, nadirliğine göre (standart/nadir/efsanevi)
+   tamamen farklı çizilmiş bir SVG ikonla gösteriliyor. Efsanevi eşyalar
+   sürekli parlayan/süzülen/dönen efektler taşır; nadir eşyalar mavi,
+   efsaneviler altın rengiyle net şekilde ayrışır.
+   ============================================================ */
+.item-svg-icon{ display:block; }
+
+@keyframes itemSvgPulse{
+  0%{ filter: drop-shadow(0 0 3px var(--item-efsanevi)); }
+  100%{ filter: drop-shadow(0 0 11px var(--item-efsanevi)); }
+}
+@keyframes itemSvgFloat{
+  0%,100%{ transform: translateY(0); }
+  50%{ transform: translateY(-4px); }
+}
+@keyframes itemSvgSpin{
+  0%{ transform: rotate(0deg); }
+  100%{ transform: rotate(360deg); }
+}
+@keyframes itemSvgEnergy{
+  0%{ transform: scale(0.9) rotate(0deg); opacity:.35; }
+  50%{ transform: scale(1.06) rotate(180deg); opacity:.9; }
+  100%{ transform: scale(0.9) rotate(360deg); opacity:.35; }
+}
+.item-svg-icon .fx-pulse{ animation: itemSvgPulse 1.4s infinite alternate ease-in-out; transform-origin: center; }
+.item-svg-icon .fx-float{ animation: itemSvgFloat 3s infinite ease-in-out; transform-origin: center; }
+.item-svg-icon .fx-spin{ animation: itemSvgSpin 6s infinite linear; transform-origin: center; }
+.item-svg-icon .fx-energy{ animation: itemSvgEnergy 3s infinite linear; transform-origin: center; }
