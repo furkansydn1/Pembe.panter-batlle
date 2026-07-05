@@ -342,39 +342,20 @@
       </div>
     </section>
 
-    <!-- SEKME: PROFİL (karakter üstü ekipman görünümü + kuşanım/envanter + bizim bilgilerimiz) -->
+    <!-- SEKME: PROFİL (kişisel bilgiler + kariyer istatistikleri birleşik) -->
     <section id="tabProfil" class="tab-panel">
       <div class="tab-hero tab-hero-blue">
         <span class="tab-hero-ribbon">🐆 Profilim</span>
-        <p class="tab-hero-sub">Ekipmanın ve istatistiklerin</p>
+        <p class="tab-hero-sub">İstatistiklerin ve kariyerin</p>
       </div>
 
-      <div class="panel char-panel">
-        <div class="char-stage">
-          <div class="char-stage-ring"></div>
-          <div class="char-avatar">🐆</div>
-          <div id="charStageSlots" class="char-stage-slots"></div>
-        </div>
+      <div class="panel">
         <div class="stat-summary">
           <span class="stat-chip atk">⚔️ Saldırı: <b id="myAttack">0</b></span>
           <span class="stat-chip def">🛡️ Savunma: <b id="myDefense">0</b></span>
           <span class="stat-chip pts">⭐ Puan: <b id="myPoints">0</b></span>
           <span class="stat-chip dust">✨ Toz: <b id="myDust">0</b></span>
         </div>
-      </div>
-
-      <div class="panel">
-        <h2 class="panel-title">🛡️ Kuşanım &amp; Envanter</h2>
-        <div id="equipmentGrid" class="equipment-grid"></div>
-        <p class="equip-hint">👆 Envanterini görmek ve eşya değiştirmek için bir slota dokun</p>
-      </div>
-    </section>
-
-    <!-- SEKME: İSTATİSTİK (kişisel kariyer istatistikleri) -->
-    <section id="tabIstatistik" class="tab-panel">
-      <div class="tab-hero tab-hero-blue">
-        <span class="tab-hero-ribbon">📊 İstatistik</span>
-        <p class="tab-hero-sub">Kariyerinin tüm detayları</p>
       </div>
 
       <div class="panel">
@@ -399,6 +380,29 @@
       </div>
     </section>
 
+    <!-- SEKME: ENVANTER (paper doll karakter ekipmanı + Metin2 tarzı slot slot çanta) -->
+    <section id="tabEnvanter" class="tab-panel">
+      <div class="tab-hero tab-hero-blue">
+        <span class="tab-hero-ribbon">🎒 Envanter</span>
+        <p class="tab-hero-sub">Ekipmanın ve çantandaki eşyalar</p>
+      </div>
+
+      <div class="panel char-panel">
+        <div class="char-stage">
+          <div class="char-stage-ring"></div>
+          <div class="char-avatar">🐆</div>
+          <div id="charStageSlots" class="char-stage-slots"></div>
+        </div>
+        <p class="equip-hint">👆 Kuşanmak veya değiştirmek için bir slota dokun</p>
+      </div>
+
+      <div class="panel bag-panel">
+        <h2 class="panel-title">🎒 Çanta</h2>
+        <p class="equip-hint">👆 Bir eşyaya dokun; kuşanmak veya toza çevirmek için seç. Kutudan çıkan eşyalar buraya düşer.</p>
+        <div id="bagGrid" class="bag-grid"></div>
+      </div>
+    </section>
+
   </main>
 
   <nav id="bottomNav" class="bottom-nav">
@@ -407,7 +411,7 @@
     <button type="button" class="nav-btn" data-target="tabSavas"><span class="nav-ic">⚔️</span>Savaş</button>
     <button type="button" class="nav-btn" data-target="tabSira"><span class="nav-ic">🏆</span>Sıra</button>
     <button type="button" class="nav-btn" data-target="tabProfil"><span class="nav-ic">🐆</span>Profil</button>
-    <button type="button" class="nav-btn" data-target="tabIstatistik"><span class="nav-ic">📊</span>İstat.</button>
+    <button type="button" class="nav-btn" data-target="tabEnvanter"><span class="nav-ic">🎒</span>Envanter</button>
   </nav>
 </div>
 

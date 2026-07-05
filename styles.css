@@ -1348,3 +1348,35 @@ button.equip-slot{ font-family: inherit; cursor:pointer; width:100%; }
 .inv-stat-pill.atk{ color: var(--red); }
 .inv-stat-pill.def{ color: var(--blue); }
 .inv-stat-pill.enchant{ color: var(--accent-2); background:#ff2d8714; border-color:#ff2d8744; }
+
+/* ============================================================
+   ENVANTER SEKMESİ — Metin2 tarzı slot slot ÇANTA
+   Paper doll (char-panel/char-stage) yukarıda, ayrı bir panelde;
+   burada ise kuşanılı OLMAYAN tüm eşyalar tek bir kare-slot grid'i
+   halinde gösteriliyor. Kutudan/görevden kazanılan her yeni eşya
+   (slot doluysa) otomatik olarak bu grid'de belirir.
+   ============================================================ */
+.bag-panel{ gap: 10px; }
+.bag-grid{
+  display:grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
+.bag-slot{
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  background: linear-gradient(180deg, var(--bg-panel-alt), var(--panel-edge));
+  border: 1px solid rgba(255,255,255,.1);
+  display:flex; align-items:center; justify-content:center;
+  font-size: 1.3rem;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.3), 0 2px 0 rgba(0,0,0,.25);
+  transition: transform .08s ease, filter .15s ease;
+  padding: 0;
+}
+.bag-slot:not(.empty):hover{ filter: brightness(1.2); }
+.bag-slot:not(.empty):active{ transform: scale(.92); }
+.bag-slot.empty{ opacity:.35; border-style:dashed; cursor:default; }
+.bag-slot.rarity-standart{ border-color: rgba(255,255,255,.14); }
+.bag-slot.rarity-nadir{ box-shadow: 0 0 0 2px var(--blue) inset, 0 0 10px #4d9bff44; animation: nadirPulse 2.2s ease-in-out infinite; }
+.bag-slot.rarity-efsanevi{ box-shadow: 0 0 0 2px var(--gold) inset, 0 0 14px #ffcc4d55; animation: efsaneviPulse 1.8s ease-in-out infinite; }
+.bag-slot-icon{ filter: drop-shadow(0 2px 2px rgba(0,0,0,.4)); }

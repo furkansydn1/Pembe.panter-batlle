@@ -882,7 +882,7 @@ const strangerDuelBtn = document.getElementById("strangerDuelBtn");
 const currentPlayerNameEl = document.getElementById("currentPlayerName");
 const leaderboardEl = document.getElementById("leaderboard");
 const weeklyLeaderboardInfoEl = document.getElementById("weeklyLeaderboardInfo");
-const equipmentGridEl = document.getElementById("equipmentGrid");
+const bagGridEl = document.getElementById("bagGrid");
 const charStageSlotsEl = document.getElementById("charStageSlots");
 const myAttackEl = document.getElementById("myAttack");
 const myDefenseEl = document.getElementById("myDefense");
@@ -1726,7 +1726,7 @@ async function startGame() {
     if (!docSnap.exists()) return;
     currentPlayerData = { id: docSnap.id, ...docSnap.data() };
     renderMyStats();
-    renderEquipment();
+    renderBagGrid();
     renderCharacterStage();
     renderBoxStatus();
     renderAttackTargets();
@@ -2570,22 +2570,36 @@ async function claimQuest(period, questId) {
   }
 }
 
-function renderEquipment() {
-  const eq = currentPlayerData?.equipment || emptyEquipment();
-  equipmentGridEl.innerHTML = SLOTS.map(s => {
-    const item = eq[s.key];
-    const rarityClass = item ? `rarity-${item.rarity}` : "";
-    const count = getSlotInventory(s.key).length;
-    return `
-      <button type="button" class="equip-slot ${item ? "filled" : ""} ${rarityClass}" data-slot="${s.key}">
-        <div class="equip-slot-icon">${s.icon}</div>
-        <div class="equip-slot-label">${s.label}</div>
-        <div class="equip-slot-item ${item ? "" : "empty"}">${item ? item.name : "Boş"}</div>
-        ${count > 0 ? `<div class="equip-slot-count">${count} eşya</div>` : ""}
-      </button>`;
-  }).join("");
+// Metin2 tarzı çanta: kuşanılı OLMAYAN tüm eşyalar (slot türü fark etmeksizin)
+// tek bir grid içinde, her biri kendi kare "slot"unda gösterilir. Kutudan
+// çıkan / görevden kazanılan her yeni eşya otomatik olarak bu çantada belirir
+// (slot boşsa zaten doğrudan kuşanılıp paper doll'da görünür, dolu ise buraya
+// düşer). Bir çanta eşyasına dokunmak, o eşyanın türüne ait envanter modalını
+// açar (kuşan / toza çevir seçenekleriyle) — mevcut openInventoryModal ile aynı.
+function renderBagGrid() {
+  if (!bagGridEl || !currentPlayerData) return;
+  const items = [];
+  for (const s of SLOTS) {
+    const equippedId = currentPlayerData.equipment?.[s.key]?.id;
+    const slotItems = getSlotInventory(s.key).filter(it => it.id !== equippedId);
+    items.push(...slotItems);
+  }
+  const rarityOrder = { efsanevi: 0, nadir: 1, standart: 2 };
+  items.sort((a, b) => rarityOrder[a.rarity] - rarityOrder[b.rarity]);
 
-  equipmentGridEl.querySelectorAll("button[data-slot]").forEach(btn => {
+  // Boş kareler de gösterilir ki gerçek bir "çanta" gibi görünsün (Metin2'deki gibi).
+  const minSlots = Math.max(24, Math.ceil(Math.max(items.length, 1) / 6) * 6);
+
+  let html = items.map(it => `
+    <button type="button" class="bag-slot rarity-${it.rarity}" data-slot="${it.slot}" title="${it.name}">
+      <span class="bag-slot-icon">${SLOT_MAP[it.slot].icon}</span>
+    </button>`).join("");
+  for (let i = items.length; i < minSlots; i++) {
+    html += `<div class="bag-slot empty"></div>`;
+  }
+  bagGridEl.innerHTML = html;
+
+  bagGridEl.querySelectorAll("button[data-slot]").forEach(btn => {
     btn.onclick = () => openInventoryModal(btn.getAttribute("data-slot"));
   });
 }
