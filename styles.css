@@ -1112,29 +1112,63 @@ button.equip-slot{ font-family: inherit; cursor:pointer; width:100%; }
 /* ---------- ŞANSLI ÇARK ---------- */
 .wheel-area{ display:flex; flex-direction:column; align-items:center; gap:14px; }
 .wheel-outer{
-  position:relative; width:180px; height:180px;
+  position:relative; width:216px; height:216px;
   display:flex; align-items:center; justify-content:center;
+  filter: drop-shadow(0 12px 20px rgba(0,0,0,.45));
+}
+.wheel-outer::before{
+  content:"";
+  position:absolute; inset:-9px;
+  border-radius:50%;
+  background: repeating-conic-gradient(var(--gold) 0deg 8deg, var(--gold-dark) 8deg 16deg);
+  z-index:0;
 }
 .wheel-dial{
-  width:170px; height:170px; border-radius:50%;
-  border: 4px solid var(--panel-edge);
-  box-shadow: 0 6px 0 rgba(0,0,0,.3), 0 0 0 3px rgba(255,255,255,.08);
-  position:relative;
+  width:198px; height:198px; border-radius:50%;
+  border: 5px solid var(--panel-edge);
+  box-shadow: 0 0 0 4px var(--gold), 0 10px 0 rgba(0,0,0,.35), inset 0 0 26px rgba(0,0,0,.4);
+  position:relative; z-index:1;
   transform: rotate(0deg);
+}
+.wheel-spokes{
+  position:absolute; inset:0; border-radius:50%; pointer-events:none;
+}
+.wheel-hub{
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:52px; height:52px; border-radius:50%;
+  background: linear-gradient(180deg, var(--accent-2), var(--accent) 60%, var(--pink-dark));
+  border:3px solid var(--gold);
+  display:flex; align-items:center; justify-content:center;
+  font-size:1.4rem;
+  box-shadow: 0 0 16px rgba(255,204,77,.5), 0 3px 0 var(--pink-dark);
+  z-index:3;
+  animation: hubPulse 1.8s ease-in-out infinite;
+}
+@keyframes hubPulse{
+  0%,100%{ box-shadow: 0 0 12px rgba(255,204,77,.4), 0 3px 0 var(--pink-dark); }
+  50%{ box-shadow: 0 0 24px rgba(255,204,77,.75), 0 3px 0 var(--pink-dark); }
 }
 .wheel-seg-label{
   position:absolute; top:50%; left:50%;
-  transform-origin: 0 0;
-  font-size:.58rem; font-weight:800; color:#1a0a28;
-  width:80px; text-align:center;
-  text-shadow: 0 1px 0 rgba(255,255,255,.35);
+  width:74px; margin-left:-37px; margin-top:-11px;
+  text-align:center;
+  font-size:.64rem; font-weight:800; line-height:1.15;
+  color:#fff8fb;
+  padding:3px 6px; border-radius:8px;
+  background: rgba(20,4,32,.62);
+  box-shadow: 0 0 0 1px rgba(255,255,255,.18) inset;
+  text-shadow: 0 1px 1px rgba(0,0,0,.5);
   pointer-events:none;
+  z-index:2;
 }
 .wheel-pointer{
-  position:absolute; top:-6px; left:50%; transform:translateX(-50%);
-  font-size:1.4rem; color: var(--accent);
-  filter: drop-shadow(0 2px 3px rgba(0,0,0,.5));
-  z-index:2;
+  position:absolute; top:-9px; left:50%;
+  width:20px; height:20px;
+  transform: translateX(-50%) rotate(45deg);
+  background: linear-gradient(135deg, #fff0a8, var(--gold));
+  border:2px solid var(--gold-dark);
+  box-shadow: 0 3px 6px rgba(0,0,0,.4), 0 0 12px rgba(255,204,77,.65);
+  z-index:4;
 }
 
 /* ---------- KELLE AVCISI ---------- */

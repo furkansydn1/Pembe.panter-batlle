@@ -77,7 +77,7 @@ const DOMINANCE_RATIO = 1.5;
 // ŞANSLI ÇARK
 // Haftada bir kez bedava çevirme hakkı, küçük toz/puan bonusları verir.
 // ============================================================
-const WHEEL_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000; // 7 günde 1 çevirme
+const WHEEL_COOLDOWN_MS = 24 * 60 * 60 * 1000; // günde 1 çevirme
 const WHEEL_SEGMENTS = [
   { id: "dust_small", label: "+5 Toz", type: "dust", dust: 5, points: 0, weight: 28, color: "#cbb8e0" },
   { id: "points_small", label: "+3 Puan", type: "points", dust: 0, points: 3, weight: 22, color: "#4dd68a" },
@@ -1952,10 +1952,12 @@ function renderWheel() {
   if (!luckyWheel || !currentPlayerData) return;
   if (!luckyWheel.dataset.built) {
     luckyWheel.style.background = buildWheelGradient();
-    luckyWheel.innerHTML = WHEEL_SEGMENTS.map((seg, i) => {
+    const spokes = `<div class="wheel-spokes" style="background:${buildWheelSpokesGradient()}"></div>`;
+    const labels = WHEEL_SEGMENTS.map((seg, i) => {
       const angle = WHEEL_SEGMENT_ANGLE * i + WHEEL_SEGMENT_ANGLE / 2;
-      return `<span class="wheel-seg-label" style="transform: rotate(${angle}deg) translateY(-72px) rotate(${-angle}deg);">${seg.label}</span>`;
+      return `<span class="wheel-seg-label" style="transform: rotate(${angle}deg) translateY(-70px) rotate(${-angle}deg);">${seg.label}</span>`;
     }).join("");
+    luckyWheel.innerHTML = spokes + labels + `<div class="wheel-hub">🎡</div>`;
     luckyWheel.dataset.built = "1";
   }
   const able = canSpinWheelNow();
@@ -1987,16 +1989,28 @@ async function spinTheWheel() {
   const segCenter = WHEEL_SEGMENT_ANGLE * idx + WHEEL_SEGMENT_ANGLE / 2;
   const currentRotation = parseFloat(luckyWheel.dataset.rotation || "0");
   const extraSpins = 4;
+  const spinDurationMs = 3200;
   // Pointer 0 derecede (üstte) sabit, çark bu segmentin merkezi üste gelecek şekilde döner
   const targetRotation = currentRotation - (currentRotation % 360) + extraSpins * 360 + (360 - segCenter);
 
-  luckyWheel.style.transition = "transform 3.2s cubic-bezier(.17,.67,.2,1)";
+  luckyWheel.style.transition = `transform ${spinDurationMs / 1000}s cubic-bezier(.17,.67,.2,1)`;
   luckyWheel.style.transform = `rotate(${targetRotation}deg)`;
   luckyWheel.dataset.rotation = String(targetRotation);
   sfxShake();
 
+  // Dönüş sırasında her segment sınırını geçtiğinde kısa bir "tık" sesi çal
+  const endTime = Date.now() + spinDurationMs + 100;
+  let lastSeg = Math.floor(getWheelRotationDeg(luckyWheel) / WHEEL_SEGMENT_ANGLE);
+  function pollTick() {
+    const deg = getWheelRotationDeg(luckyWheel);
+    const segNow = Math.floor(deg / WHEEL_SEGMENT_ANGLE);
+    if (segNow !== lastSeg) { sfxWheelTick(); lastSeg = segNow; }
+    if (Date.now() < endTime) requestAnimationFrame(pollTick);
+  }
+  requestAnimationFrame(pollTick);
+
   wheelStatus.textContent = "Çark dönüyor...";
-  await new Promise(r => setTimeout(r, 3300));
+  await new Promise(r => setTimeout(r, spinDurationMs + 100));
 
   await updateDoc(doc(db, PLAYERS_COL, currentPlayerId), {
     lastWheelSpinTime: Date.now(),
@@ -2008,7 +2022,11 @@ async function spinTheWheel() {
   wheelStatus.textContent = seg.type === "combo"
     ? `🎉 JACKPOT! +${seg.points} puan ve +${seg.dust} toz kazandın!`
     : `${seg.label} kazandın!`;
-  sfxOpenRare();
+
+  // Ödülün büyüklüğüne göre farklı sonuç sesi: jackpot'ta efsanevi fanfar
+  if (seg.type === "combo") sfxOpenLegendary();
+  else if (seg.dust >= 12 || seg.points >= 6) sfxOpenRare();
+  else sfxOpenStandart();
 }
 if (spinWheelBtn) spinWheelBtn.onclick = spinTheWheel;
 
@@ -3174,6 +3192,27 @@ function sfxOpenRare() { tone(520, 0, 0.1, "triangle"); tone(780, 0.09, 0.12, "t
 function sfxOpenLegendary() {
   [523, 659, 784, 1046, 1318].forEach((f, i) => tone(f, i * 0.09, 0.35, "triangle", 0.16));
   tone(1568, 0.45, 0.5, "sine", 0.14);
+}
+// Çark dönerken segment geçişinde çalan kısa "tık" sesi
+function sfxWheelTick() {
+  tone(1100, 0, 0.028, "square", 0.05);
+  tone(650, 0.005, 0.02, "square", 0.03);
+}
+// Çarkın o anki gerçek dönüş açısını (derece) CSS transform matrisinden okur
+function getWheelRotationDeg(el) {
+  const st = getComputedStyle(el);
+  const tr = st.transform;
+  if (!tr || tr === "none") return 0;
+  const match = tr.match(/^matrix\(([^)]+)\)$/);
+  if (!match) return 0;
+  const v = match[1].split(",").map(parseFloat);
+  let angle = Math.atan2(v[1], v[0]) * (180 / Math.PI);
+  if (angle < 0) angle += 360;
+  return angle;
+}
+// Segmentler arası ince ayraç çizgileri için conic-gradient
+function buildWheelSpokesGradient() {
+  return `repeating-conic-gradient(rgba(20,4,32,.55) 0deg 2deg, transparent 2deg ${WHEEL_SEGMENT_ANGLE}deg)`;
 }
 // Kılıç çarpışması: metalik "çınnn" (yüksek, hızlı sönen tiz tonlar) + altında kısa bir vuruş sesi.
 function sfxAttack() {
