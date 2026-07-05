@@ -202,8 +202,16 @@ function monthIdStr(d = new Date()) { return `${d.getFullYear()}-${String(d.getM
 
 function shuffleArr(arr) { return [...arr].sort(() => Math.random() - 0.5); }
 
+// Görev hedefleri/ödülleri her değiştirildiğinde bu sürüm numarası da artırılmalı.
+// Aksi halde bir oyuncu o hafta/ay için görevini ZATEN almışsa (questsWeek/questsMonth
+// eşleşiyorsa) sistem "zaten atanmış" deyip eskisini korur ve yeni denge hiç yansımaz.
+// Versiyon etiketi hafta/ay id'sine eklenince eski kayıt artık eşleşmediği için
+// oyuncu bir sonraki girişinde otomatik olarak yeni (zorlaştırılmış) görevleri alır.
+const WEEKLY_QUEST_VERSION = "v2";
+const MONTHLY_QUEST_VERSION = "v2";
+
 async function ensureWeeklyQuestsForThisWeek(data) {
-  const wk = weekIdStr();
+  const wk = `${weekIdStr()}#${WEEKLY_QUEST_VERSION}`;
   if (data.questsWeek === wk && Array.isArray(data.weeklyQuests) && data.weeklyQuests.length) return;
 
   const shuffled = shuffleArr(WEEKLY_QUEST_TEMPLATES);
@@ -224,7 +232,7 @@ async function ensureWeeklyQuestsForThisWeek(data) {
 }
 
 async function ensureMonthlyQuestsForThisMonth(data) {
-  const mo = monthIdStr();
+  const mo = `${monthIdStr()}#${MONTHLY_QUEST_VERSION}`;
   if (data.questsMonth === mo && Array.isArray(data.monthlyQuests) && data.monthlyQuests.length) return;
 
   const shuffled = shuffleArr(MONTHLY_QUEST_POOL);
