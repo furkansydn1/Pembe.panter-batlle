@@ -279,15 +279,29 @@ input{font-family:inherit;}
 .loot-box{
   position: relative;
   z-index: 1;
-  font-size: 5rem;
+  width: 120px;
+  height: 80px;
+  background-image: url('sheetlist_48x32_bigchest_1.png');
+  background-repeat: no-repeat;
+  background-size: 720px 80px; /* 6 kare x 120px */
+  background-position: 0 0; /* kare 1: kapalı sandık */
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
   filter: drop-shadow(0 10px 12px rgba(0,0,0,.5));
   animation: idleBob 2.4s ease-in-out infinite;
   transition: filter .3s ease;
 }
-.loot-box.shaking{ animation: boxShake .55s ease-in-out; }
-.loot-box.burst-standart{ animation: boxShake .5s ease-in-out, glowStandart .5s ease-out .5s; }
-.loot-box.burst-nadir{ animation: boxShake .55s ease-in-out, glowNadir .85s ease-out .55s; }
-.loot-box.burst-efsanevi{ animation: boxShake .6s ease-in-out, glowEfsanevi 1.1s ease-out .6s, screenShake .6s ease-in-out .6s; }
+.loot-box.shaking{ animation: boxShake .55s ease-in-out, chestOpenFrames .55s steps(5, end) forwards; }
+.loot-box.burst-standart{ animation: boxShake .5s ease-in-out, glowStandart .5s ease-out .5s, chestOpenFrames .5s steps(5, end) forwards; }
+.loot-box.burst-nadir{ animation: boxShake .55s ease-in-out, glowNadir .85s ease-out .55s, chestOpenFrames .55s steps(5, end) forwards; }
+.loot-box.burst-efsanevi{
+  animation: boxShake .6s ease-in-out, glowEfsanevi 1.1s ease-out .6s, screenShake .6s ease-in-out .6s, chestOpenFrames .6s steps(5, end) forwards;
+  background-image: url('sheetlist_48x32_bigchest_2.png'); /* efsanevi açılışta altın sandık */
+}
+@keyframes chestOpenFrames{
+  0%{ background-position: 0 0; }
+  100%{ background-position: -600px 0; }
+}
 
 @keyframes idleBob{
   0%,100%{ transform: translateY(0) rotate(0); }
