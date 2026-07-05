@@ -366,8 +366,11 @@ const QUEST_TEMPLATES = [
 const SLOTS = [
   { key: "kask", label: "Kask", icon: "⛑️", type: "def" },
   { key: "zirh", label: "Zırh", icon: "🛡️", type: "def" },
+  { key: "kalkan", label: "Kalkan", icon: "🔰", type: "def" },
   { key: "kilic", label: "Kılıç", icon: "🗡️", type: "atk" },
   { key: "eldiven", label: "Eldiven", icon: "🧤", type: "atk" },
+  { key: "kupe", label: "Küpe", icon: "💎", type: "atk" },
+  { key: "kolye", label: "Kolye", icon: "📿", type: "atk" },
   { key: "ayakkabi", label: "Ayakkabı", icon: "👢", type: "def" }
 ];
 const SLOT_MAP = Object.fromEntries(SLOTS.map(s => [s.key, s]));
@@ -387,14 +390,26 @@ const STANDARD_NAMES = {
     "Kayak Eldiveni", "Motosiklet Eldiveni"],
   ayakkabi: ["Eski Terlik", "Delik Çorap", "Lastik Ayakkabı", "Plastik Sandalet", "Keçi Postu Çarık",
     "Yırtık Spor Ayakkabı", "Ters Giyilmiş Terlik", "Naylon Galoş", "Eski Bot", "Tek Tekli Ayakkabı",
-    "Islak Çorap", "Plastik Crocs"]
+    "Islak Çorap", "Plastik Crocs"],
+  kalkan: ["Çöp Kapağı Kalkanı", "Tepsi Kalkan", "Karton Kalkan", "Paslı Çukur Kapak", "Bahçe Kapısı Parçası",
+    "Eski Radyatör Kapağı", "Delik Tencere Kapağı", "Çürük Tahta Kalkan", "Naylon Şemsiye Kalkanı",
+    "Yassı Taş Kalkan", "Kırık Masa Tablası"],
+  kupe: ["Plastik Küpe", "Paslı Halka Küpe", "Kırık Boncuk Küpe", "Ucuz Taklit Küpe", "Tahta Küpe",
+    "Bakır Tel Küpe", "Anahtarlık Küpe", "Kapak Küpe", "Zımba Teli Küpe", "Sakız Kağıdı Küpe",
+    "Misina Küpe"],
+  kolye: ["İp Kolye", "Kertenkele Dişi Kolye", "Plastik Boncuk Kolye", "Paslı Zincir Kolye", "Deniz Kabuğu Kolye",
+    "Taş Kolye", "Anahtar Kolye", "Düğme Kolye", "Lastik Bant Kolye", "Tel Örgü Kolye",
+    "Kurutulmuş Meyve Kolye"]
 };
 const RARE_NAMES = {
   kask: ["Gümüş Miğfer", "Ejder Kafatası Kaskı", "Buz Tacı", "Kartal Kaskı", "Meteor Miğferi", "Gölge Külahı"],
   zirh: ["Çelik Zırh", "Ejder Pulu Zırhı", "Gölge Cübbesi", "Meteor Plakası", "Buz Zırhı", "Kurt Postu Zırhı"],
   kilic: ["Ateş Kılıcı", "Buz Kılıcı", "Şimşek Pala", "Kan İçen Meç", "Gölge Bıçağı", "Ejder Dişi Kılıcı"],
   eldiven: ["Demir Pençe", "Kadife Eldiven", "Zehir Eldiveni", "Fırtına Pençesi", "Örümcek Eldiveni", "Alev Eldiveni"],
-  ayakkabi: ["Rüzgar Botları", "Çelik Nalın", "Gölge Ayakkabıları", "Kum Fırtınası Çarığı", "Buz Patenleri", "Şimşek Çizmeleri"]
+  ayakkabi: ["Rüzgar Botları", "Çelik Nalın", "Gölge Ayakkabıları", "Kum Fırtınası Çarığı", "Buz Patenleri", "Şimşek Çizmeleri"],
+  kalkan: ["Çelik Örümcek Kalkanı", "Ejder Pulu Kalkanı", "Buz Duvarı Kalkanı", "Gölge Siperi", "Meteor Parçası Kalkan", "Fırtına Kalkanı"],
+  kupe: ["Gümüş Yılan Küpe", "Ejder Gözü Küpe", "Şimşek Küpe", "Ay Işığı Küpe", "Zehir Damlası Küpe", "Rüzgar Fısıltısı Küpe"],
+  kolye: ["Ejder Kalbi Kolye", "Gölge Taşı Kolye", "Buz Kristali Kolye", "Şimşek Zinciri Kolye", "Alev Küresi Kolye", "Ay Taşı Kolye"]
 };
 
 // Efsanevi eşyalar - her birinin gerçek oyun içi pasif etkisi var (effect kodu ile).
@@ -430,7 +445,27 @@ const LEGENDARY_ITEMS = [
   { name: "Emrenin yamuk parmak eldiveni", slot: "eldiven", atk: 25, def: 4, effect: "attack_multiplier",
     desc: "Saldırı gücü hesaplamasında %15 fazladan bonus verir." },
   { name: "Gay eldiveni", slot: "eldiven", atk: 21, def: 6, effect: "chill_risk",
-    desc: "Kazanırsa 3 puan fazladan alır, ama %20 ihtimalle o seferki saldırıyı pas geçer." }
+    desc: "Kazanırsa 3 puan fazladan alır, ama %20 ihtimalle o seferki saldırıyı pas geçer." },
+
+  // ---- v1.14: Kalkan, Küpe, Kolye efsanevi eşyaları ----
+  { name: "Kaymağın kalkanı", slot: "kalkan", atk: 3, def: 25, effect: "defense_multiplier",
+    desc: "Savunma gücü hesaplamasında %15 fazladan bonus verir." },
+  { name: "Devrik minderin kalkanı", slot: "kalkan", atk: 4, def: 24, effect: "no_loss_on_defense_lose",
+    desc: "Savunmadayken maçı kaybetse bile puanı asla düşmez." },
+  { name: "Sallanan dişin kalkanı", slot: "kalkan", atk: 3, def: 23, effect: "lucky_defense_roll",
+    desc: "Savunmadayken zar atışı 2 katı sayılır, şansı yaver gider." },
+  { name: "Kelebeğin küpesi", slot: "kupe", atk: 25, def: 4, effect: "attack_multiplier",
+    desc: "Saldırı gücü hesaplamasında %15 fazladan bonus verir." },
+  { name: "Sarhoş amcanın küpesi", slot: "kupe", atk: 26, def: 3, effect: "steal_extra_on_big_win",
+    desc: "Saldırıda 5'ten fazla güç farkıyla kazanırsa rakipten ekstra 2 puan çalar." },
+  { name: "Işıltılı dedikodu küpesi", slot: "kupe", atk: 24, def: 5, effect: "crit_instant_win",
+    desc: "Saldırıda %10 ihtimalle güç hesabına bakmadan anında ısırıp kazanır." },
+  { name: "Nazarlıklı amcanın kolyesi", slot: "kolye", atk: 25, def: 4, effect: "curse_defense_next",
+    desc: "Saldırıda kazanırsa rakibe lanet okur: rakibin bir sonraki savaşında savunması %20 düşer." },
+  { name: "Keyifli akşamın kolyesi", slot: "kolye", atk: 21, def: 6, effect: "chill_risk",
+    desc: "Kazanırsa 3 puan fazladan alır, ama %20 ihtimalle o seferki saldırıyı pas geçer." },
+  { name: "Gıcık komşunun kolyesi", slot: "kolye", atk: 24, def: 5, effect: "attack_multiplier",
+    desc: "Saldırı gücü hesaplamasında %15 fazladan bonus verir." }
 ];
 const LEGENDARY_BY_SLOT = LEGENDARY_ITEMS.reduce((acc, it) => {
   (acc[it.slot] ||= []).push(it);
@@ -670,6 +705,47 @@ function rollRareStat() {
   return randInt(RARE_STAT_MIN, RARE_STAT_MAX - 1);
 }
 
+// ============================================================
+// EFSUN (ENCHANT) SİSTEMİ
+// Her eşya, düştüğü anda nadirliğine göre değişen oranda ekstra bir
+// "efsun" bonusu kazanır. Bu bonus, eşyanın ana statına (saldırı tipi
+// eşyalarda saldırıya, savunma tipi eşyalarda savunmaya) yüzdesel olarak
+// eklenir ve eşyanın nihai atk/def değerine gömülür. Böylece aynı isimli
+// iki eşya bile efsun farkından dolayı hafif farklı güç verebilir.
+// Nadirlik arttıkça efsun aralığı da büyür: standart eşyalarda ufak bir
+// katkı, nadirde belirgin, efsanevi de ise en güçlü katkı.
+// ============================================================
+const ENCHANT_PCT_RANGE = {
+  standart: [1, 3],
+  nadir: [5, 9],
+  efsanevi: [12, 18]
+};
+function rollEnchantPct(rarity) {
+  const [min, max] = ENCHANT_PCT_RANGE[rarity] || [0, 0];
+  return randInt(min, max);
+}
+
+// Kutudan çıkma şansı gösterimi için (temel oranlar; günün olayı ve pity
+// bunu anlık değiştirebilir ama envanterde gösterilen değer temel orandır).
+const RARITY_CHANCE_LABELS = {
+  standart: "~%88",
+  nadir: `~%${BASE_RARE_CHANCE}`,
+  efsanevi: `~%${BASE_LEGENDARY_CHANCE}`
+};
+const RARITY_LABELS_TR = { standart: "Standart", nadir: "Nadir", efsanevi: "Efsanevi" };
+
+// Efsun bonusunu, eşyanın ana statına (slot tipine göre atk ya da def)
+// yüzdesel olarak ekler ve son atk/def değerlerini döndürür.
+function applyEnchant(slotInfo, atk, def, rarity) {
+  const enchantPct = rollEnchantPct(rarity);
+  if (slotInfo.type === "atk") {
+    atk = Math.round(atk * (1 + enchantPct / 100));
+  } else {
+    def = Math.round(def * (1 + enchantPct / 100));
+  }
+  return { atk, def, enchantPct };
+}
+
 function generateLootItemForRarity(slot, rarity) {
   const slotInfo = SLOT_MAP[slot];
   const id = genItemId();
@@ -677,9 +753,10 @@ function generateLootItemForRarity(slot, rarity) {
   if (rarity === "efsanevi") {
     const options = LEGENDARY_BY_SLOT[slot];
     const base = pick(options);
+    const { atk, def, enchantPct } = applyEnchant(slotInfo, base.atk, base.def, rarity);
     return {
       id, name: base.name, slot, rarity,
-      atk: base.atk, def: base.def,
+      atk, def, enchantPct,
       effect: base.effect, effectDesc: base.desc
     };
   }
@@ -688,10 +765,12 @@ function generateLootItemForRarity(slot, rarity) {
     const name = pick(RARE_NAMES[slot]);
     const primary = rollRareStat();
     const secondary = randInt(1, 4);
+    const rawAtk = slotInfo.type === "atk" ? primary : secondary;
+    const rawDef = slotInfo.type === "def" ? primary : secondary;
+    const { atk, def, enchantPct } = applyEnchant(slotInfo, rawAtk, rawDef, rarity);
     return {
       id, name, slot, rarity,
-      atk: slotInfo.type === "atk" ? primary : secondary,
-      def: slotInfo.type === "def" ? primary : secondary,
+      atk, def, enchantPct,
       effect: null, effectDesc: null
     };
   }
@@ -700,10 +779,12 @@ function generateLootItemForRarity(slot, rarity) {
   const name = pick(STANDARD_NAMES[slot]);
   const primary = randInt(3, 8);
   const secondary = randInt(0, 2);
+  const rawAtk = slotInfo.type === "atk" ? primary : secondary;
+  const rawDef = slotInfo.type === "def" ? primary : secondary;
+  const { atk, def, enchantPct } = applyEnchant(slotInfo, rawAtk, rawDef, rarity);
   return {
     id, name, slot, rarity,
-    atk: slotInfo.type === "atk" ? primary : secondary,
-    def: slotInfo.type === "def" ? primary : secondary,
+    atk, def, enchantPct,
     effect: null, effectDesc: null
   };
 }
@@ -736,7 +817,7 @@ function formatRemaining(ms) {
 }
 
 function emptyEquipment() {
-  return { kask: null, zirh: null, kilic: null, eldiven: null, ayakkabi: null };
+  return { kask: null, zirh: null, kalkan: null, kilic: null, eldiven: null, kupe: null, kolye: null, ayakkabi: null };
 }
 
 // ============================================================
@@ -942,6 +1023,14 @@ tutNextBtn.onclick = () => goToTutorialSlide(currentTutorialIndex() + 1);
 // ama bu sürümü henüz görmemiş herkese otomatik gösterilir.
 // ============================================================
 const NEW_FEATURE_SLIDES = {
+  "1.14": [
+    { icon: "🆕", title: "v1.14 Yenilikleri!", text: "Bu güncelleme oyunun ekipman derinliğini ciddi şekilde artırıyor: 3 yeni slot, 69 yeni eşya, yepyeni bir Efsun sistemi, yenilenmiş bir envanter tasarımı ve daha adil bir savaş algoritması geldi. Hadi tek tek bakalım." },
+    { icon: "🔰", title: "3 Yeni Slot: Kalkan, Küpe, Kolye", text: "Kuşanım artık 5 değil 8 slot: Kask, Zırh ve Ayakkabı'nın yanına savunma tipinde 🔰 Kalkan; Kılıç ve Eldiven'in yanına ise saldırı tipinde 💎 Küpe ve 📿 Kolye eklendi. Karakter sahnesinde bu 3 slot da panterin üzerinde uygun anatomik konumlarda (kolyede boyunda, kalkan elinde, küpe kulağında) gösteriliyor." },
+    { icon: "🧰", title: "69 Yeni Eşya", text: "Yeni slotların her birine tam 20 eşya eklendi: 11 standart, 6 nadir, 3 efsanevi. Toplamda 60 standart/nadir + 9 yepyeni efsanevi eşya oyuna katıldı. Yeni efsanevi eşyaların hepsinin gerçek pasif etkileri var; örneğin Kaymağın Kalkanı savunmayı %15 güçlendiriyor, Nazarlıklı Amcanın Kolyesi rakibe lanet okuyor, Işıltılı Dedikodu Küpesi ise %10 ihtimalle anında kazandırıyor." },
+    { icon: "✨", title: "Efsun (Enchant) Sistemi", text: "Artık kutudan çıkan HER eşya, nadirliğine göre değişen oranda ekstra bir Efsun bonusu taşıyor: Standart eşyalarda ~%1-3, Nadir eşyalarda ~%5-9, Efsanevi eşyalarda ~%12-18 arası. Bu bonus otomatik olarak eşyanın ana statına (saldırı tipi eşyalarda saldırıya, savunma tipinde savunmaya) ekleniyor, yani aynı isimli iki eşya bile artık birbirinden farklı güçte çıkabilir. Efsun oranı eşyanın göründüğü her yerde ✨ rozetiyle gösteriliyor." },
+    { icon: "📖", title: "Yenilenen Envanter Tasarımı", text: "Envanter ekranı sıfırdan tasarlandı: her eşya artık nadirliğine göre renklenen bir ikon rozeti, ayrı ayrı 'saldırı / savunma / efsun' etiketleri ve nadirlik + kutudan çıkma şansı bilgisiyle gösteriliyor. Envanterin en üstünde ise o slotun temel kutu şanslarını (Standart / Nadir / Efsanevi) özetleyen yeni bir bilgi şeridi var." },
+    { icon: "⚔️", title: "Daha Adil Savaş Algoritması", text: "Önceden savaşta sadece 'rol statı' bakılıyordu (saldıranın sadece saldırısı, savunanın sadece savunması). Bu yüzden saldırısı düşük ama savunması çok yüksek biri saldırıya geçtiğinde, kendinden çok daha zayıf ekipmanlı birine bile otomatik kaybedebiliyordu. Artık her iki tarafın DİĞER statı da küçük bir ağırlıkla hesaba katılıyor, yani toplam ekipman yatırımın savaşta gerçekten işine yarıyor." }
+  ],
   "1.13": [
     { icon: "🆕", title: "v1.13 Yenilikleri!", text: "Bu güncelleme oyunun görünüşüne ve kulağa gelişine odaklanıyor, ayrıca can sıkan bir haftalık liderlik hatası da düzeltildi. Hadi bakalım." },
     { icon: "🔤", title: "Yeni Yazı Tipleri", text: "Oyunun geneli artık daha yuvarlak ve kalın bir fontla (Fredoka) yazılıyor. Logo ve büyük başlık şeritleri ise daha iddialı, kalın bir font olan Luckiest Guy ile gösteriliyor." },
@@ -1072,9 +1161,20 @@ howToBtn.onclick = () => openTutorial();
 // Her yeni özellik bittiğinde status'u "soon" -> "done" yapıp
 // LATEST_UPDATE_VERSION'ı artırman yeterli, rozet otomatik güncellenir.
 // ============================================================
-const LATEST_UPDATE_VERSION = "1.13";
+const LATEST_UPDATE_VERSION = "1.14";
 
 const RELEASES = [
+  {
+    version: "1.14",
+    date: "5 Temmuz 2026",
+    items: [
+      "🔰💎📿 3 yeni ekipman slotu eklendi: Kalkan, Küpe ve Kolye! Kalkan savunma tipinde, Küpe ve Kolye saldırı tipinde çalışıyor. Artık kuşanım toplam 8 slota çıktı: Kask, Zırh, Kalkan, Kılıç, Eldiven, Küpe, Kolye, Ayakkabı. Karakter sahnesinde de bu 3 yeni slot, panterin üzerinde anatomik olarak doğru konumlarda (kolye boyunda, kalkan bir elde, küpe kulakta) gösteriliyor.",
+      "🧰 Her yeni slot için 20'şer eşya eklendi (toplam 60 yeni standart/nadir eşya + 9 yeni efsanevi eşya = 69 yeni eşya): Kalkan, Küpe ve Kolye'nin her birinde 11 standart, 6 nadir ve 3 efsanevi eşya var. Yeni efsanevi eşyalar da diğerleri gibi gerçek pasif etkilere sahip (örn. 'Kaymağın Kalkanı' savunmayı %15 güçlendiriyor, 'Nazarlıklı Amcanın Kolyesi' rakibe lanet okuyor).",
+      "✨ EFSUN (Enchant) sistemi eklendi: Artık her düşen eşya, nadirliğine göre değişen oranda ek bir 'efsun' bonusu kazanıyor ve bu bonus eşyanın ana statına (saldırı tipi eşyalarda saldırıya, savunma tipi eşyalarda savunmaya) otomatik ekleniyor. Standart eşyalarda efsun ~%1-3, Nadir eşyalarda ~%5-9, Efsanevi eşyalarda ~%12-18 arası. Bu sayede aynı isimli iki eşya bile efsun farkından dolayı birbirinden az ya da çok güçlü çıkabiliyor. Efsun oranı, eşyanın olduğu her yerde (envanter, kutu açılış popup'ı, görev ödülü popup'ı, başkasının ekipmanı ekranı) ✨ rozetiyle gösteriliyor.",
+      "📖 Envanter ekranı baştan tasarlandı: her eşya artık nadirliğine göre renklenen bir ikon rozetiyle, ayrı stat 'hap'leriyle (⚔️ saldırı / 🛡️ savunma / ✨ efsun) ve nadirlik + kutu şansı etiketiyle birlikte çok daha okunaklı bir kart halinde gösteriliyor. Ayrıca envanterin en üstüne, o an geçerli temel kutu şanslarını (Standart/Nadir/Efsanevi) gösteren bir bilgi şeridi eklendi.",
+      "⚔️ Savaş algoritması dengelendi: önceden sadece 'rol statı' (saldıranın saldırısı, savunanın savunması) hesaba katılıyordu. Artık her tarafın diğer statı da (örn. saldıranın savunması, savunanın saldırısı) küçük bir ağırlıkla hesaba katılıyor. Böylece saldırısı düşük ama savunması çok yüksek (yani toplam ekipmanı güçlü) biri saldırıya geçtiğinde eskisi gibi otomatik ezilmiyor, toplam ekipman yatırımı da işin içine giriyor."
+    ]
+  },
   {
     version: "1.13",
     date: "5 Temmuz 2026",
@@ -1350,6 +1450,18 @@ function openInventoryModal(slot) {
   inventoryModal.classList.remove("hidden");
 }
 
+// Envanter modalının üstünde, o slotun 3 nadirliğinin de temel kutu şansını
+// gösteren küçük bir bilgi şeridi. Salt bilgilendirme amaçlı, hesaplamayı
+// etkilemez.
+function renderDropRatesInfoHtml() {
+  return `
+    <div class="drop-rates-info">
+      <span class="drop-rate-chip rarity-standart">⚪ Standart <b>${RARITY_CHANCE_LABELS.standart}</b></span>
+      <span class="drop-rate-chip rarity-nadir">🔷 Nadir <b>${RARITY_CHANCE_LABELS.nadir}</b></span>
+      <span class="drop-rate-chip rarity-efsanevi">🌟 Efsanevi <b>${RARITY_CHANCE_LABELS.efsanevi}</b></span>
+    </div>`;
+}
+
 function renderInventoryModal() {
   if (!currentInventorySlot) return;
   const slot = currentInventorySlot;
@@ -1360,20 +1472,31 @@ function renderInventoryModal() {
   const items = getSlotInventory(slot).slice().sort((a, b) => rarityOrder[a.rarity] - rarityOrder[b.rarity]);
   const equippedId = currentPlayerData?.equipment?.[slot]?.id;
 
+  const dropRatesHtml = renderDropRatesInfoHtml();
+
   if (!items.length) {
-    inventoryList.innerHTML = `<p class="box-status">Bu slotta henüz eşyan yok, kutu aç ve şansını dene!</p>`;
+    inventoryList.innerHTML = dropRatesHtml + `<p class="box-status">Bu slotta henüz eşyan yok, kutu aç ve şansını dene!</p>`;
     return;
   }
 
-  inventoryList.innerHTML = items.map(it => {
+  inventoryList.innerHTML = dropRatesHtml + items.map(it => {
     const isEquipped = it.id === equippedId;
+    const statLabel = SLOT_MAP[it.slot]?.type === "atk" ? "Saldırı" : "Savunma";
     return `
-      <div class="inv-item rarity-${it.rarity}">
-        <div class="inv-item-top">
-          <span class="inv-item-name">${it.name}</span>
+      <div class="inv-item inv-item-v2 rarity-${it.rarity}">
+        <div class="inv-item-head">
+          <div class="inv-item-icon-badge rarity-${it.rarity}">${SLOT_MAP[it.slot]?.icon || "❔"}</div>
+          <div class="inv-item-head-body">
+            <span class="inv-item-name">${it.name}</span>
+            <span class="inv-item-rarity-tag rarity-${it.rarity}">${RARITY_LABELS_TR[it.rarity]} · ${RARITY_CHANCE_LABELS[it.rarity]} şans</span>
+          </div>
           ${isEquipped ? `<span class="update-badge done">✅ KUŞANILI</span>` : ""}
         </div>
-        <div class="inv-item-stats">⚔️ +${it.atk} &nbsp; 🛡️ +${it.def} &nbsp; · ${it.rarity.toUpperCase()}</div>
+        <div class="inv-item-stat-pills">
+          <span class="inv-stat-pill atk">⚔️ +${it.atk}</span>
+          <span class="inv-stat-pill def">🛡️ +${it.def}</span>
+          ${it.enchantPct ? `<span class="inv-stat-pill enchant">✨ Efsun +%${it.enchantPct} ${statLabel}</span>` : ""}
+        </div>
         ${it.effectDesc ? `<div class="item-popup-passive" style="margin-top:6px;">✨ ${it.effectDesc}</div>` : ""}
         <div class="inv-item-actions">
           <button class="btn-mini nadir-mini" data-action="equip" data-id="${it.id}" ${isEquipped ? "disabled" : ""}>Kuşan</button>
@@ -1452,7 +1575,7 @@ newPlayerBtn.onclick = async () => {
       attack: BASE_ATTACK,
       defense: BASE_DEFENSE,
       equipment: emptyEquipment(),
-      inventory: { kask: [], zirh: [], kilic: [], eldiven: [], ayakkabi: [] },
+      inventory: { kask: [], zirh: [], kalkan: [], kilic: [], eldiven: [], kupe: [], kolye: [], ayakkabi: [] },
       lastBoxOpenTime: 0,
       lastAttackTime: 0,
       lastAttackWindow: -1,
@@ -1719,7 +1842,7 @@ function openViewEquipment(player) {
         <div class="equip-slot-icon">${s.icon}</div>
         <div class="equip-slot-label">${s.label}</div>
         <div class="equip-slot-item ${item ? "" : "empty"}">${item ? item.name : "Boş"}</div>
-        ${item ? `<div class="equip-slot-count">⚔️${item.atk} 🛡️${item.def}</div>` : ""}
+        ${item ? `<div class="equip-slot-count">⚔️${item.atk} 🛡️${item.def}${item.enchantPct ? ` · ✨+%${item.enchantPct}` : ""}</div>` : ""}
       </div>`;
   }).join("");
   viewEquipmentModal.classList.remove("hidden");
@@ -2438,7 +2561,8 @@ async function claimQuest(period, questId) {
       <div class="streak-bonus-tag">🎯 Görev Ödülü!</div>
       <div class="item-popup-icon">${SLOT_MAP[grantedItem.slot].icon}</div>
       <div class="item-popup-name rarity-${grantedItem.rarity}">${grantedItem.name}</div>
-      <div class="item-popup-stats">⚔️ +${grantedItem.atk} &nbsp; 🛡️ +${grantedItem.def} &nbsp; · ${grantedItem.rarity.toUpperCase()}</div>
+      <div class="item-popup-stats">⚔️ +${grantedItem.atk} &nbsp; 🛡️ +${grantedItem.def} &nbsp; · ${grantedItem.rarity.toUpperCase()} (${RARITY_CHANCE_LABELS[grantedItem.rarity]} şans)</div>
+      ${grantedItem.enchantPct ? `<div class="item-popup-passive" style="color:var(--accent-2)">✨ Efsun: +%${grantedItem.enchantPct} ${SLOT_MAP[grantedItem.slot].type === "atk" ? "Saldırı" : "Savunma"}</div>` : ""}
       ${grantedItem.effectDesc ? `<div class="item-popup-passive">✨ ${grantedItem.effectDesc}</div>` : ""}
     `;
     itemPopup.classList.remove("hidden");
@@ -2640,7 +2764,8 @@ async function performBoxOpen({ forcedRarity = null, costDust = 0, isFree = fals
     ${streakBonusFired ? `<div class="streak-bonus-tag">🔥 ${newStreak} Günlük Seri Bonusu!</div>` : ""}
     <div class="item-popup-icon">${SLOT_MAP[item.slot].icon}</div>
     <div class="item-popup-name rarity-${item.rarity}">${item.name}</div>
-    <div class="item-popup-stats">⚔️ +${item.atk} &nbsp; 🛡️ +${item.def} &nbsp; · ${item.rarity.toUpperCase()}</div>
+    <div class="item-popup-stats">⚔️ +${item.atk} &nbsp; 🛡️ +${item.def} &nbsp; · ${item.rarity.toUpperCase()} (${RARITY_CHANCE_LABELS[item.rarity]} şans)</div>
+    ${item.enchantPct ? `<div class="item-popup-passive" style="color:var(--accent-2)">✨ Efsun: +%${item.enchantPct} ${SLOT_MAP[item.slot].type === "atk" ? "Saldırı" : "Savunma"}</div>` : ""}
     ${item.effectDesc ? `<div class="item-popup-passive">✨ ${item.effectDesc}</div>` : ""}
     ${wasEmpty
       ? `<div class="item-popup-passive" style="color:var(--green)">✅ Boş slota otomatik kuşanıldı!</div>`
@@ -2866,8 +2991,19 @@ async function runAttack(defenderId) {
       // oransal bir şans payı alıyor. Böylece düşük statlı biri yüksek statlıyı
       // sürekli yenemiyor, ama yakın maçlarda hâlâ ufak bir sürpriz kalıyor.
       // Ezici bir stat üstünlüğü (1.5 kat +) varsa şansa bakılmaksızın kazanılır.
-      let baseAttack = attacker.attack;
-      let baseDefense = defender.defense;
+      //
+      // v1.14 DÜZELTMESİ: Önceden SADECE rol statı (saldıranın saldırısı,
+      // savunanın savunması) hesaba katılıyordu. Bu yüzden örneğin savunması
+      // 20 ama saldırısı sadece 3 olan, yani toplamda ÇOK güçlü ekipmanlı biri
+      // saldırıya geçtiğinde, savunması sadece 5 olan çok daha zayıf ekipmanlı
+      // birine karşı bile otomatik eziliyordu (3, 5*1.5=7.5'in altında kaldığı
+      // için). Bu adil değildi: kişinin toplam ekipman yatırımı görmezden
+      // geliniyordu. Artık her tarafın "rol dışı" statı da küçük bir ağırlıkla
+      // (OFFROLE_STAT_WEIGHT) hesaba katılıyor, böylece güçlü/dengeli ekipmanlı
+      // biri yanlış rolde bile tamamen çaresiz kalmıyor.
+      const OFFROLE_STAT_WEIGHT = 0.25;
+      let baseAttack = attacker.attack + (attacker.defense || BASE_DEFENSE) * OFFROLE_STAT_WEIGHT;
+      let baseDefense = defender.defense + (defender.attack || BASE_ATTACK) * OFFROLE_STAT_WEIGHT;
 
       // Lanet: defender bir önceki saldırıdan lanetliyse savunması düşer
       if (defender.curseNextAttack && defender.curseNextAttack.active) {
