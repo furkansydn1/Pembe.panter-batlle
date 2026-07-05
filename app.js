@@ -135,33 +135,37 @@ const QUEST_TIER_LABELS = { kolay: "Kolay", orta: "Orta", zor: "Zor", efsanevi: 
 // nadir eşya) şeklinde.
 // ============================================================
 const WEEKLY_TIER_REWARDS = {
-  orta: { dustMin: 10, dustMax: 16, pointsMin: 8, pointsMax: 12, itemChance: 0.35 },
-  zor: { dustMin: 18, dustMax: 26, pointsMin: 14, pointsMax: 20, itemChance: 0.6 }
+  orta: { dustMin: 14, dustMax: 20, pointsMin: 10, pointsMax: 15, itemChance: 0.4 },
+  zor: { dustMin: 24, dustMax: 34, pointsMin: 18, pointsMax: 26, itemChance: 0.65 }
 };
 const MONTHLY_TIER_REWARDS = {
-  zor: { dustMin: 30, dustMax: 45, pointsMin: 20, pointsMax: 30, itemChance: 1 },
-  efsanevi: { dustMin: 40, dustMax: 60, pointsMin: 25, pointsMax: 35, itemChance: 0, legendary: true }
+  zor: { dustMin: 45, dustMax: 65, pointsMin: 30, pointsMax: 45, itemChance: 1 },
+  efsanevi: { dustMin: 55, dustMax: 80, pointsMin: 35, pointsMax: 50, itemChance: 0, legendary: true }
 };
 
-// Haftada 3 görev: aşağıdaki havuzdan rastgele, birbirinden farklı 3 tip seçilir.
+// Hedefler oyunun gerçek temposuna göre kasıtlı olarak zorlaştırıldı: kutu 4 saatte
+// 1 (günde en fazla ~6), saldırı saat başına 1 (günde en fazla ~24), Kahin Bahsi
+// günde en fazla 1 hakla sınırlı. Bu yüzden aşağıdaki hedeflerin hiçbiri tek bir
+// günde, hatta çoğu tek bir hafta sonu grinding'iyle bile bitirilemeyecek şekilde
+// ayarlandı; gerçekten haftayı/ayı yayarak oynamayı gerektiriyor.
 const WEEKLY_QUEST_TEMPLATES = [
-  { type: "open_box", tier: "orta", icon: "📦", target: 15, label: (t) => `${t} kutu aç` },
-  { type: "attack_count", tier: "orta", icon: "⚔️", target: 12, label: (t) => `${t} savaşa gir` },
-  { type: "battle_win", tier: "zor", icon: "🏆", target: 6, label: (t) => `${t} savaş kazan` },
-  { type: "energy_task", tier: "orta", icon: "⚡", target: 15, label: (t) => `${t} kez enerji görevi yap` },
-  { type: "oracle_win", tier: "zor", icon: "🔮", target: 3, label: (t) => `${t} kez Kahin Bahsi'ni doğru bil` },
-  { type: "bounty_win", tier: "zor", icon: "💀", target: 2, label: (t) => `${t} kez Kelle Avcısı ödülünü kap` }
+  { type: "open_box", tier: "orta", icon: "📦", target: 32, label: (t) => `${t} kutu aç` },
+  { type: "attack_count", tier: "orta", icon: "⚔️", target: 70, label: (t) => `${t} savaşa gir` },
+  { type: "battle_win", tier: "zor", icon: "🏆", target: 24, label: (t) => `${t} savaş kazan` },
+  { type: "energy_task", tier: "orta", icon: "⚡", target: 35, label: (t) => `${t} kez enerji görevi yap` },
+  { type: "oracle_win", tier: "zor", icon: "🔮", target: 5, label: (t) => `${t} kez Kahin Bahsi'ni doğru bil` },
+  { type: "bounty_win", tier: "zor", icon: "💀", target: 4, label: (t) => `${t} kez Kelle Avcısı ödülünü kap` }
 ];
 
 // Ayda her zaman bu en zor görev atanır (efsanevi eşya ödülü sadece bunda var).
-const MONTHLY_HARD_TEMPLATE = { type: "battle_win", tier: "efsanevi", icon: "👑", target: 30, label: (t) => `Bu ay ${t} savaş kazan` };
+const MONTHLY_HARD_TEMPLATE = { type: "battle_win", tier: "efsanevi", icon: "👑", target: 90, label: (t) => `Bu ay ${t} savaş kazan` };
 // Bunun yanına, aşağıdaki havuzdan rastgele 2 farklı tip daha eklenir (toz/puan/garanti nadir eşya verir).
 const MONTHLY_QUEST_POOL = [
-  { type: "open_box", tier: "zor", icon: "📦", target: 60, label: (t) => `Bu ay ${t} kutu aç` },
-  { type: "attack_count", tier: "zor", icon: "⚔️", target: 40, label: (t) => `Bu ay ${t} savaşa gir` },
-  { type: "oracle_win", tier: "zor", icon: "🔮", target: 10, label: (t) => `Bu ay ${t} kez Kahin Bahsi'ni doğru bil` },
-  { type: "bounty_win", tier: "zor", icon: "💀", target: 5, label: (t) => `Bu ay ${t} kez Kelle Avcısı ödülünü kap` },
-  { type: "energy_task", tier: "zor", icon: "⚡", target: 45, label: (t) => `Bu ay ${t} kez enerji görevi yap` }
+  { type: "open_box", tier: "zor", icon: "📦", target: 140, label: (t) => `Bu ay ${t} kutu aç` },
+  { type: "attack_count", tier: "zor", icon: "⚔️", target: 300, label: (t) => `Bu ay ${t} savaşa gir` },
+  { type: "oracle_win", tier: "zor", icon: "🔮", target: 22, label: (t) => `Bu ay ${t} kez Kahin Bahsi'ni doğru bil` },
+  { type: "bounty_win", tier: "zor", icon: "💀", target: 12, label: (t) => `Bu ay ${t} kez Kelle Avcısı ödülünü kap` },
+  { type: "energy_task", tier: "zor", icon: "⚡", target: 130, label: (t) => `Bu ay ${t} kez enerji görevi yap` }
 ];
 
 function rollQuestRewardGeneric(table, tier) {
