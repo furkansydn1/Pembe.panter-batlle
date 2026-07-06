@@ -24,7 +24,7 @@ const db = getFirestore(app);
 
 const PLAYERS_COL = "players";
 const LOG_COL = "battleLog";
-const MAX_PLAYERS = 7;
+const MAX_PLAYERS = 9;
 const BASE_ATTACK = 10;
 const BASE_DEFENSE = 10;
 const ATTACK_COOLDOWN_MS = 1 * 60 * 60 * 1000;       // 1 saatte 1 saldırı
@@ -1096,6 +1096,18 @@ let currentPlayerId = localStorage.getItem("gacha_player_id") || null;
 let currentPlayerData = null;
 let allPlayers = [];
 
+// Oyuncu değiştirilip yeniden giriş yapıldığında startGame() tekrar çağrılıyordu ama
+// eskiden açılan onSnapshot dinleyicileri hiç kapatılmıyordu. Bu hem gereksiz tekrar
+// render'a hem de (asıl önemlisi) aynı anda birden fazla "kahin bahsi sonuçlandırma" /
+// "haftalık liderlik sıfırlama" kontrolünün üst üste tetiklenip birbirinin yazdığı görev
+// ilerlemesini ezmesine (kayıp güncelleme / race condition) yol açıyordu. Artık yeni bir
+// oyun oturumu başlamadan önce eski tüm dinleyiciler kapatılıyor.
+let activeUnsubscribers = [];
+function clearActiveListeners() {
+  activeUnsubscribers.forEach(unsub => { try { unsub(); } catch (e) { /* zaten kapanmış olabilir */ } });
+  activeUnsubscribers = [];
+}
+
 // ============================================================
 // DOM
 // ============================================================
@@ -1825,7 +1837,7 @@ async function showLoginScreen() {
     if (players.length > 0) {
       const note = document.createElement("p");
       note.className = "login-sub";
-      note.textContent = "7 oyuncu kontenjanı dolu, listeden ismini seç.";
+      note.textContent = "9 oyuncu kontenjanı dolu, listeden ismini seç.";
       playerListLogin.appendChild(note);
     }
   } else {
@@ -1841,7 +1853,7 @@ newPlayerBtn.onclick = async () => {
   if (!/^\d{4}$/.test(pin)) { loginError.textContent = "4 haneli bir PIN belirle (sadece rakam)."; return; }
 
   const players = await loadPlayersOnce();
-  if (players.length >= MAX_PLAYERS) { loginError.textContent = "Kontenjan dolu (7/7)."; return; }
+  if (players.length >= MAX_PLAYERS) { loginError.textContent = `Kontenjan dolu (${MAX_PLAYERS}/${MAX_PLAYERS}).`; return; }
   if (players.some(p => p.name.toLowerCase() === name.toLowerCase())) {
     loginError.textContent = "Bu isim zaten alınmış."; return;
   }
@@ -1969,6 +1981,7 @@ pinCancelBtn.onclick = () => { pinModal.classList.add("hidden"); pendingPlayerId
 pinInput.addEventListener("keydown", (e) => { if (e.key === "Enter") confirmPin(); });
 
 switchPlayerBtn.onclick = () => {
+  clearActiveListeners();
   localStorage.removeItem("gacha_player_id");
   currentPlayerId = null;
   currentPlayerData = null;
@@ -1979,6 +1992,7 @@ switchPlayerBtn.onclick = () => {
 // OYUN BAŞLATMA
 // ============================================================
 async function startGame() {
+  clearActiveListeners();
   const ref = doc(db, PLAYERS_COL, currentPlayerId);
   const snap = await getDoc(ref);
   if (!snap.exists()) {
@@ -2002,7 +2016,7 @@ async function startGame() {
   await ensureWeeklyLeaderboardReset();
 
   // Kendi oyuncu belgemi canlı dinle
-  onSnapshot(ref, (docSnap) => {
+  activeUnsubscribers.push(onSnapshot(ref, (docSnap) => {
     if (!docSnap.exists()) return;
     currentPlayerData = { id: docSnap.id, ...docSnap.data() };
     renderMyStats();
@@ -2020,11 +2034,11 @@ async function startGame() {
     ensureOracleBetResolved();
     if (!collectionModal.classList.contains("hidden")) renderCollection();
     if (!inventoryModal.classList.contains("hidden")) renderInventoryModal();
-  });
+  }));
 
   // Tüm oyuncuları canlı dinle (liderlik tablosu + saldırı hedefleri)
   const playersQuery = query(collection(db, PLAYERS_COL), orderBy("points", "desc"));
-  onSnapshot(playersQuery, (snap) => {
+  activeUnsubscribers.push(onSnapshot(playersQuery, (snap) => {
     allPlayers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     renderLeaderboard();
     renderAttackTargets();
@@ -2032,25 +2046,25 @@ async function startGame() {
     renderBountyForm();
     renderOracleForm();
     ensureOracleBetResolved();
-  });
+  }));
 
   // Kelle Avcısı ilanını (paylaşımlı doküman) canlı dinle
-  onSnapshot(doc(db, META_COL, BOUNTY_DOC_ID), (docSnap) => {
+  activeUnsubscribers.push(onSnapshot(doc(db, META_COL, BOUNTY_DOC_ID), (docSnap) => {
     currentBounty = docSnap.exists() ? docSnap.data() : null;
     renderBounty();
-  });
+  }));
 
   // Haftalık liderlik meta dokümanını (geçen haftanın şampiyonu) canlı dinle
-  onSnapshot(doc(db, META_COL, WEEKLY_LEADERBOARD_DOC_ID), (docSnap) => {
+  activeUnsubscribers.push(onSnapshot(doc(db, META_COL, WEEKLY_LEADERBOARD_DOC_ID), (docSnap) => {
     weeklyLeaderboardMeta = docSnap.exists() ? docSnap.data() : null;
     renderWeeklyLeaderboardInfo();
-  });
+  }));
 
   // Savaş geçmişini canlı dinle
   const logQuery = query(collection(db, LOG_COL), orderBy("timestamp", "desc"), limit(40));
-  onSnapshot(logQuery, (snap) => {
+  activeUnsubscribers.push(onSnapshot(logQuery, (snap) => {
     renderBattleLog(snap.docs.map(d => d.data()));
-  });
+  }));
 }
 
 // ============================================================
@@ -2577,22 +2591,40 @@ if (placeBountyBtn) {
 
     placeBountyBtn.disabled = true;
     try {
-      await updateDoc(doc(db, PLAYERS_COL, currentPlayerId), {
-        dust: (currentPlayerData.dust || 0) - amount
-      });
-      await setDoc(doc(db, META_COL, BOUNTY_DOC_ID), {
-        active: true,
-        targetId,
-        targetName: targetPlayer.name,
-        amount,
-        placedById: currentPlayerId,
-        placedByName: currentPlayerData.name,
-        createdAt: Date.now()
+      // ÖNCEDEN: kontrol (aktif ilan var mı) ile yazma (toz düşürme + ilan oluşturma) ayrı
+      // ayrı, birbirinden bağımsız iki adımdı. İki oyuncu TAM aynı anda ilan etmeye
+      // çalışırsa, ikisi de "aktif ilan yok" görüp devam edebiliyordu; ikinci yazan
+      // birincinin ilanının üzerine yazıyordu — birinci oyuncunun tozu düşüyor ama ilanı
+      // sessizce kayboluyor, ödülü de kendi hedefi değil ikinci oyuncunun hedefi kapıyordu.
+      // Artık kontrol + yazma tek bir transaction içinde atomik yapılıyor.
+      await runTransaction(db, async (tx) => {
+        const bountyRef = doc(db, META_COL, BOUNTY_DOC_ID);
+        const playerRef = doc(db, PLAYERS_COL, currentPlayerId);
+        const bountySnap = await tx.get(bountyRef);
+        const playerSnap = await tx.get(playerRef);
+        if (!playerSnap.exists()) throw new Error("Oyuncu bulunamadı.");
+        const freshBounty = bountySnap.exists() ? bountySnap.data() : null;
+        const freshPlayer = playerSnap.data();
+        if (freshBounty && freshBounty.active) throw new Error("Zaten aktif bir ödül ilanı var.");
+        if ((freshPlayer.dust || 0) < amount) throw new Error("Yeterli tozun yok.");
+
+        tx.update(playerRef, { dust: (freshPlayer.dust || 0) - amount });
+        tx.set(bountyRef, {
+          active: true,
+          targetId,
+          targetName: targetPlayer.name,
+          amount,
+          placedById: currentPlayerId,
+          placedByName: currentPlayerData.name,
+          createdAt: Date.now()
+        });
       });
       bountyStatus.textContent = "Ödül ilan edildi!";
       bountyAmountInput.value = "";
     } catch (e) {
-      bountyStatus.textContent = "Bir hata oldu: " + e.message;
+      bountyStatus.textContent = (e.message === "Zaten aktif bir ödül ilanı var." || e.message === "Yeterli tozun yok.")
+        ? e.message
+        : ("Bir hata oldu: " + e.message);
     } finally {
       placeBountyBtn.disabled = false;
     }
@@ -2676,20 +2708,42 @@ async function ensureOracleBetResolved() {
   try {
     const topId = allPlayers[0]?.id;
     const won = bet.targetId === topId;
-    const oracleBoostPct = won ? getMinorTraitBonusPct(currentPlayerData.equipment, "oracle_boost") : 0;
-    const reward = won ? Math.round((bet.amount || 0) * 2 * (1 + oracleBoostPct / 100)) : 0;
-    const oracleWeeklyQuests = won ? incrementQuestProgress(currentPlayerData.weeklyQuests, "oracle_win", 1) : currentPlayerData.weeklyQuests;
-    const oracleMonthlyQuests = won ? incrementQuestProgress(currentPlayerData.monthlyQuests, "oracle_win", 1) : currentPlayerData.monthlyQuests;
-    await updateDoc(doc(db, PLAYERS_COL, currentPlayerId), {
-      dust: (currentPlayerData.dust || 0) + reward,
-      oracleBet: null,
-      ...(won ? { oracleWinsTotal: (currentPlayerData.oracleWinsTotal || 0) + 1 } : {}),
-      ...(oracleWeeklyQuests !== currentPlayerData.weeklyQuests ? { weeklyQuests: oracleWeeklyQuests } : {}),
-      ...(oracleMonthlyQuests !== currentPlayerData.monthlyQuests ? { monthlyQuests: oracleMonthlyQuests } : {})
+
+    // ÖNCEDEN: bu fonksiyon yerel (bayat olabilecek) currentPlayerData üzerinden düz bir
+    // updateDoc yapıyordu. Saldırı/kutu açma/enerji görevi gibi başka bir işlem tam bu
+    // sırada (aynı anda) Firestore'a yazarsa, buradaki updateDoc o işlemin AZ ÖNCE eklediği
+    // görev ilerlemesini fark etmeden üzerine yazıp SİLİYORDU — "Kahin Bahsi'ni doğru
+    // bildim ama görev sayacında saymadı" şikayetinin sebebi büyük ihtimalle buydu.
+    // Artık en güncel veriyi transaction içinde okuyup üzerine yazıyoruz.
+    let resolvedResult = null;
+    await runTransaction(db, async (tx) => {
+      const ref = doc(db, PLAYERS_COL, currentPlayerId);
+      const snap = await tx.get(ref);
+      if (!snap.exists()) return;
+      const data = snap.data();
+      const freshBet = data.oracleBet;
+      // Bu bahis başka bir sekme/çağrı tarafından zaten çözülmüş ya da değişmiş olabilir.
+      if (!freshBet || freshBet.day !== bet.day || freshBet.targetId !== bet.targetId || freshBet.amount !== bet.amount) return;
+
+      const oracleBoostPct = won ? getMinorTraitBonusPct(data.equipment, "oracle_boost") : 0;
+      const reward = won ? Math.round((freshBet.amount || 0) * 2 * (1 + oracleBoostPct / 100)) : 0;
+      const oracleWeeklyQuests = won ? incrementQuestProgress(data.weeklyQuests, "oracle_win", 1) : data.weeklyQuests;
+      const oracleMonthlyQuests = won ? incrementQuestProgress(data.monthlyQuests, "oracle_win", 1) : data.monthlyQuests;
+
+      tx.update(ref, {
+        dust: (data.dust || 0) + reward,
+        oracleBet: null,
+        ...(won ? { oracleWinsTotal: (data.oracleWinsTotal || 0) + 1 } : {}),
+        ...(oracleWeeklyQuests !== data.weeklyQuests ? { weeklyQuests: oracleWeeklyQuests } : {}),
+        ...(oracleMonthlyQuests !== data.monthlyQuests ? { monthlyQuests: oracleMonthlyQuests } : {})
+      });
+
+      resolvedResult = { won, targetName: freshBet.targetName, amount: freshBet.amount, reward };
     });
-    showResultModal({
-      oracle: true, won, targetName: bet.targetName, amount: bet.amount, reward
-    });
+
+    if (resolvedResult) {
+      showResultModal({ oracle: true, ...resolvedResult });
+    }
   } finally {
     oracleResolving = false;
   }
@@ -3448,6 +3502,7 @@ async function runAttack(defenderId) {
         tx.set(doc(collection(db, LOG_COL)), {
           attacker: attacker.name, defender: defender.name,
           message: logDetails.join(" "),
+          effects: [],
           winner: null, legendary: true,
           timestamp: Date.now()
         });
@@ -3714,11 +3769,15 @@ async function runAttack(defenderId) {
         tx.update(bountyRef, bountyClearPayload);
       }
 
-      const fullMessage = [...logDetails, ...legendaryLog].join(" ");
+      // Ana savaş cümlesi (kazandı/kaybetti) ile efsanevi eşya etkilerinin açıklamaları
+      // önceden tek bir paragrafta birleştiriliyordu, bu da okunurken karışıyordu.
+      // Artık ikisi ayrı tutulup ayrı gösteriliyor (bkz. renderBattleLog / showResultModal).
+      const mainMessage = logDetails.join(" ");
       tx.set(doc(collection(db, LOG_COL)), {
         attacker: attacker.name,
         defender: defender.name,
-        message: fullMessage,
+        message: mainMessage,
+        effects: legendaryLog,
         winner: attackerWins ? attacker.name : defender.name,
         legendary: legendaryLog.length > 0,
         timestamp: Date.now()
@@ -3727,7 +3786,7 @@ async function runAttack(defenderId) {
       return {
         skipped: false,
         attackerWins, attackPower: Math.round(attackPower), defensePower: Math.round(defensePower),
-        message: fullMessage, legendaryLog
+        message: mainMessage, legendaryLog
       };
     }).then(result => {
       if (result && !result.skipped) showResultModal(result);
@@ -3765,7 +3824,7 @@ function showResultModal(result) {
     resultContent.innerHTML = `
       <div class="result-title ${won ? "win" : "lose"}">${won ? "🏆 Kazandın!" : "💀 Kaybettin!"}</div>
       <p class="result-line">Senin Gücün: ${result.attackPower} &nbsp;|&nbsp; Rakip Gücü: ${result.defensePower}</p>
-      ${result.legendaryLog.length ? `<div class="result-passive">${result.legendaryLog.join("<br>")}</div>` : ""}
+      ${result.legendaryLog.length ? `<div class="result-passive">${result.legendaryLog.map(x => `• ${x}`).join("<br>")}</div>` : ""}
     `;
   }
   resultModal.classList.remove("hidden");
@@ -3791,6 +3850,12 @@ function renderBattleLog(entries) {
     else badge = `<span class="log-badge lose">🛡️ Savundu</span>`;
     const legendaryBadge = e.legendary ? `<span class="log-badge legendary">✨ Efsanevi Etki</span>` : "";
 
+    // Efsanevi eşya etkileri artık ana savaş cümlesiyle aynı paragrafta karışık
+    // gösterilmiyor; ayrı, madde işaretli bir liste halinde altında gösteriliyor.
+    const effectsHtml = (e.effects && e.effects.length)
+      ? `<ul style="margin:6px 0 0 18px; padding:0; font-size:0.85em; opacity:0.9; line-height:1.5;">${e.effects.map(x => `<li>${x}</li>`).join("")}</ul>`
+      : "";
+
     return `
       <div class="log-entry ${cls}">
         <div class="log-entry-top">
@@ -3798,6 +3863,7 @@ function renderBattleLog(entries) {
           <span class="log-badges">${badge}${legendaryBadge}</span>
         </div>
         <p class="log-message">${e.message}</p>
+        ${effectsHtml}
         <span class="log-time">🕐 ${time}</span>
       </div>`;
   }).join("");
