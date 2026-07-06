@@ -49,9 +49,9 @@ const ENERGY_REGEN_MS_PER_POINT = 3 * 60 * 1000; // her 3 dakikada +1 enerji
 // hızlıca her şeye sahip olamıyor.
 const ENERGY_TASKS = [
   { id: "gasp", name: "Gasp Et", icon: "👛", cost: 10, dustMin: 1, dustMax: 3, bonusChance: 0.08, bonusDust: 6 },
-  { id: "zorbala", name: "Arkadaşını Zorbala", icon: "😈", cost: 20, dustMin: 3, dustMax: 5, bonusChance: 0.08, bonusDust: 8 },
-  { id: "kafautule", name: "Hafız Döv", icon: "🗣️", cost: 35, dustMin: 6, dustMax: 9, bonusChance: 0.10, bonusDust: 12 },
-  { id: "manipule", name: "Umumi Mastürbasyon", icon: "🕶️", cost: 50, dustMin: 9, dustMax: 13, bonusChance: 0.12, bonusDust: 18 }
+  { id: "zorbala", name: "Arkadaşını Zorbala", icon: "😈", cost: 20, dustMin: 4, dustMax: 7, bonusChance: 0.08, bonusDust: 10 },
+  { id: "kafautule", name: "Hafız Döv", icon: "🗣️", cost: 35, dustMin: 8, dustMax: 11, bonusChance: 0.10, bonusDust: 15 },
+  { id: "manipule", name: "Umumi Mastürbasyon", icon: "🕶️", cost: 50, dustMin: 12, dustMax: 16, bonusChance: 0.12, bonusDust: 22 }
 ];
 
 // Temel şans oranları (yüzde). Nadir %9, Efsanevi %3.
