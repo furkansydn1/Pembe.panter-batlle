@@ -75,9 +75,9 @@ const DOMINANCE_RATIO = 1.5;
 
 // ============================================================
 // ŞANSLI ÇARK
-// Haftada bir kez bedava çevirme hakkı, küçük toz/puan bonusları verir.
+// 12 saatte bir bedava çevirme hakkı, küçük toz/puan bonusları verir.
 // ============================================================
-const WHEEL_COOLDOWN_MS = 24 * 60 * 60 * 1000; // günde 1 çevirme
+const WHEEL_COOLDOWN_MS = 12 * 60 * 60 * 1000; // 12 saatte 1 çevirme
 // "Karanlık Kader Çarkı" teması: her segmentin artık kompakt bir val/lbl
 // (örn. "+5" / "TOZ") çifti ve kendine özgü bir "glow" (parlama) rengi var.
 // JACKPOT'un eski uzun tek satırlık etiketi ("JACKPOT! +15 Puan +20 Toz")
@@ -2374,7 +2374,7 @@ strangerDuelBtn.onclick = async () => {
 
 // ============================================================
 // ŞANSLI ÇARK — mantık
-// Haftada bir kez bedava çevrilebilen, küçük toz/puan ödülleri veren çark.
+// 12 saatte bir çevrilebilen, küçük toz/puan ödülleri veren çark.
 // ============================================================
 function canSpinWheelNow() {
   if (!currentPlayerData) return false;
