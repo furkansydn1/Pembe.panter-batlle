@@ -56,18 +56,18 @@
         <h2 class="tut-title">Pembe Panterler Battle'a Hoş Geldin!</h2>
         <p class="tut-text">7 kişilik arenada her gün şansını dene, statlarını güçlendir ve haftada bir kez rakiplerinden birine saldırıp liderlik tablosunda zirveye tırman.</p>
         <div class="tut-mini-steps">
-          <div class="tut-mini-step"><span>📦</span>Kutu Aç</div>
+          <div class="tut-mini-step"><span>📦</span>Sandık Aç</div>
           <div class="tut-mini-step"><span>🛡️</span>Kuşan</div>
           <div class="tut-mini-step"><span>⚔️</span>Saldır</div>
           <div class="tut-mini-step"><span>🏆</span>Zirveye Çık</div>
         </div>
       </div>
 
-      <!-- Slayt 2: Kutu -->
+      <!-- Slayt 2: Sandık -->
       <div class="tutorial-slide">
         <div class="tut-hero">📦</div>
-        <h2 class="tut-title">4 Saatte Bir Kutu</h2>
-        <p class="tut-text">Kutu açma hakkın <b>4 saatte bir</b> yenilenir. Çıkan eşya otomatik olarak üstüne kuşanılır ve statların anında güncellenir. Sık açıldığı için nadir/efsanevi şansı bilerek düşük tutuldu.</p>
+        <h2 class="tut-title">4 Saatte Bir Sandık</h2>
+        <p class="tut-text">Sandık açma hakkın <b>4 saatte bir</b> yenilenir. Çıkan eşya otomatik olarak üstüne kuşanılır ve statların anında güncellenir. Sık açıldığı için nadir/efsanevi şansı bilerek düşük tutuldu.</p>
         <div class="rarity-bars">
           <div class="rarity-bar standart"><span class="rarity-dot"></span> Standart <b>~%88</b></div>
           <div class="rarity-bar nadir"><span class="rarity-dot"></span> Nadir <b>~%9</b></div>
@@ -80,12 +80,12 @@
       <div class="tutorial-slide">
         <div class="tut-hero">✨</div>
         <h2 class="tut-title">Toz & Seri Bonusu</h2>
-        <p class="tut-text">Yeni eşya eskisinin yerini alırken eski eşya <b>toza</b> dönüşür. Biriken tozla garantili kutu satın alabilirsin:</p>
+        <p class="tut-text">Yeni eşya eskisinin yerini alırken eski eşya <b>toza</b> dönüşür. Biriken tozla garantili sandık satın alabilirsin:</p>
         <div class="tut-slot-grid">
-          <div class="tut-slot-pill def">🔷 18 Toz → Garanti Nadir Kutu</div>
-          <div class="tut-slot-pill atk">🌟 55 Toz → Garanti Efsanevi Kutu</div>
+          <div class="tut-slot-pill def">🔷 18 Toz → Garanti Nadir Sandık</div>
+          <div class="tut-slot-pill atk">🌟 55 Toz → Garanti Efsanevi Sandık</div>
         </div>
-        <p class="tut-text small">🔥 Art arda gün kutu açarsan seri oluşur: <b>3 günde</b> garanti Nadir, <b>7 günde</b> (ve katlarında) garanti Efsanevi bonusu kazanırsın.</p>
+        <p class="tut-text small">🔥 Art arda gün sandık açarsan seri oluşur: <b>3 günde</b> garanti Nadir, <b>7 günde</b> (ve katlarında) garanti Efsanevi bonusu kazanırsın.</p>
       </div>
 
       <!-- Slayt 4: Kuşanım -->
@@ -210,25 +210,68 @@
 
   <main class="tab-container">
 
-    <!-- SEKME: KUTU (sadece kutu açma + toz/enerji ekonomisi) -->
+    <!-- SEKME: SANDIK (sadece sandık açma + toz/enerji ekonomisi) -->
     <section id="tabKutu" class="tab-panel active">
       <div class="tab-hero">
-        <span class="tab-hero-ribbon">📦 Günlük Kutu</span>
+        <span class="tab-hero-ribbon">📦 Günlük Sandık</span>
         <p class="tab-hero-sub">Şansını dene, eşya ve toz kazan</p>
       </div>
 
       <div class="panel">
         <div class="box-area-top">
-          <h2 class="panel-title">📦 Kutu</h2>
+          <h2 class="panel-title">📦 Sandık</h2>
           <span id="streakChip" class="streak-chip hidden">🔥 <b id="myStreak">0</b> gün seri</span>
         </div>
-        <div id="boxWrapper" class="box-wrapper">
-          <div id="lootBox" class="loot-box"></div>
+        <div id="boxWrapper" class="scene-container">
+          <div class="dark-void"></div>
+          <div class="god-rays"></div>
+          <div class="light-beam"></div>
+          <div id="chestShockwaveEl" class="shockwave"></div>
+          <div id="chestFlashEl" class="flash-bang"></div>
+
+          <div id="epicChest" class="chest-wrapper">
+            <div class="chest-part layer-base">
+              <svg class="svg-chest" viewBox="0 0 100 80">
+                <path d="M15 30 L85 30 L80 40 L20 40 Z" fill="#000" opacity="0.6"/>
+                <path d="M10 30 L90 30 L82 75 L18 75 Z" class="fill-body-1" stroke="var(--chest-trim-2)" stroke-width="2"/>
+                <path d="M22 35 L78 35 L72 70 L28 70 Z" class="fill-body-2" />
+                <path d="M10 30 L18 75 M90 30 L82 75" class="stroke-trim-1" stroke-width="6" stroke-linecap="round"/>
+                <path d="M25 30 L30 75 M75 30 L70 75" class="stroke-trim-2" stroke-width="4" stroke-linecap="round"/>
+                <path d="M16 75 L84 75" class="stroke-trim-1" stroke-width="5" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="chest-part layer-lid">
+              <svg class="svg-chest" viewBox="0 0 100 65">
+                <path d="M8 55 C8 -5, 92 -5, 92 55 Z" class="fill-body-1" stroke="var(--chest-trim-2)" stroke-width="2"/>
+                <path d="M20 55 C20 10, 80 10, 80 55 Z" class="fill-body-2" />
+                <path d="M25 55 C25 5, 45 5, 45 55" fill="none" class="stroke-trim-1" stroke-width="6"/>
+                <path d="M75 55 C75 5, 55 5, 55 55" fill="none" class="stroke-trim-1" stroke-width="6"/>
+                <path d="M8 55 L92 55" class="stroke-trim-2" stroke-width="6" stroke-linecap="round"/>
+                <path d="M12 55 L88 55" class="stroke-trim-1" stroke-width="2"/>
+              </svg>
+            </div>
+            <div class="chest-part layer-seal">
+              <svg class="svg-chest seal-ring" viewBox="0 0 100 100" style="position:absolute;transform-origin:center;width:140%;height:140%;left:-20%;top:-10%;">
+                <circle cx="50" cy="50" r="45" fill="none" class="glow-stroke" stroke-width="1.5" stroke-dasharray="10 5 2 5"/>
+                <ellipse cx="50" cy="50" rx="40" ry="15" fill="none" class="glow-stroke glow-filter" stroke-width="2" transform="rotate(30 50 50)"/>
+                <ellipse cx="50" cy="50" rx="40" ry="15" fill="none" class="glow-stroke glow-filter" stroke-width="2" transform="rotate(-30 50 50)"/>
+              </svg>
+            </div>
+            <div class="chest-part layer-core">
+              <svg viewBox="0 0 60 60">
+                <path d="M30 5 L55 30 L30 55 L5 30 Z" class="fill-trim-1" stroke="var(--chest-trim-2)" stroke-width="2"/>
+                <path d="M30 12 L48 30 L30 48 L12 30 Z" class="glow-fill glow-filter"/>
+                <path d="M30 15 L30 45" stroke="#fff" stroke-width="1" opacity="0.8"/>
+                <path d="M15 30 L45 30" stroke="#fff" stroke-width="1" opacity="0.8"/>
+              </svg>
+            </div>
+          </div>
+
           <div id="itemPopup" class="item-popup hidden">
             <div id="itemPopupInner" class="item-popup-inner"></div>
           </div>
         </div>
-        <button id="openBoxBtn" class="btn btn-gold btn-block">Kutuyu Aç</button>
+        <button id="openBoxBtn" class="btn btn-gold btn-block">Sandığı Aç</button>
         <p id="boxStatus" class="box-status"></p>
         <div class="guarantee-row">
           <button id="guaranteeRareBtn" class="btn btn-mini nadir-mini" title="18 toz karşılığı garanti Nadir eşya">
@@ -248,17 +291,28 @@
         <div id="energyTasksRow" class="energy-tasks-row"></div>
       </div>
 
-      <div class="panel">
+      <div class="panel wheel-panel" id="wheelPanel">
         <h2 class="panel-title">🎡 Şanslı Çark</h2>
         <p class="tut-text small" style="margin:0 0 4px;">Günde bir kez bedava çevir, küçük toz/puan ödülleri kazan.</p>
-        <div class="wheel-area">
-          <div class="wheel-outer">
+        <div class="wheel-scene" id="wheelScene">
+          <div class="wheel-runic-circle"></div>
+          <div class="wheel-bg-glow" id="wheelBgGlow"></div>
+          <div class="wheel-shockwave" id="wheelShockwaveEl"></div>
+          <div class="wheel-outer" id="wheelOuter">
             <div id="luckyWheel" class="wheel-dial"></div>
-            <div class="wheel-pointer"></div>
+            <div class="wheel-hub" id="wheelHub"></div>
+            <div class="wheel-pointer" id="wheelPointerEl">
+              <svg viewBox="0 0 40 60" xmlns="http://www.w3.org/2000/svg">
+                <path d="M20 60 L5 15 L20 0 L35 15 Z" fill="#1a1a24" stroke="#4a4a5a" stroke-width="2"/>
+                <path d="M20 50 L16 18 L20 5 L24 18 Z" fill="var(--accent)"/>
+                <circle cx="15" cy="15" r="2" fill="#fff" opacity="0.3"/>
+                <circle cx="25" cy="15" r="2" fill="#fff" opacity="0.3"/>
+              </svg>
+            </div>
           </div>
-          <button id="spinWheelBtn" class="btn btn-primary btn-block">Çarkı Çevir</button>
-          <p id="wheelStatus" class="box-status"></p>
         </div>
+        <button id="spinWheelBtn" class="btn btn-primary btn-block">Çarkı Çevir</button>
+        <p id="wheelStatus" class="box-status"></p>
       </div>
     </section>
 
@@ -405,7 +459,7 @@
 
       <div class="rpg-panel bag-panel">
         <div class="panel-header">Çanta <span id="bagSlotCountLabel" class="bag-slot-count"></span></div>
-        <p class="equip-hint">👆 Bir eşyaya dokun; kuşanmak veya toza çevirmek için seç. Kutudan çıkan eşyalar buraya düşer.</p>
+        <p class="equip-hint">👆 Bir eşyaya dokun; kuşanmak veya toza çevirmek için seç. Sandıktan çıkan eşyalar buraya düşer.</p>
         <div class="inventory-container">
           <div id="bagGrid" class="bag-grid"></div>
         </div>
@@ -418,7 +472,7 @@
     <div id="navActiveIndicator" class="nav-active-indicator"></div>
     <button type="button" class="nav-btn active" data-target="tabKutu">
       <svg class="nav-icon" viewBox="0 0 24 24"><path d="M4 10H20V18C20 19.1046 19.1046 20 18 20H6C4.89543 20 4 19.1046 4 18V10Z"/><path d="M3 10C3 7.23858 5.23858 5 8 5H16C18.7614 5 21 7.23858 21 10H3Z"/></svg>
-      <span class="nav-label">Kutu</span>
+      <span class="nav-label">Sandık</span>
     </button>
     <button type="button" class="nav-btn" data-target="tabGorev">
       <svg class="nav-icon" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="4" rx="2"/><rect x="4" y="17" width="16" height="4" rx="2"/><rect x="6" y="5" width="12" height="14"/></svg>

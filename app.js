@@ -78,13 +78,20 @@ const DOMINANCE_RATIO = 1.5;
 // Haftada bir kez bedava çevirme hakkı, küçük toz/puan bonusları verir.
 // ============================================================
 const WHEEL_COOLDOWN_MS = 24 * 60 * 60 * 1000; // günde 1 çevirme
+// "Karanlık Kader Çarkı" teması: her segmentin artık kompakt bir val/lbl
+// (örn. "+5" / "TOZ") çifti ve kendine özgü bir "glow" (parlama) rengi var.
+// JACKPOT'un eski uzun tek satırlık etiketi ("JACKPOT! +15 Puan +20 Toz")
+// çemberden taşıyordu; artık val="JACKPOT" + lbl="+15⭐ +20✨" şeklinde iki
+// kısa satıra bölündü ve rozet sabit bir maksimum genişlikte tutulduğu için
+// taşma tamamen ortadan kalktı. dust/points/weight/type/id alanları ve ödül
+// mantığı BİREBİR aynı kaldı, sadece görsel metadata eklendi.
 const WHEEL_SEGMENTS = [
-  { id: "dust_small", label: "+5 Toz", type: "dust", dust: 5, points: 0, weight: 28, color: "#cbb8e0" },
-  { id: "points_small", label: "+3 Puan", type: "points", dust: 0, points: 3, weight: 22, color: "#4dd68a" },
-  { id: "dust_medium", label: "+12 Toz", type: "dust", dust: 12, points: 0, weight: 20, color: "#4d9bff" },
-  { id: "points_medium", label: "+6 Puan", type: "points", dust: 0, points: 6, weight: 12, color: "#ff6fb0" },
-  { id: "dust_big", label: "+25 Toz", type: "dust", dust: 25, points: 0, weight: 12, color: "#ffcc4d" },
-  { id: "jackpot", label: "JACKPOT! +15 Puan +20 Toz", type: "combo", dust: 20, points: 15, weight: 6, color: "#ff2d87" }
+  { id: "dust_small", label: "+5 Toz", val: "+5", lbl: "TOZ", type: "dust", dust: 5, points: 0, weight: 28, color: "#1a2530", glow: "#8ba3b8" },
+  { id: "points_small", label: "+3 Puan", val: "+3", lbl: "PUAN", type: "points", dust: 0, points: 3, weight: 22, color: "#0d2b1d", glow: "var(--green)" },
+  { id: "dust_medium", label: "+12 Toz", val: "+12", lbl: "TOZ", type: "dust", dust: 12, points: 0, weight: 20, color: "#101e40", glow: "var(--blue)" },
+  { id: "points_medium", label: "+6 Puan", val: "+6", lbl: "PUAN", type: "points", dust: 0, points: 6, weight: 12, color: "#3a0b2e", glow: "var(--accent)" },
+  { id: "dust_big", label: "+25 Toz", val: "+25", lbl: "TOZ", type: "dust", dust: 25, points: 0, weight: 12, color: "#3b2a05", glow: "var(--gold)" },
+  { id: "jackpot", label: "JACKPOT! +15 Puan +20 Toz", val: "JACKPOT", lbl: "+15⭐ +20✨", type: "combo", dust: 20, points: 15, weight: 6, color: "#000000", glow: "#ff2a2a" }
 ];
 const WHEEL_SEGMENT_ANGLE = 360 / WHEEL_SEGMENTS.length;
 
@@ -162,7 +169,7 @@ const MONTHLY_TIER_REWARDS = {
 // günde, hatta çoğu tek bir hafta sonu grinding'iyle bile bitirilemeyecek şekilde
 // ayarlandı; gerçekten haftayı/ayı yayarak oynamayı gerektiriyor.
 const WEEKLY_QUEST_TEMPLATES = [
-  { type: "open_box", tier: "orta", icon: "📦", target: 32, label: (t) => `${t} kutu aç` },
+  { type: "open_box", tier: "orta", icon: "📦", target: 32, label: (t) => `${t} sandık aç` },
   { type: "attack_count", tier: "orta", icon: "⚔️", target: 70, label: (t) => `${t} savaşa gir` },
   { type: "battle_win", tier: "zor", icon: "🏆", target: 24, label: (t) => `${t} savaş kazan` },
   { type: "energy_task", tier: "orta", icon: "⚡", target: 35, label: (t) => `${t} kez enerji görevi yap` },
@@ -174,7 +181,7 @@ const WEEKLY_QUEST_TEMPLATES = [
 const MONTHLY_HARD_TEMPLATE = { type: "battle_win", tier: "efsanevi", icon: "👑", target: 90, label: (t) => `Bu ay ${t} savaş kazan` };
 // Bunun yanına, aşağıdaki havuzdan rastgele 2 farklı tip daha eklenir (toz/puan/garanti nadir eşya verir).
 const MONTHLY_QUEST_POOL = [
-  { type: "open_box", tier: "zor", icon: "📦", target: 140, label: (t) => `Bu ay ${t} kutu aç` },
+  { type: "open_box", tier: "zor", icon: "📦", target: 140, label: (t) => `Bu ay ${t} sandık aç` },
   { type: "attack_count", tier: "zor", icon: "⚔️", target: 300, label: (t) => `Bu ay ${t} savaşa gir` },
   { type: "oracle_win", tier: "zor", icon: "🔮", target: 22, label: (t) => `Bu ay ${t} kez Kahin Bahsi'ni doğru bil` },
   { type: "bounty_win", tier: "zor", icon: "💀", target: 12, label: (t) => `Bu ay ${t} kez Kelle Avcısı ödülünü kap` },
@@ -348,9 +355,9 @@ async function ensureWeeklyLeaderboardReset() {
 
 const QUEST_TEMPLATES = [
   { type: "login", tier: "kolay", icon: "👋", label: "Bugün giriş yap", target: 1, autoComplete: true },
-  { type: "open_box", tier: "kolay", icon: "📦", target: 1, label: (t) => `${t} kutu aç` },
-  { type: "open_box", tier: "orta", icon: "📦", target: 3, label: (t) => `${t} kutu aç` },
-  { type: "open_box", tier: "zor", icon: "📦", target: 5, label: (t) => `${t} kutu aç` },
+  { type: "open_box", tier: "kolay", icon: "📦", target: 1, label: (t) => `${t} sandık aç` },
+  { type: "open_box", tier: "orta", icon: "📦", target: 3, label: (t) => `${t} sandık aç` },
+  { type: "open_box", tier: "zor", icon: "📦", target: 5, label: (t) => `${t} sandık aç` },
   { type: "attack_count", tier: "kolay", icon: "⚔️", target: 1, label: (t) => `${t} savaşa gir` },
   { type: "attack_count", tier: "orta", icon: "⚔️", target: 2, label: (t) => `${t} savaşa gir` },
   { type: "battle_win", tier: "orta", icon: "🏆", target: 1, label: (t) => `${t} savaş kazan` },
@@ -740,10 +747,10 @@ const BADGES = [
   { id: "equip_legendary_5", icon: "🐆", name: "Tam Donanımlı Panter", desc: "Aynı anda tüm 5 slotu efsanevi eşyayla kuşan.", check: (d) => countEquippedLegendary(d) >= 5 },
 
   // ---- Kutu açma ----
-  { id: "box_50", icon: "📦", name: "Kutu Meraklısı", desc: "Toplamda 50 kutu aç.", check: (d) => (d.totalBoxesOpened || 0) >= 50 },
-  { id: "box_150", icon: "📦", name: "Kutu Bağımlısı", desc: "Toplamda 150 kutu aç.", check: (d) => (d.totalBoxesOpened || 0) >= 150 },
-  { id: "box_300", icon: "📦", name: "Kutu Canavarı", desc: "Toplamda 300 kutu aç.", check: (d) => (d.totalBoxesOpened || 0) >= 300 },
-  { id: "box_600", icon: "📦", name: "Kutu Efendisi", desc: "Toplamda 600 kutu aç.", check: (d) => (d.totalBoxesOpened || 0) >= 600 },
+  { id: "box_50", icon: "📦", name: "Sandık Meraklısı", desc: "Toplamda 50 sandık aç.", check: (d) => (d.totalBoxesOpened || 0) >= 50 },
+  { id: "box_150", icon: "📦", name: "Sandık Bağımlısı", desc: "Toplamda 150 sandık aç.", check: (d) => (d.totalBoxesOpened || 0) >= 150 },
+  { id: "box_300", icon: "📦", name: "Sandık Canavarı", desc: "Toplamda 300 sandık aç.", check: (d) => (d.totalBoxesOpened || 0) >= 300 },
+  { id: "box_600", icon: "📦", name: "Sandık Efendisi", desc: "Toplamda 600 sandık aç.", check: (d) => (d.totalBoxesOpened || 0) >= 600 },
 
   // ---- Toz biriktirme ----
   { id: "dust_100", icon: "✨", name: "Toz Biriktiren", desc: "Aynı anda 100 toza sahip ol.", check: (d) => (d.dust || 0) >= 100 },
@@ -823,10 +830,10 @@ const DAILY_EVENTS = [
     desc: "Bugün savaşta şansın etkisi arttı, sürprizlere açık ol.",
     legendaryChanceMult: 1, rareChanceMult: 1, pointsMult: 1, attackMult: 1, defenseMult: 1, varianceMult: 2, dustMult: 1, boxCooldownMult: 1, pityMult: 1 },
   { id: "slow_boxes", icon: "😴", type: "nerf", title: "Tembellik Günü",
-    desc: "Bugün kutu açma süresi 4 yerine 6 saat.",
+    desc: "Bugün sandık açma süresi 4 yerine 6 saat.",
     legendaryChanceMult: 1, rareChanceMult: 1, pointsMult: 1, attackMult: 1, defenseMult: 1, varianceMult: 1, dustMult: 1, boxCooldownMult: 1.5, pityMult: 1 },
   { id: "fast_boxes", icon: "⚡", type: "buff", title: "Hız Günü",
-    desc: "Bugün kutu açma süresi 4 yerine 3 saat.",
+    desc: "Bugün sandık açma süresi 4 yerine 3 saat.",
     legendaryChanceMult: 1, rareChanceMult: 1, pointsMult: 1, attackMult: 1, defenseMult: 1, varianceMult: 1, dustMult: 1, boxCooldownMult: 0.75, pityMult: 1 },
   { id: "compensation", icon: "🍀", type: "buff", title: "Telafi Günü",
     desc: "Bugün şanssızlık telafisi (pity) 2 kat hızlı birikiyor.",
@@ -1153,8 +1160,10 @@ const myDustEl = document.getElementById("myDust");
 const myStreakEl = document.getElementById("myStreak");
 const streakChip = document.getElementById("streakChip");
 
-const lootBox = document.getElementById("lootBox");
 const boxWrapper = document.getElementById("boxWrapper");
+const epicChestEl = document.getElementById("epicChest");
+const chestShockwaveEl = document.getElementById("chestShockwaveEl");
+const chestFlashEl = document.getElementById("chestFlashEl");
 const openBoxBtn = document.getElementById("openBoxBtn");
 const boxStatus = document.getElementById("boxStatus");
 const itemPopup = document.getElementById("itemPopup");
@@ -1180,6 +1189,11 @@ const tpWorstName = document.getElementById("tpWorstName");
 const luckyWheel = document.getElementById("luckyWheel");
 const spinWheelBtn = document.getElementById("spinWheelBtn");
 const wheelStatus = document.getElementById("wheelStatus");
+const wheelScene = document.getElementById("wheelScene");
+const wheelOuter = document.getElementById("wheelOuter");
+const wheelBgGlow = document.getElementById("wheelBgGlow");
+const wheelShockwaveEl = document.getElementById("wheelShockwaveEl");
+const wheelPanelEl = document.getElementById("wheelPanel");
 
 const bountyActive = document.getElementById("bountyActive");
 const bountyTargetName = document.getElementById("bountyTargetName");
@@ -1740,7 +1754,7 @@ function renderInventoryModal() {
   const dropRatesHtml = renderDropRatesInfoHtml();
 
   if (!items.length) {
-    inventoryList.innerHTML = dropRatesHtml + `<p class="box-status">Bu slotta henüz eşyan yok, kutu aç ve şansını dene!</p>`;
+    inventoryList.innerHTML = dropRatesHtml + `<p class="box-status">Bu slotta henüz eşyan yok, sandık aç ve şansını dene!</p>`;
     return;
   }
 
@@ -2369,11 +2383,24 @@ function renderWheel() {
   if (!luckyWheel.dataset.built) {
     luckyWheel.style.background = buildWheelGradient();
     const spokes = `<div class="wheel-spokes" style="background:${buildWheelSpokesGradient()}"></div>`;
+    // Her segment için: çemberin merkezinden dışa doğru, dilimin tam ortasına
+    // hizalanan kompakt bir rozet (val üstte büyük, lbl altta küçük). Rozet
+    // sabit bir maksimum genişlikte tutulduğu için (bkz. styles.css) JACKPOT
+    // dahil hiçbir etiket artık çemberden taşmıyor. Şeytan gözü göbek ve bıçak
+    // ibre artık statik HTML'de (index.html), dönen kadranın İÇİNDE değil,
+    // bu yüzden JS tarafında ayrıca eklenmelerine gerek yok.
     const labels = WHEEL_SEGMENTS.map((seg, i) => {
-      const angle = WHEEL_SEGMENT_ANGLE * i + WHEEL_SEGMENT_ANGLE / 2;
-      return `<span class="wheel-seg-label" style="transform: rotate(${angle}deg) translateY(-70px) rotate(${-angle}deg);">${seg.label}</span>`;
+      const centerAngle = WHEEL_SEGMENT_ANGLE * i + WHEEL_SEGMENT_ANGLE / 2;
+      const isJackpot = seg.id === "jackpot";
+      return `
+        <div class="wheel-seg-container" style="transform: rotate(${centerAngle - 90}deg);">
+          <div class="wheel-text-badge ${isJackpot ? "jackpot-badge" : ""}">
+            <span class="wheel-text-val">${seg.val}</span>
+            <span class="wheel-text-lbl">${seg.lbl}</span>
+          </div>
+        </div>`;
     }).join("");
-    luckyWheel.innerHTML = spokes + labels + `<div class="wheel-hub">🎡</div>`;
+    luckyWheel.innerHTML = spokes + labels;
     luckyWheel.dataset.built = "1";
   }
   const able = canSpinWheelNow();
@@ -2396,6 +2423,39 @@ function pickWheelSegmentIndex() {
   return WHEEL_SEGMENTS.length - 1;
 }
 
+// Karanlık Kader Çarkı'ndaki gibi yerçekimi + sürtünmeli, gerçekçi bir
+// kor/kıvılcım patlaması. Sadece görsel bir katman, hiçbir oyun verisine
+// dokunmuyor.
+function explodeWheelEmbers(color, count) {
+  if (!wheelScene) return;
+  for (let i = 0; i < count; i++) {
+    const ember = document.createElement("div");
+    ember.className = "wheel-ember";
+    ember.style.background = "#fff";
+    ember.style.boxShadow = `0 0 12px 3px ${color}, 0 0 4px 2px #fff`;
+    ember.style.left = "50%";
+    ember.style.top = "50%";
+    wheelScene.appendChild(ember);
+
+    const angle = Math.random() * Math.PI * 2;
+    const velocity = 7 + Math.random() * 13;
+    let vx = Math.cos(angle) * velocity;
+    let vy = Math.sin(angle) * velocity;
+    let x = 0, y = 0, life = 1.0;
+    const gravity = 0.35, friction = 0.94;
+
+    function stepEmber() {
+      if (life <= 0) { ember.remove(); return; }
+      vx *= friction; vy *= friction; vy += gravity;
+      x += vx; y += vy; life -= 0.02;
+      ember.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(${Math.max(life, 0)})`;
+      ember.style.opacity = String(Math.max(life, 0));
+      requestAnimationFrame(stepEmber);
+    }
+    requestAnimationFrame(stepEmber);
+  }
+}
+
 async function spinTheWheel() {
   if (!currentPlayerData || !canSpinWheelNow()) return;
   spinWheelBtn.disabled = true;
@@ -2413,6 +2473,7 @@ async function spinTheWheel() {
   luckyWheel.style.transform = `rotate(${targetRotation}deg)`;
   luckyWheel.dataset.rotation = String(targetRotation);
   playSound("wheel");
+  if (wheelScene) wheelScene.classList.add("is-spinning"); // şeytani ibre sekme efekti
 
   // Dönüş sırasında her segment sınırını geçtiğinde kısa bir "tık" sesi çal
   const endTime = Date.now() + spinDurationMs + 100;
@@ -2428,6 +2489,33 @@ async function spinTheWheel() {
   wheelStatus.textContent = "Çark dönüyor...";
   await new Promise(r => setTimeout(r, spinDurationMs + 100));
 
+  if (wheelScene) wheelScene.classList.remove("is-spinning");
+
+  // --- EPİK SONUÇ EFEKTLERİ (Karanlık Kader Çarkı) ---
+  // Kazanılan segmentin rengine göre: çark kasasının etrafında parlama,
+  // panelde ekran sarsıntısı, şok dalgası patlaması ve kor parçacıkları.
+  if (wheelScene) wheelScene.style.setProperty("--wheel-glow", seg.glow);
+  if (wheelPanelEl) {
+    wheelPanelEl.classList.add("wheel-is-shaking");
+    setTimeout(() => wheelPanelEl.classList.remove("wheel-is-shaking"), 400);
+  }
+  if (wheelOuter) {
+    wheelOuter.classList.remove("win-highlight");
+    void wheelOuter.offsetWidth; // animasyonu yeniden başlatmak için reflow
+    wheelOuter.classList.add("win-highlight");
+  }
+  if (wheelBgGlow) {
+    wheelBgGlow.style.opacity = "0.6";
+    wheelBgGlow.style.boxShadow = `0 0 90px 45px ${seg.glow}`;
+  }
+  if (wheelShockwaveEl) {
+    wheelShockwaveEl.style.borderColor = seg.glow;
+    wheelShockwaveEl.classList.remove("blast");
+    void wheelShockwaveEl.offsetWidth; // reflow
+    wheelShockwaveEl.classList.add("blast");
+  }
+  explodeWheelEmbers(seg.glow, seg.id === "jackpot" ? 46 : 22);
+
   await updateDoc(doc(db, PLAYERS_COL, currentPlayerId), {
     lastWheelSpinTime: Date.now(),
     dust: (currentPlayerData.dust || 0) + seg.dust,
@@ -2435,14 +2523,18 @@ async function spinTheWheel() {
     ...(seg.type === "combo" ? { wheelJackpotsTotal: (currentPlayerData.wheelJackpotsTotal || 0) + 1 } : {})
   });
 
-  wheelStatus.textContent = seg.type === "combo"
-    ? `🎉 JACKPOT! +${seg.points} puan ve +${seg.dust} toz kazandın!`
-    : `${seg.label} kazandın!`;
+  wheelStatus.innerHTML = seg.type === "combo"
+    ? `<span style="color:${seg.glow}; text-shadow:0 0 8px ${seg.glow};">🔥 JACKPOT! +${seg.points} puan ve +${seg.dust} toz kazandın!</span>`
+    : `<span style="color:${seg.glow};">${seg.label} kazandın!</span>`;
 
   // Ödülün büyüklüğüne göre farklı sonuç sesi: jackpot'ta efsanevi fanfar
   if (seg.type === "combo") sfxOpenLegendary();
   else if (seg.dust >= 12 || seg.points >= 6) sfxOpenRare();
   else sfxOpenStandart();
+
+  setTimeout(() => {
+    if (wheelBgGlow) { wheelBgGlow.style.opacity = "0.15"; wheelBgGlow.style.boxShadow = "none"; }
+  }, 3500);
 }
 if (spinWheelBtn) spinWheelBtn.onclick = spinTheWheel;
 
@@ -2913,15 +3005,113 @@ function renderBoxStatus() {
   openBoxBtn.disabled = !able;
 
   if (able) {
-    boxStatus.textContent = "Kutu açmaya hazır!";
+    boxStatus.textContent = "Sandık açmaya hazır!";
   } else {
     const remain = getEffectiveBoxCooldown() - (Date.now() - (currentPlayerData.lastBoxOpenTime || 0));
-    boxStatus.textContent = `Sıradaki kutuya ${formatRemaining(remain)} kaldı.`;
+    boxStatus.textContent = `Sıradaki sandığa ${formatRemaining(remain)} kaldı.`;
   }
 
   const dust = currentPlayerData?.dust ?? 0;
   guaranteeRareBtn.disabled = dust < DUST_COST_RARE_BOX;
   guaranteeLegendaryBtn.disabled = dust < DUST_COST_LEGENDARY_BOX;
+}
+
+// ============================================================
+// AFİLLİ SANDIK AÇILIŞ MOTORU
+// Kullanıcının sağladığı bağımsız prototipten uyarlandı: nadirliğe göre
+// renk paleti (--chest-*) uygulanıyor, sırasıyla ŞARJ (titreme) ->
+// PATLAMA (mühür/kristal parçalanır + kıvılcım + ekran flaşı + şok
+// dalgası) -> AÇILDI (kapak açılır, tanrısal ışıklar) durumları oynatılıyor.
+// Ardından mevcut item popup sistemi devreye giriyor (dokunulmadı).
+// ============================================================
+const CHEST_RARITY_STYLES = {
+  standart: { body1: "#2d241c", body2: "#1a130e", trim1: "#7a7a7a", trim2: "#333333", glow: "#e2e8f0" },
+  nadir: { body1: "#161f36", body2: "#0b1122", trim1: "#b0e0e6", trim2: "#2a5b8f", glow: "#4d9bff" },
+  efsanevi: { body1: "#360b1b", body2: "#1c040d", trim1: "#ffcc4d", trim2: "#c98a12", glow: "#ffae00" }
+};
+
+function setChestRarity(rarity) {
+  const r = CHEST_RARITY_STYLES[rarity] || CHEST_RARITY_STYLES.standart;
+  boxWrapper.style.setProperty("--chest-body-1", r.body1);
+  boxWrapper.style.setProperty("--chest-body-2", r.body2);
+  boxWrapper.style.setProperty("--chest-trim-1", r.trim1);
+  boxWrapper.style.setProperty("--chest-trim-2", r.trim2);
+  boxWrapper.style.setProperty("--chest-glow", r.glow);
+  boxWrapper.style.setProperty("--chest-glow-dim", r.glow);
+}
+
+function explodeChestSparks(color) {
+  const particleCount = 50;
+  for (let i = 0; i < particleCount; i++) {
+    const spark = document.createElement("div");
+    spark.className = "chest-spark";
+    spark.style.backgroundColor = color;
+    spark.style.boxShadow = `0 0 12px 3px ${color}`;
+    spark.style.left = "50%";
+    spark.style.top = "50%";
+    boxWrapper.appendChild(spark);
+
+    const angle = Math.random() * Math.PI * 2;
+    const velocity = 90 + Math.random() * 180;
+    const tx = Math.cos(angle) * velocity;
+    const ty = Math.sin(angle) * velocity - 60;
+
+    spark.animate([
+      { transform: "translate(-50%, -50%) scale(1.5)", opacity: 1 },
+      { transform: `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px)) scale(0)`, opacity: 0 }
+    ], {
+      duration: 900 + Math.random() * 900,
+      easing: "cubic-bezier(0.15, 0.85, 0.35, 1)",
+      fill: "forwards"
+    });
+    setTimeout(() => spark.remove(), 2000);
+  }
+}
+
+// Şarj -> Patlama -> Açıldı durum makinesini oynatır, sonunda sandık
+// "açık" halde kalır (Firestore güncellemesi ve item popup'ı bu await'in
+// hemen ardından devreye girer, resetChestVisual() ile sandık idle'a döner).
+async function playChestOpenAnimation(rarity) {
+  const chestPanel = boxWrapper.closest(".panel");
+  setChestRarity(rarity);
+  epicChestEl.classList.remove("is-opened", "is-bursting");
+  boxWrapper.classList.remove("scene-opened");
+
+  epicChestEl.classList.add("is-charging");
+  if (chestPanel) chestPanel.classList.add("is-shaking");
+  sfxShake();
+
+  await new Promise(r => setTimeout(r, 1200));
+
+  epicChestEl.classList.remove("is-charging");
+  if (chestPanel) chestPanel.classList.remove("is-shaking");
+  epicChestEl.classList.add("is-bursting");
+  chestShockwaveEl.classList.add("shockwave-active");
+  chestFlashEl.classList.add("is-flashing");
+  explodeChestSparks((CHEST_RARITY_STYLES[rarity] || CHEST_RARITY_STYLES.standart).glow);
+
+  await new Promise(r => setTimeout(r, 200));
+
+  epicChestEl.classList.remove("is-bursting");
+  epicChestEl.classList.add("is-opened");
+  boxWrapper.classList.add("scene-opened");
+
+  if (rarity === "efsanevi") sfxOpenLegendary();
+  else if (rarity === "nadir") sfxOpenRare();
+  else sfxOpenStandart();
+
+  const holdMs = rarity === "efsanevi" ? 1200 : rarity === "nadir" ? 500 : 100;
+  await new Promise(r => setTimeout(r, holdMs));
+}
+
+// Sandığı bir sonraki açılış için idle haline sıfırlar.
+function resetChestVisual() {
+  chestShockwaveEl.classList.remove("shockwave-active");
+  chestFlashEl.classList.remove("is-flashing");
+  setTimeout(() => {
+    epicChestEl.classList.remove("is-opened");
+    boxWrapper.classList.remove("scene-opened");
+  }, 500);
 }
 
 // Nadirliğe göre epik parçacık (spark) efekti
@@ -2992,15 +3182,7 @@ async function performBoxOpen({ forcedRarity = null, costDust = 0, isFree = fals
 
   const streakBonusFired = !!streakForcedRarity && !forcedRarity;
 
-  lootBox.className = `loot-box burst-${item.rarity}`;
-  spawnSparks(item.rarity);
-  sfxShake();
-  if (item.rarity === "efsanevi") setTimeout(sfxOpenLegendary, 500);
-  else if (item.rarity === "nadir") setTimeout(sfxOpenRare, 500);
-  else setTimeout(sfxOpenStandart, 500);
-
-  const animDuration = item.rarity === "efsanevi" ? 1900 : item.rarity === "nadir" ? 1400 : 1000;
-  await new Promise(r => setTimeout(r, animDuration));
+  await playChestOpenAnimation(item.rarity);
 
   // Pity sayaçlarını güncelle (günün olayı pity'yi hızlandırabilir)
   let newPityRare = rarity === "nadir" || rarity === "efsanevi" ? 0 : pityRare + (event.pityMult || 1);
@@ -3067,7 +3249,7 @@ async function performBoxOpen({ forcedRarity = null, costDust = 0, isFree = fals
     document.getElementById("popupDustBtn").onclick = () => { disenchantItem(slot, item.id); itemPopup.classList.add("hidden"); };
   }
 
-  lootBox.className = "loot-box";
+  resetChestVisual();
   setTimeout(() => itemPopup.classList.add("hidden"), 5000);
 }
 
@@ -3721,9 +3903,10 @@ function getWheelRotationDeg(el) {
   if (angle < 0) angle += 360;
   return angle;
 }
-// Segmentler arası ince ayraç çizgileri için conic-gradient
+// Segmentler arası koyu "demir parmaklık" ayraçları için conic-gradient
+// (Karanlık Kader Çarkı temasından uyarlandı).
 function buildWheelSpokesGradient() {
-  return `repeating-conic-gradient(rgba(20,4,32,.55) 0deg 2deg, transparent 2deg ${WHEEL_SEGMENT_ANGLE}deg)`;
+  return `repeating-conic-gradient(from -1.5deg, transparent 0deg, transparent ${WHEEL_SEGMENT_ANGLE - 3}deg, #111 ${WHEEL_SEGMENT_ANGLE - 3}deg, #111 ${WHEEL_SEGMENT_ANGLE}deg)`;
 }
 // Saldırı sesi: kullanıcının sağladığı 2 gerçek ses dosyasından rastgele biri
 // çalınır, böylece art arda saldırılarda ses tekdüze olmaz.
