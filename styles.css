@@ -203,17 +203,45 @@ input{font-family:inherit;}
 }
 .nav-btn{
   flex:1; max-width:110px; background:none; border:none; color: var(--text-dim); font-family:inherit; cursor:pointer;
-  display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px 4px; border-radius:14px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:10px 4px; border-radius:14px;
   font-size:.72rem; font-weight:800; text-transform:uppercase; letter-spacing:.2px;
-  transition: transform .08s ease, background .15s ease, color .15s ease;
+  position: relative;
+  transition: color .15s ease;
 }
-.nav-btn .nav-ic{font-size:1.5rem; line-height:1;}
-.nav-btn.active{
-  color: var(--text);
-  background: linear-gradient(180deg, var(--accent-2), var(--accent));
-  box-shadow: 0 3px 0 var(--pink-dark);
+.nav-icon{
+  width:24px; height:24px; flex-shrink:0;
+  fill: currentColor;
+  transition: transform .3s cubic-bezier(.34,1.56,.64,1), fill .15s ease;
+  position: relative; z-index:2;
 }
-.nav-btn:active{ transform: translateY(2px); }
+.nav-label{
+  font-size:.7rem; font-weight:800; text-transform:uppercase; letter-spacing:.2px;
+  opacity:.8;
+  transition: opacity .15s ease, color .15s ease, transform .15s ease;
+  position: relative; z-index:2;
+}
+.nav-btn.active{ color: var(--text); }
+.nav-btn.active .nav-icon{ transform: translateY(-10px) scale(1.15); fill: var(--text); }
+.nav-btn.active .nav-label{ opacity:1; color: var(--gold); transform: translateY(-4px); }
+.nav-btn:active .nav-icon{ transform: translateY(-10px) scale(1.05); }
+.nav-btn:not(.active):active{ color: var(--text); }
+
+/* Sekmeler arasında kayan, aktif sekmenin TAM üstünde duran ışıklı gösterge.
+   Konumu JS tarafında (activateTab) her buton genişliği/konumu gerçek
+   render sonrası ölçülerek hesaplanıyor; böylece herhangi bir ekran
+   genişliğinde veya buton boyutunda kayma/hizasızlık olmuyor. */
+.nav-active-indicator{
+  position:absolute; top:-1px; left:0;
+  width:40px; height:4px;
+  background: var(--accent);
+  border-radius:0 0 4px 4px;
+  box-shadow: 0 0 10px var(--accent);
+  transition: transform .4s cubic-bezier(.34,1.56,.64,1), opacity .2s ease;
+  z-index: 1;
+  pointer-events:none;
+  opacity: 0;
+}
+.nav-active-indicator.ready{ opacity: 1; }
 
 .panel{
   background: linear-gradient(180deg, var(--panel-light), var(--panel) 55%, var(--panel-edge));
@@ -990,60 +1018,132 @@ button.equip-slot{ font-family: inherit; cursor:pointer; width:100%; }
   box-shadow: 0 6px 0 rgba(0,0,0,.25), 0 10px 22px -6px #4d9bff55;
 }
 
-/* ---------- KARAKTER SAHNESİ (Profil sekmesi, paper-doll düzeni) ---------- */
-.char-panel{ align-items:center; }
-.char-stage{
+/* ============================================================
+   KARAKTER SAHNESİ + ÇANTA — METİN2 TARZI YENİDEN TASARIM
+   (yüklenen "Envanter Sistemi" mockup'ından uyarlandı; oyunun kendi renk
+   paletindeki --bg/--panel/--gold/--blue vb. değişkenleri kullanıyor,
+   yeni bir renk şeması eklenmedi. JS'in ürettiği id/class isimleri
+   (charStageSlots, char-slot, slot-pos-X, bagGrid, bag-slot) hiç
+   değişmedi; sadece görsel katman baştan tasarlandı.)
+   ============================================================ */
+.rpg-panel{
   position: relative;
-  width: 100%;
-  max-width: 320px;
-  height: 260px;
-  margin: 4px auto 6px;
+  background: linear-gradient(180deg, var(--bg-mid), var(--bg));
+  border: 2px solid #361f4d;
+  border-radius: 14px;
+  box-shadow: inset 0 0 20px rgba(0,0,0,.8), 0 10px 26px -8px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.05);
+  overflow: hidden;
+  padding-bottom: 14px;
 }
-.char-stage-ring{
+.rpg-panel .panel-header{
+  background: linear-gradient(180deg, var(--panel-light), var(--panel));
+  border-bottom: 2px solid var(--panel-edge);
+  padding: 12px;
+  text-align: center;
+  font-family: 'Cinzel', serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 1.3px;
+  text-shadow: 0 2px 4px rgba(0,0,0,.8);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.1);
+  margin-bottom: 12px;
+}
+.bag-slot-count{
+  color: var(--text-dim); font-size:.7rem; font-weight:600;
+  font-family:'Fredoka', sans-serif; letter-spacing:0; text-transform:none;
+}
+.rpg-panel .equip-hint{ padding: 0 16px; margin: 8px 0 0; }
+
+/* ---------- KARAKTER (PAPER DOLL) ---------- */
+.paper-doll-container{
+  position: relative;
+  height: 320px;
+  margin: 0 auto;
+  max-width: 340px;
+  background:
+    linear-gradient(rgba(0,0,0,.35), rgba(0,0,0,.55)),
+    repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(255,255,255,.02) 2px, rgba(255,255,255,.02) 4px);
+  display:flex; align-items:center; justify-content:center;
+}
+.avatar-backdrop{
   position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-  width:180px; height:180px; border-radius:50%;
-  background: radial-gradient(circle at 40% 30%, #5a1f7a, #26093f 70%);
-  border: 1px solid rgba(255,255,255,.08);
-  box-shadow: inset 0 0 30px rgba(0,0,0,.4);
+  width:160px; height:260px;
+  background: radial-gradient(ellipse at center, rgba(106,42,143,.45) 0%, transparent 70%);
+  border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  z-index:1;
+  pointer-events:none;
 }
 .char-avatar{
-  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-  font-size: 4.4rem;
-  filter: drop-shadow(0 10px 14px rgba(0,0,0,.5));
+  font-size: 4.2rem;
+  filter: drop-shadow(0 10px 14px rgba(0,0,0,.6));
   animation: idleBob 2.6s ease-in-out infinite;
 }
-.char-stage-slots{ position:absolute; inset:0; }
+.char-stage-slots, .char-stage-decor{ position:absolute; inset:0; }
+.char-stage-slots{ z-index:10; }
+.char-stage-decor{ z-index:9; pointer-events:none; }
+.char-stage-decor .char-slot{ pointer-events:auto; }
+
 .char-slot{
   position:absolute;
-  width: 56px; height:56px;
-  border-radius: 16px;
-  background: linear-gradient(180deg, var(--panel-light), var(--panel-edge));
-  border: 2px solid rgba(255,255,255,.12);
+  width: 50px; height:50px;
+  background: linear-gradient(135deg, #2a1040, #150524);
+  border: 2px solid #4a2b6b;
+  border-radius: 8px;
   display:flex; align-items:center; justify-content:center;
-  box-shadow: 0 3px 0 rgba(0,0,0,.3);
-  transition: transform .1s ease, filter .15s ease;
+  box-shadow: inset 0 0 12px rgba(0,0,0,.9), 0 4px 6px rgba(0,0,0,.6);
+  --s: 1; --ty: 0px;
+  transform: translate(-50%, -50%) translateY(var(--ty)) scale(var(--s));
+  transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
-.char-slot:hover{ filter: brightness(1.2); }
-.char-slot:active{ transform: scale(.93); }
-.char-slot-icon{ font-size:1.5rem; filter: drop-shadow(0 2px 2px rgba(0,0,0,.4)); }
-.char-slot.empty{ opacity:.5; border-style:dashed; }
-.char-slot.filled.rarity-nadir{ border-color: var(--blue); animation: nadirPulse 2.2s ease-in-out infinite; }
-.char-slot.filled.rarity-efsanevi{ border-color: var(--gold); animation: efsaneviPulse 1.8s ease-in-out infinite; }
+.char-slot::before{
+  content:"";
+  position:absolute; inset:1px;
+  border: 1px solid rgba(255,255,255,.05);
+  border-radius: 6px;
+  pointer-events:none;
+}
+.char-slot:hover{ --s: 1.05; --ty: -2px; border-color:#7a46ab; }
+.char-slot:active{ --s: .93; --ty: 0px; }
+.char-slot-icon{ font-size:1.5rem; filter: drop-shadow(0 2px 2px rgba(0,0,0,.4)); position:relative; z-index:1; }
+.char-slot.empty{
+  opacity:.6; background: rgba(20,5,36,.6);
+  border-style:dashed; border-color: rgba(255,255,255,.15);
+  box-shadow:none;
+}
+.char-slot.empty .char-slot-icon{ opacity:.4; filter: grayscale(1) drop-shadow(0 2px 2px rgba(0,0,0,.4)); }
+.char-slot.filled.rarity-nadir{
+  border-color: var(--blue);
+  box-shadow: inset 0 0 14px rgba(77,155,255,.45), 0 0 8px rgba(77,155,255,.5);
+  animation: nadirPulse 2.2s ease-in-out infinite;
+}
+.char-slot.filled.rarity-efsanevi{
+  border-color: var(--gold);
+  animation: legendPulseChar 2s infinite alternate;
+}
+@keyframes legendPulseChar{
+  0%{ box-shadow: inset 0 0 14px rgba(255,204,77,.45), 0 0 8px rgba(255,204,77,.55); }
+  100%{ box-shadow: inset 0 0 22px rgba(255,204,77,.75), 0 0 16px rgba(255,204,77,.85); }
+}
+/* Dekoratif "aksesuar" yuvası: oyunda karşılığı olmayan, sadece görsel
+   simetri için eklenen tıklanamaz bir yer tutucu (Metin2 mockup'ındaki
+   boş yüzük/tılsım slotuyla aynı mantık). */
+.char-slot.slot-pos-ring{ cursor: default; }
+.char-slot.slot-pos-ring:hover{ --s: 1; --ty: 0px; border-color: rgba(255,255,255,.15); }
 
-/* Anatomik konumlar: kask başta, zırh gövdede, kılıç ve eldiven ellerde, ayakkabı ayakta */
-.char-slot.slot-pos-kask{ top: -6px; left: 50%; transform: translateX(-50%); }
-.char-slot.slot-pos-zirh{ top: 50%; left: 50%; transform: translate(-50%, -50%); }
-.char-slot.slot-pos-kilic{ top: 46%; right: 4px; transform: translateY(-50%) rotate(6deg); }
-.char-slot.slot-pos-eldiven{ top: 46%; left: 4px; transform: translateY(-50%) rotate(-6deg); }
-.char-slot.slot-pos-ayakkabi{ bottom: -6px; left: 50%; transform: translateX(-50%); }
-.char-slot.slot-pos-kilic:active{ transform: translateY(-50%) rotate(6deg) scale(.93); }
-.char-slot.slot-pos-eldiven:active{ transform: translateY(-50%) rotate(-6deg) scale(.93); }
-/* v1.14: yeni slotlar - kolye boyunda (kask altı), kalkan alt-sol elde, küpe kulakta */
-.char-slot.slot-pos-kolye{ top: 26%; left: 50%; transform: translate(-50%, -50%); width: 46px; height: 46px; }
-.char-slot.slot-pos-kalkan{ top: 70%; left: 2px; transform: translateY(-50%) rotate(-12deg); }
-.char-slot.slot-pos-kalkan:active{ transform: translateY(-50%) rotate(-12deg) scale(.93); }
-.char-slot.slot-pos-kupe{ top: 12%; right: 16%; transform: translate(50%, -50%) rotate(8deg); width: 40px; height: 40px; }
-.char-slot.slot-pos-kupe:active{ transform: translate(50%, -50%) rotate(8deg) scale(.93); }
+/* Kusursuz simetrik Metin2 yerleşimi: merkez / sol / sağ sütun.
+   Sabit piksel yerine paper-doll-container'a göre YÜZDE konum kullanılıyor
+   ki her ekran genişliğinde (dar telefonlarda dahi) oranlar bozulmasın. */
+.char-slot.slot-pos-kask     { top: 12.2%; left: 50%; }
+.char-slot.slot-pos-zirh     { top: 41.9%; left: 50%; }
+.char-slot.slot-pos-ayakkabi { top: 85.6%; left: 50%; }
+.char-slot.slot-pos-kupe     { top: 19.1%; left: 14.4%; width:42px; height:42px; }
+.char-slot.slot-pos-kilic    { top: 41.9%; left: 15.3%; }
+.char-slot.slot-pos-eldiven  { top: 70%;   left: 15.3%; }
+.char-slot.slot-pos-kolye    { top: 19.1%; left: 85.6%; width:42px; height:42px; }
+.char-slot.slot-pos-kalkan   { top: 41.9%; left: 84.7%; }
+.char-slot.slot-pos-ring     { top: 70%;   left: 85.6%; width:42px; height:42px; }
 
 /* ---------- SAVAŞ GEÇMİŞİ ROZETLERİ ---------- */
 .log-entry{ animation: logFadeIn .3s ease; }
@@ -1356,34 +1456,41 @@ button.equip-slot{ font-family: inherit; cursor:pointer; width:100%; }
 
 /* ============================================================
    ENVANTER SEKMESİ — Metin2 tarzı slot slot ÇANTA
-   Paper doll (char-panel/char-stage) yukarıda, ayrı bir panelde;
-   burada ise kuşanılı OLMAYAN tüm eşyalar tek bir kare-slot grid'i
-   halinde gösteriliyor. Kutudan/görevden kazanılan her yeni eşya
-   (slot doluysa) otomatik olarak bu grid'de belirir.
+   Paper doll (char-panel) yukarıda, ayrı bir rpg-panel'de; burada ise
+   kuşanılı OLMAYAN tüm eşyalar tek bir kare-slot grid'i halinde
+   gösteriliyor. Kutudan/görevden kazanılan her yeni eşya (slot doluysa)
+   otomatik olarak bu grid'de belirir. Görsel, yüklenen "Envanter Sistemi"
+   mockup'ındaki klasik MMO çanta ızgarasına (ince ızgara çizgileri + iç
+   ışıltı) göre yeniden tasarlandı.
    ============================================================ */
-.bag-panel{ gap: 10px; }
+.inventory-container{ padding: 2px 16px 4px; }
 .bag-grid{
   display:grid;
   grid-template-columns: repeat(6, 1fr);
-  gap: 8px;
+  /* Aralıklar 2px bırakılıp arka plan koyu renkte tutularak klasik MMO
+     envanteri ızgara çizgisi hissi elde ediliyor. */
+  gap: 2px;
+  background: var(--bg);
+  border: 2px solid #361f4d;
+  border-radius: 6px;
+  padding: 2px;
 }
 .bag-slot{
   aspect-ratio: 1 / 1;
-  border-radius: 10px;
-  background: linear-gradient(180deg, var(--bg-panel-alt), var(--panel-edge));
-  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 3px;
+  background: linear-gradient(135deg, var(--bg-mid), var(--panel-edge));
+  border: none;
   display:flex; align-items:center; justify-content:center;
   font-size: 1.3rem;
-  box-shadow: inset 0 0 0 1px rgba(0,0,0,.3), 0 2px 0 rgba(0,0,0,.25);
-  transition: transform .08s ease, filter .15s ease;
+  box-shadow: inset 0 0 8px rgba(0,0,0,.85);
+  transition: background .12s ease, transform .08s ease;
   padding: 0;
 }
-.bag-slot:not(.empty):hover{ filter: brightness(1.2); }
+.bag-slot:not(.empty):hover{ background: var(--panel); }
 .bag-slot:not(.empty):active{ transform: scale(.92); }
-.bag-slot.empty{ opacity:.35; border-style:dashed; cursor:default; }
-.bag-slot.rarity-standart{ border-color: rgba(255,255,255,.14); }
-.bag-slot.rarity-nadir{ box-shadow: 0 0 0 2px var(--blue) inset, 0 0 10px #4d9bff44; animation: nadirPulse 2.2s ease-in-out infinite; }
-.bag-slot.rarity-efsanevi{ box-shadow: 0 0 0 2px var(--gold) inset, 0 0 14px #ffcc4d55; animation: efsaneviPulse 1.8s ease-in-out infinite; }
+.bag-slot.empty{ box-shadow: inset 0 0 15px rgba(0,0,0,1); cursor:default; opacity:1; }
+.bag-slot.rarity-nadir{ box-shadow: inset 0 0 14px rgba(77,155,255,.5), 0 0 5px rgba(77,155,255,.4); animation: nadirPulse 2.2s ease-in-out infinite; }
+.bag-slot.rarity-efsanevi{ box-shadow: inset 0 0 18px rgba(255,204,77,.6); border: 1px solid var(--gold); animation: efsaneviPulse 1.8s ease-in-out infinite; }
 .bag-slot-icon{ filter: drop-shadow(0 2px 2px rgba(0,0,0,.4)); }
 
 /* ---------- STANDART/NADİR EŞYALARDAKİ UFAK PASİF ÖZELLİKLER ---------- */

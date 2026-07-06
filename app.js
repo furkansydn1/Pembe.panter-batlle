@@ -2870,6 +2870,9 @@ function renderBagGrid() {
   bagGridEl.querySelectorAll("button[data-slot]").forEach(btn => {
     btn.onclick = () => openInventoryModal(btn.getAttribute("data-slot"));
   });
+
+  const bagSlotCountLabel = document.getElementById("bagSlotCountLabel");
+  if (bagSlotCountLabel) bagSlotCountLabel.textContent = `(${minSlots} Slot)`;
 }
 
 // ============================================================
@@ -3761,19 +3764,59 @@ document.addEventListener("click", (e) => {
 // ============================================================
 const bottomNav = document.getElementById("bottomNav");
 const tabPanels = [...document.querySelectorAll(".tab-panel")];
+const navActiveIndicator = document.getElementById("navActiveIndicator");
+
+// Gösterge konumu, offsetLeft/offsetWidth yerine getBoundingClientRect FARKI
+// ile hesaplanıyor. Bu, gap/max-width/justify-content gibi düzen detaylarından
+// tamamen bağımsız çalışır ve gösterge HER ZAMAN tıklanan sekmenin ikonunun
+// tam ortasında hizalanır (eski hesaplamada bazı sekmelerde/ekran
+// genişliklerinde birkaç piksel kayma oluyordu, artık oluşmuyor).
+function moveNavIndicator(btn) {
+  if (!navActiveIndicator || !btn || !bottomNav) return;
+  const navRect = bottomNav.getBoundingClientRect();
+  const btnRect = btn.getBoundingClientRect();
+  const indicatorWidth = navActiveIndicator.offsetWidth || 40;
+  const targetLeft = (btnRect.left - navRect.left) + (btnRect.width / 2) - (indicatorWidth / 2);
+  navActiveIndicator.style.transform = `translateX(${targetLeft}px)`;
+  navActiveIndicator.classList.add("ready");
+}
 
 function activateTab(targetId) {
   tabPanels.forEach(panel => panel.classList.toggle("active", panel.id === targetId));
   if (bottomNav) {
+    let activeBtn = null;
     bottomNav.querySelectorAll(".nav-btn").forEach(b => {
-      b.classList.toggle("active", b.getAttribute("data-target") === targetId);
+      const isActive = b.getAttribute("data-target") === targetId;
+      b.classList.toggle("active", isActive);
+      if (isActive) activeBtn = b;
     });
+    // Bir sonraki çizim karesinde ölç: class değişiminin (ikon büyümesi vb.)
+    // layout'a yansıması garanti olsun diye.
+    requestAnimationFrame(() => moveNavIndicator(activeBtn));
   }
 }
 
 if (bottomNav) {
   bottomNav.querySelectorAll(".nav-btn").forEach(btn => {
     btn.addEventListener("click", () => activateTab(btn.getAttribute("data-target")));
+  });
+
+  // İlk konumlandırma: webfontlar (Fredoka/Luckiest Guy) yüklenmeden ölçüm
+  // alınırsa buton genişlikleri sonradan değişip göstergeyi kaydırabilir,
+  // bu yüzden fontlar hazır olunca ve pencere yeniden boyutlandığında/
+  // döndürüldüğünde de yeniden hizalanıyor.
+  const initNavIndicator = () => {
+    const active = bottomNav.querySelector(".nav-btn.active") || bottomNav.querySelector(".nav-btn");
+    requestAnimationFrame(() => moveNavIndicator(active));
+  };
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(initNavIndicator).catch(initNavIndicator);
+  } else {
+    initNavIndicator();
+  }
+  window.addEventListener("load", initNavIndicator);
+  window.addEventListener("resize", () => {
+    moveNavIndicator(bottomNav.querySelector(".nav-btn.active"));
   });
 }
 
