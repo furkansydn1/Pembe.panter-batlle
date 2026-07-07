@@ -1241,6 +1241,9 @@ const oracleAmountInput = document.getElementById("oracleAmountInput");
 const placeOracleBtn = document.getElementById("placeOracleBtn");
 const oracleStatus = document.getElementById("oracleStatus");
 
+const ronaldoModal = document.getElementById("ronaldoModal");
+const ronaldoClaimBtn = document.getElementById("ronaldoClaimBtn");
+
 const newFeaturesModal = document.getElementById("newFeaturesModal");
 const newFeaturesTrack = document.getElementById("newFeaturesTrack");
 const newFeaturesDots = document.getElementById("newFeaturesDots");
@@ -1252,6 +1255,28 @@ const closeNewFeaturesBtn = document.getElementById("closeNewFeaturesBtn");
 
 let currentBounty = null; // gameMeta/bounty dokümanının canlı kopyası
 let weeklyLeaderboardMeta = null; // gameMeta/weeklyLeaderboard dokümanının canlı kopyası
+
+// ============================================================
+// SALDIRI (VS) EKRANI — DOM referansları
+// ============================================================
+const vsModal = document.getElementById("vsModal");
+const vsFrame = document.getElementById("vsFrame");
+const vsBgFlash = document.getElementById("vsBgFlash");
+const vsLightning = document.getElementById("vsLightning");
+const vsSparksLayer = document.getElementById("vsSparksLayer");
+const vsCountdownEl = document.getElementById("vsCountdownEl");
+const vsTensionFill = document.getElementById("vsTensionFill");
+const vsHypeLabel = document.getElementById("vsHypeLabel");
+const vsClashText = document.getElementById("vsClashText");
+const vsBurst = document.getElementById("vsBurst");
+const vsFighterLeft = document.getElementById("vsFighterLeft");
+const vsFighterRight = document.getElementById("vsFighterRight");
+const vsAttackerName = document.getElementById("vsAttackerName");
+const vsAttackerAtk = document.getElementById("vsAttackerAtk");
+const vsAttackerDef = document.getElementById("vsAttackerDef");
+const vsDefenderName = document.getElementById("vsDefenderName");
+const vsDefenderAtk = document.getElementById("vsDefenderAtk");
+const vsDefenderDef = document.getElementById("vsDefenderDef");
 
 const resultModal = document.getElementById("resultModal");
 const resultContent = document.getElementById("resultContent");
@@ -1320,6 +1345,15 @@ tutNextBtn.onclick = () => goToTutorialSlide(currentTutorialIndex() + 1);
 // ama bu sürümü henüz görmemiş herkese otomatik gösterilir.
 // ============================================================
 const NEW_FEATURE_SLIDES = {
+  "1.16": [
+    { icon: "🆕", title: "v1.16 Yenilikleri!", text: "Bu güncelleme oyunun hissiyatını ve teknik altyapısını birlikte güçlendiriyor: bildirimler geldi, sandık ve çark açılışları baştan animasyonlandı, saldırı anı için sıfırdan bir VS ekranı yazıldı, tüm eşyalar yeni SVG ikonlarına kavuştu ve kapaklarda onlarca hata/performans düzeltmesi yapıldı. Hadi tek tek bakalım." },
+    { icon: "🔔", title: "Bildirimler", text: "Artık izin verirsen, sandığın hazır olduğunda ve saatlik saldırı hakkın açıldığında tarayıcı bildirimiyle haberdar oluyorsun; sekmeyi kapatmış olsan bile. Sağ üstteki 🔕 ikonuna dokunup açman yeterli, tamamen isteğe bağlı ve hiçbir oyun verisine dokunmuyor." },
+    { icon: "📦", title: "Yeni Sandık Açılış Motoru", text: "Sandık açılışı sıfırdan yazıldı: katmanlı bir sandık (gövde, kapak, enerji mührü, güç kristali) artık gerçek bir şarj → patlama → açılış sırasıyla oynuyor. Nadirliğe göre renk paleti değişiyor, ekran flaşı, şok dalgası ve kıvılcım patlaması eşlik ediyor." },
+    { icon: "🎡", title: "Şanslı Çark Yenilendi", text: "Çark artık 'Karanlık Kader Çarkı' temasında: dönen rün çemberi, şeytan gözü göbek, kanlı ibre ve kazanınca patlayan şok dalgası + ekran sarsıntısı + fizik motorlu kor parçacıklarıyla çok daha epik bir deneyim sunuyor." },
+    { icon: "⚔️", title: "Yepyeni Saldırı (VS) Ekranı", text: "Artık saldırmadan önce, seninle rakibinin gerçek isim ve statlarının göründüğü gerilimli bir VS ekranı açılıyor: kartlar kayarak giriyor, kıvılcımlar saçılıyor, sayaç son 3 saniyede kırmızıya dönüp hızlanıyor, dönen 'hype' cümleleri seni geriyor ve süre bitince iki savaşçı birbirine hamle yapıp çarpışıyor." },
+    { icon: "🧰", title: "Ekipman İkonları ve Animasyonları", text: "Her eşya artık emoji yerine, nadirliğine göre (standart/nadir/efsanevi) tamamen farklı çizilmiş bir SVG ikonla gösteriliyor. Standart eşyalar sade, nadir eşyalar mavi/çelik temalı, efsanevi eşyalar ise sürekli parlayan, süzülen ve dönen özel efektler taşıyor; bu görseller kuşanım, envanter, çanta ve kutu açılış popup'ının hepsinde tutarlı şekilde kullanılıyor." },
+    { icon: "🐛", title: "Bir Sürü Hata Düzeltmesi ve Performans İyileştirmesi", text: "Bu sürümde ayrıca gözle görülmeyen ama hissedilen bir sürü iyileştirme var: haftalık liderlik sıfırlaması, Kahin Bahsi sonuçlandırma ve Kelle Avcısı ilanı gibi paylaşımlı işlemler artık yarış durumlarına (race condition) karşı tamamen güvenli. Oyuncu değiştirirken eski dinleyicilerin temizlenmesi, gereksiz yeniden çizimlerin azaltılması ve genel kod optimizasyonlarıyla oyun artık daha akıcı ve daha kararlı çalışıyor." }
+  ],
   "1.14": [
     { icon: "🆕", title: "v1.14 Yenilikleri!", text: "Bu güncelleme oyunun ekipman derinliğini ciddi şekilde artırıyor: 3 yeni slot, 69 yeni eşya, yepyeni bir Efsun sistemi, yenilenmiş bir envanter tasarımı ve daha adil bir savaş algoritması geldi. Hadi tek tek bakalım." },
     { icon: "🔰", title: "3 Yeni Slot: Kalkan, Küpe, Kolye", text: "Kuşanım artık 5 değil 8 slot: Kask, Zırh ve Ayakkabı'nın yanına savunma tipinde 🔰 Kalkan; Kılıç ve Eldiven'in yanına ise saldırı tipinde 💎 Küpe ve 📿 Kolye eklendi. Karakter sahnesinde bu 3 slot da panterin üzerinde uygun anatomik konumlarda (kolyede boyunda, kalkan elinde, küpe kulağında) gösteriliyor." },
@@ -1407,14 +1441,19 @@ function closeNewFeatures() {
   localStorage.setItem("gacha_last_seen_update", LATEST_UPDATE_VERSION);
   newFeaturesModal.classList.add("hidden");
   refreshUpdatesDot();
+  maybeShowRonaldoTribute();
 }
 if (closeNewFeaturesBtn) closeNewFeaturesBtn.onclick = closeNewFeatures;
 if (nfSkipBtn) nfSkipBtn.onclick = closeNewFeatures;
 
+// seen === LATEST_UPDATE_VERSION zaten ise (yenilikler ekranı açılmayacaksa)
+// çağıran taraf (startGame) bunu bilip anma modalını kendisi tetikleyebilsin
+// diye fonksiyon artık modalın gerçekten açılıp açılmadığını (true/false)
+// döndürüyor.
 function maybeShowNewFeatures() {
   const seen = localStorage.getItem("gacha_last_seen_update");
-  if (seen === LATEST_UPDATE_VERSION) return;
-  if (!NEW_FEATURE_SLIDES[LATEST_UPDATE_VERSION]) { closeNewFeatures(); return; }
+  if (seen === LATEST_UPDATE_VERSION) return false;
+  if (!NEW_FEATURE_SLIDES[LATEST_UPDATE_VERSION]) { closeNewFeatures(); return false; }
   renderNewFeaturesSlides(LATEST_UPDATE_VERSION);
   buildNewFeaturesDots();
   newFeaturesModal.classList.remove("hidden");
@@ -1422,6 +1461,7 @@ function maybeShowNewFeatures() {
   nfNextBtn.disabled = newFeaturesTrack.children.length <= 1;
   if (nfStepLabel) nfStepLabel.textContent = `1 / ${newFeaturesTrack.children.length}`;
   requestAnimationFrame(() => { newFeaturesTrack.scrollLeft = 0; });
+  return true;
 }
 
 function maybeShowTutorial() {
@@ -1448,19 +1488,64 @@ function closeTutorial() {
   localStorage.setItem("gacha_last_seen_update", LATEST_UPDATE_VERSION);
   refreshUpdatesDot();
   tutorialModal.classList.add("hidden");
+  maybeShowRonaldoTribute();
 }
 closeTutorialBtn.onclick = closeTutorial;
 if (tutSkipBtn) tutSkipBtn.onclick = closeTutorial;
 howToBtn.onclick = () => openTutorial();
 
 // ============================================================
+// ANMA MODALI (siyah-beyaz, tek seferlik)
+// Oyunun İLK açılışında (tutorial ya da yenilikler ekranı kapatıldıktan
+// hemen sonra) bir kereliğine gösterilir. "Helvanı al" butonuna basınca
+// bir daha asla görünmez ve oyuncuya +10 toz hediye edilir.
+// ============================================================
+function maybeShowRonaldoTribute() {
+  if (!ronaldoModal || localStorage.getItem("gacha_ronaldo_seen")) return;
+  ronaldoModal.classList.remove("hidden");
+}
+async function claimRonaldoTribute() {
+  if (ronaldoClaimBtn.disabled) return;
+  ronaldoClaimBtn.disabled = true;
+  localStorage.setItem("gacha_ronaldo_seen", "1");
+  try {
+    if (currentPlayerId) {
+      const ref = doc(db, PLAYERS_COL, currentPlayerId);
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        await updateDoc(ref, { dust: (snap.data().dust || 0) + 10 });
+      }
+    }
+    ronaldoClaimBtn.textContent = "+10 Toz Kazandın! 🍯";
+  } catch (e) {
+    console.error("Helva tozu verilemedi:", e);
+    ronaldoClaimBtn.textContent = "Kapat";
+  }
+  setTimeout(() => { ronaldoModal.classList.add("hidden"); }, 900);
+}
+if (ronaldoClaimBtn) ronaldoClaimBtn.onclick = claimRonaldoTribute;
+
+// ============================================================
 // YENİLİKLER / YOL HARİTASI
 // Her yeni özellik bittiğinde status'u "soon" -> "done" yapıp
 // LATEST_UPDATE_VERSION'ı artırman yeterli, rozet otomatik güncellenir.
 // ============================================================
-const LATEST_UPDATE_VERSION = "1.14";
+const LATEST_UPDATE_VERSION = "1.16";
 
 const RELEASES = [
+  {
+    version: "1.16",
+    date: "7 Temmuz 2026",
+    items: [
+      "🔔 Bildirimler eklendi: izin verirsen artık sandığın hazır olduğunda ve saatlik saldırı hakkın açıldığında tarayıcı bildirimiyle haberdar oluyorsun, sekme kapalıyken bile. Sağ üstteki 🔕 ikonundan tamamen isteğe bağlı olarak açıp kapatabilirsin.",
+      "📦 Sandık açılış motoru baştan yazıldı: katmanlı bir sandık (gövde + kapak + enerji mührü + güç kristali) artık gerçek bir şarj → patlama → açılış durum makinesiyle oynuyor. Nadirliğe göre renk paleti değişiyor, ekran flaşı + şok dalgası + kıvılcım patlaması eşlik ediyor.",
+      "🎡 Şanslı Çark yenilendi: 'Karanlık Kader Çarkı' temasında dönen rün çemberi, şeytan gözü göbek, kanlı ibre ve kazanınca patlayan şok dalgası + ekran sarsıntısı + fizik motorlu kor parçacıkları eklendi.",
+      "⚔️ Yepyeni bir Saldırı (VS) ekranı eklendi: saldırmadan önce seninle rakibinin gerçek isim ve statlarının göründüğü gerilimli bir ekran açılıyor; kartlar kayarak giriyor, kıvılcımlar saçılıyor, sayaç son 3 saniyede kırmızıya dönüp hızlanıyor, dönen 'hype' cümleleri geriyor ve süre bitince iki savaşçı birbirine hamle yapıp çarpışıyor.",
+      "🧰 Tüm eşyalar yeni SVG ikonlarına kavuştu: her eşya artık nadirliğine göre tamamen farklı çizilmiş bir ikonla gösteriliyor; efsanevi eşyalar sürekli parlayan/süzülen/dönen özel efektler taşıyor. Kuşanım, envanter, çanta ve kutu açılış popup'ının hepsinde tutarlı.",
+      "🐛 Bir sürü hata düzeltmesi: haftalık liderlik sıfırlaması, Kahin Bahsi sonuçlandırma ve Kelle Avcısı ilanı gibi paylaşımlı işlemler artık yarış durumlarına (race condition) karşı tamamen güvenli hale getirildi.",
+      "⚡ Performans iyileştirmeleri: oyuncu değiştirirken eski dinleyicilerin düzgün temizlenmesi, gereksiz yeniden çizimlerin azaltılması ve genel kod optimizasyonlarıyla oyun artık daha akıcı ve daha kararlı çalışıyor."
+    ]
+  },
   {
     version: "1.14",
     date: "5 Temmuz 2026",
@@ -2017,7 +2102,12 @@ async function startGame() {
 
   renderDailyEventBanner();
   const openedTutorial = maybeShowTutorial();
-  if (!openedTutorial) maybeShowNewFeatures();
+  let openedNewFeatures = false;
+  if (!openedTutorial) openedNewFeatures = maybeShowNewFeatures();
+  // Ne tutorial ne de yenilikler ekranı açıldıysa (ör. ikisi de daha önce
+  // görülmüşse) anma modalını göstermek için başka bir tetikleyici olmaz,
+  // bu yüzden burada doğrudan bir son kontrol yapılıyor.
+  if (!openedTutorial && !openedNewFeatures) maybeShowRonaldoTribute();
   await ensureStrangerForToday(snap.data());
   await ensureDailyQuestsForToday(snap.data());
   await ensureWeeklyQuestsForThisWeek(snap.data());
@@ -2041,6 +2131,7 @@ async function startGame() {
     renderBadges();
     renderOraclePanel();
     ensureOracleBetResolved();
+    checkTimeBasedNotifications();
     if (!collectionModal.classList.contains("hidden")) renderCollection();
     if (!inventoryModal.classList.contains("hidden")) renderInventoryModal();
   }));
@@ -3458,10 +3549,202 @@ function pickBattleMessage({ attackerWins, attackerName, defenderName, winPts, l
     .replaceAll("{repeatCount}", repeatCount);
 }
 
+// ============================================================
+// SALDIRI (VS) EKRANI
+// Kullanıcının sağladığı bağımsız "vs-ekrani-prototip.html" prototipinden
+// uyarlandı: gerçek saldıran/savunan isim+statlarını gösteren, kıvılcım
+// patlamalı, dönen "hype" cümleli, son 3 saniyesi kırmızıya dönen bir
+// gerilim ekranı. Saf görsel/işitsel bir katmandır: runAttack() bu ekranı
+// oynattıktan SONRA asıl savaş transaction'ını olduğu gibi çalıştırır,
+// yani hiçbir oyun mantığına/dengeye dokunmaz.
+// ============================================================
+const VS_TOTAL_SECONDS = 5; // orijinal prototip 10sn'ydi; sık kullanılan bir
+// aksiyon olduğu için (saatte 1 saldırı hakkı) gerilimi korurken daha akıcı
+// olsun diye kısaltıldı. Son 3 saniye kuralı (secondsLeft <= 3) aynen duruyor.
+
+const VS_HYPE_PHRASES = [
+  "Kiminki daha büyük?! 🍆",
+  "Cimcimeler Savaşıyor! 🐾",
+  "Kim kimi domaltacak?!",
+  "Gerilim tavan yapıyor...",
+  "Ekipman mı, şans mı kazanacak?",
+  "Arena nefesini tutuyor...",
+  "Bu maç efsane olabilir!",
+  "Kaderin çizgisi çiziliyor...",
+  "Biri bugün domalacak...",
+  "Panter pençesini gösterecek mi?!"
+];
+let vsHypeInterval = null;
+function startVsHypeRotation() {
+  let idx = 0;
+  vsHypeLabel.classList.remove("fade");
+  vsHypeLabel.textContent = VS_HYPE_PHRASES[0];
+  if (vsHypeInterval) clearInterval(vsHypeInterval);
+  vsHypeInterval = setInterval(() => {
+    idx = (idx + 1) % VS_HYPE_PHRASES.length;
+    vsHypeLabel.classList.add("fade");
+    setTimeout(() => {
+      vsHypeLabel.textContent = VS_HYPE_PHRASES[idx];
+      vsHypeLabel.classList.remove("fade");
+    }, 200);
+  }, 1100);
+}
+function stopVsHypeRotation() {
+  if (vsHypeInterval) clearInterval(vsHypeInterval);
+  vsHypeInterval = null;
+}
+
+// Açılış/çarpışma anlarındaki kıvılcım patlaması (sandık/çark ile aynı Web
+// Animations API deseni, sadece kendi katmanına (vsSparksLayer) çiziliyor).
+function explodeVsSparks(colors, count) {
+  if (!vsSparksLayer) return;
+  for (let i = 0; i < count; i++) {
+    const spark = document.createElement("div");
+    spark.className = "vs-spark";
+    const color = pick(colors);
+    spark.style.background = color;
+    spark.style.boxShadow = `0 0 10px 2px ${color}`;
+    spark.style.left = "50%";
+    spark.style.top = "50%";
+    vsSparksLayer.appendChild(spark);
+
+    const angle = Math.random() * Math.PI * 2;
+    const velocity = 60 + Math.random() * 160;
+    const tx = Math.cos(angle) * velocity;
+    const ty = Math.sin(angle) * velocity;
+
+    spark.animate([
+      { transform: "translate(-50%,-50%) scale(1.4)", opacity: 1 },
+      { transform: `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px)) scale(0)`, opacity: 0 }
+    ], {
+      duration: 700 + Math.random() * 600,
+      easing: "cubic-bezier(.15,.85,.35,1)",
+      fill: "forwards"
+    });
+    setTimeout(() => spark.remove(), 1500);
+  }
+}
+
+// Ses efektleri: dosyada zaten var olan gerçek ses dosyaları (Click,
+// Saldırma_sesi/2) yeni anlar için yeniden kullanılıyor + üzerine ince bir
+// sentetik katman (tone()) ekleniyor ki açılış darbesi ve final çarpışması
+// daha "ağır" hissettirsin. Ayrı, özel VS dosyaları eklenmek istenirse
+// SOUND_FILES nesnesine yeni bir anahtar eklenip burada playSound() ile
+// çağrılması yeterli.
+function sfxVsTick(danger) {
+  playSound("click", { volume: danger ? 1 : 0.55 });
+}
+function sfxVsImpact() {
+  playSound(Math.random() < 0.5 ? "attack" : "attack2", { volume: 0.9 });
+  tone(120, 0, 0.1, "sawtooth", 0.12);
+}
+function sfxVsClash() {
+  playSound(Math.random() < 0.5 ? "attack" : "attack2", { volume: 1 });
+  tone(110, 0, 0.14, "sawtooth", 0.2);
+  tone(1046, 0.04, 0.2, "triangle", 0.15);
+  tone(1568, 0.14, 0.28, "sine", 0.12);
+}
+
+// Ana sekans: attacker/defender isim + güncel statlarını alır, animasyonu
+// oynatır ve bittiğinde (Promise resolve ile) çağırana geri döner. runAttack()
+// bu Promise'i await ederek gerçek savaş hesaplamasını ancak bundan SONRA yapar.
+function playVsSequence({ attackerName, attackerAtk, attackerDef, defenderName, defenderAtk, defenderDef }) {
+  return new Promise((resolve) => {
+    vsAttackerName.textContent = attackerName;
+    vsAttackerAtk.textContent = attackerAtk;
+    vsAttackerDef.textContent = attackerDef;
+    vsDefenderName.textContent = defenderName;
+    vsDefenderAtk.textContent = defenderAtk;
+    vsDefenderDef.textContent = defenderDef;
+
+    vsModal.classList.remove("hidden");
+    vsFrame.classList.remove("shake");
+    vsBgFlash.classList.remove("go");
+    vsLightning.classList.remove("go");
+    vsClashText.classList.remove("go");
+    vsBurst.classList.remove("go");
+    vsFighterLeft.classList.remove("in", "lunge");
+    vsFighterRight.classList.remove("in", "lunge");
+    vsCountdownEl.classList.remove("danger", "tick");
+    vsTensionFill.style.width = "0%";
+    vsSparksLayer.innerHTML = "";
+
+    let secondsLeft = VS_TOTAL_SECONDS;
+    vsCountdownEl.textContent = secondsLeft;
+
+    // Reflow zorlayıp animasyonların baştan oynamasını garanti et
+    void vsFrame.offsetWidth;
+    requestAnimationFrame(() => {
+      vsFighterLeft.classList.add("in");
+      vsFighterRight.classList.add("in");
+    });
+    vsFrame.classList.add("shake");
+    vsBgFlash.classList.add("go");
+    vsLightning.classList.add("go");
+    startVsHypeRotation();
+
+    setTimeout(() => {
+      vsBurst.classList.add("go");
+      explodeVsSparks(["#ffcc4d", "#ff2d87", "#4d9bff"], 18);
+      sfxVsImpact();
+    }, 550);
+
+    const startTime = performance.now();
+    function stepTension(now) {
+      const elapsed = (now - startTime) / 1000;
+      const pct = Math.min(100, (elapsed / VS_TOTAL_SECONDS) * 100);
+      vsTensionFill.style.width = pct + "%";
+      if (pct < 100) requestAnimationFrame(stepTension);
+    }
+    requestAnimationFrame(stepTension);
+
+    const tickInterval = setInterval(() => {
+      secondsLeft--;
+      const danger = secondsLeft <= 3;
+      if (secondsLeft > 0) {
+        vsCountdownEl.textContent = secondsLeft;
+        vsCountdownEl.classList.toggle("danger", danger);
+        vsCountdownEl.classList.remove("tick");
+        void vsCountdownEl.offsetWidth;
+        vsCountdownEl.classList.add("tick");
+        sfxVsTick(danger);
+      } else {
+        clearInterval(tickInterval);
+        stopVsHypeRotation();
+        vsCountdownEl.textContent = "⚔️";
+        vsCountdownEl.classList.add("danger");
+        vsFrame.classList.remove("shake");
+        void vsFrame.offsetWidth;
+        vsFrame.classList.add("shake");
+        vsFighterLeft.classList.add("lunge");
+        vsFighterRight.classList.add("lunge");
+        vsClashText.classList.add("go");
+        explodeVsSparks(["#fff", "#ffcc4d", "#ff5c6c"], 30);
+        sfxVsClash();
+        setTimeout(() => {
+          vsModal.classList.add("hidden");
+          resolve();
+        }, 900);
+      }
+    }, 1000);
+  });
+}
+
 async function runAttack(defenderId) {
   attackTargetsEl.querySelectorAll("button").forEach(b => b.disabled = true);
-  sfxAttack();
   const dailyEvent = getTodaysEvent();
+
+  // VS ekranı gerçek verilerle: saldıranın (kendi) ve savunanın o anki
+  // isim + saldırı/savunma statları allPlayers/currentPlayerData'dan alınır.
+  const defenderPreview = allPlayers.find(p => p.id === defenderId);
+  await playVsSequence({
+    attackerName: currentPlayerData?.name || "Sen",
+    attackerAtk: currentPlayerData?.attack ?? BASE_ATTACK,
+    attackerDef: currentPlayerData?.defense ?? BASE_DEFENSE,
+    defenderName: defenderPreview?.name || "Rakip",
+    defenderAtk: defenderPreview?.attack ?? BASE_ATTACK,
+    defenderDef: defenderPreview?.defense ?? BASE_DEFENSE
+  });
 
   // 1.lik Avı: saldırı anında liderlik tablosunun (istemci tarafında bilinen)
   // zirvesindeki oyuncu bu hedef mi, önceden belirlenir.
@@ -4021,6 +4304,69 @@ document.addEventListener("click", (e) => {
   if (btn.id === "soundToggleBtn") return; // kendi sesini kendi yönetiyor
   sfxClick();
 }, true);
+
+// ============================================================
+// BİLDİRİMLER (Web Notification API)
+// Kullanıcı açıkça izin verip özelliği açtıysa (opt-in), sandık açmaya hazır
+// olduğunda ve o saatlik saldırı penceresi açıldığında tarayıcı bildirimi
+// gönderilir. Sekme kapalıyken bile (izin varsa) çalışır, oyuncunun tekrar
+// oyuna dönmesini teşvik eder. Sadece bilgilendirme katmanıdır, hiçbir oyun
+// verisine dokunmaz.
+// ============================================================
+const notifToggleBtn = document.getElementById("notifToggleBtn");
+let notifOn = localStorage.getItem("gacha_notif_on") === "1";
+let notifiedBoxOpenTime = null;
+let notifiedAttackWindow = null;
+
+function refreshNotifBtn() {
+  if (!notifToggleBtn) return;
+  if (!("Notification" in window)) { notifToggleBtn.classList.add("hidden"); return; }
+  const active = notifOn && Notification.permission === "granted";
+  notifToggleBtn.textContent = active ? "🔔" : "🔕";
+}
+refreshNotifBtn();
+
+if (notifToggleBtn) {
+  notifToggleBtn.onclick = async () => {
+    if (!("Notification" in window)) return;
+    if (!notifOn || Notification.permission !== "granted") {
+      const perm = await Notification.requestPermission();
+      if (perm === "granted") {
+        notifOn = true;
+        localStorage.setItem("gacha_notif_on", "1");
+        new Notification("🐆 Pembe Panterler Battle", {
+          body: "Bildirimler açıldı! Sandığın hazır olduğunda ve saldırı hakkın açıldığında haber vereceğiz."
+        });
+      }
+    } else {
+      notifOn = false;
+      localStorage.setItem("gacha_notif_on", "0");
+    }
+    refreshNotifBtn();
+  };
+}
+
+function sendNotification(title, body) {
+  if (!notifOn || !("Notification" in window) || Notification.permission !== "granted") return;
+  try { new Notification(title, { body }); } catch (e) { /* bildirim opsiyonel bir katman, hata olursa sessiz geç */ }
+}
+
+// Sandık hazır mı ve saldırı penceresi açık mı kontrol edip, daha önce o
+// spesifik an için bildirim gönderilmediyse bir kez bildirim yollar.
+// notifiedBoxOpenTime / notifiedAttackWindow anahtarları sayesinde aynı
+// hazır durum için tekrar tekrar bildirim spam'lenmiyor.
+function checkTimeBasedNotifications() {
+  if (!currentPlayerData || !notifOn) return;
+  if (canOpenBoxNow() && notifiedBoxOpenTime !== (currentPlayerData.lastBoxOpenTime ?? 0)) {
+    sendNotification("📦 Sandığın Hazır!", "Yeni bir sandık açabilirsin, şansını dene!");
+    notifiedBoxOpenTime = currentPlayerData.lastBoxOpenTime ?? 0;
+  }
+  if (canAttackNow() && notifiedAttackWindow !== getAttackWindowIndex()) {
+    sendNotification("⚔️ Saldırı Hakkın Açıldı!", "Bu saatlik saldırı hakkını kullanmayı unutma, yoksa kaybolur!");
+    notifiedAttackWindow = getAttackWindowIndex();
+  }
+}
+setInterval(checkTimeBasedNotifications, 15000);
 
 // ============================================================
 // SEKMELER (GERÇEK TAB SİSTEMİ)

@@ -169,6 +169,20 @@
   </div>
 </div>
 
+<!-- ============ ANMA MODALI (sadece oyunun ilk açılışında, bir kereliğine) ============ -->
+<div id="ronaldoModal" class="modal-overlay bw-modal-overlay hidden">
+  <div class="modal-card bw-card">
+    <div class="bw-icon">🖤</div>
+    <h2 class="bw-title">Merhum Babamız C. Ronaldo'nun Dünya Kupası'ndan Elenmesi Hk.</h2>
+    <div class="bw-body">
+      <p>Hepimizin sokak aralarında, mahalle maçlarında topa vururken adını haykırdığı o adam... Sen o tünele doğru gözyaşları içinde yürürken, aslında sadece senin değil, ekran başındaki milyonlarca insanın içindeki o küçük çocuğun da hayali paramparça oldu.</p>
+      <p>Biz seni o altın Dünya Kupası'nı ellerinde gökyüzüne kaldırırken hayal etmiştik. Oysa o an, yenilmez sandığımız çocukluk kahramanımızın en çaresiz, en kırılgan anına şahit oluyorduk. O son düdük çaldığında sadece senin kupa hayalin bitmedi; bizim de futbolla büyüyen çocukluğumuz o yeşil sahada, o tünelin karanlığında yarım kaldı.</p>
+      <p>Eksik olan bir kupa olsun Kral. O kupa senin ellerinde yükselmedi belki ama sen bizim kalbimizde çoktan dünyanın en büyüğüydün. Senin ağlayarak veda ettiğin o gün, futbol da bizim için masumiyetini kaybetti. Seni her zaman dünyanın en iyisi olarak bileceğimizi, kim gelirse gelsin kalbimizde her zaman en iyisi olacağını bil. Hoşçakal, çocuklara 7 numarayı sevdiren adam.</p>
+    </div>
+    <button id="ronaldoClaimBtn" class="btn bw-btn btn-block">Helvanı al</button>
+  </div>
+</div>
+
 <!-- ============ ANA OYUN EKRANI ============ -->
 <div id="gameScreen" class="screen hidden">
 
@@ -179,6 +193,7 @@
     <div class="topbar-right">
       <span id="currentPlayerName" class="current-player-name"></span>
       <button id="soundToggleBtn" class="icon-btn" title="Ses aç/kapat">🔊</button>
+      <button id="notifToggleBtn" class="icon-btn" title="Bildirimler: sandık hazır olunca ve saldırı hakkın açılınca haber ver">🔕</button>
       <button id="updatesBtn" class="icon-btn" title="Yenilikler">🆕<span id="updatesDot" class="update-dot hidden"></span></button>
       <button id="collectionBtn" class="icon-btn" title="Koleksiyon">📖</button>
       <button id="howToBtn" class="icon-btn" title="Nasıl Oynanır">❓</button>
@@ -513,6 +528,40 @@
       <span class="nav-label">Envanter</span>
     </button>
   </nav>
+</div>
+
+<!-- ============ SALDIRI (VS) ANİMASYON MODALI ============ -->
+<div id="vsModal" class="modal-overlay vs-modal-overlay hidden">
+  <div class="vs-frame" id="vsFrame">
+    <div class="vs-bg-flash" id="vsBgFlash"></div>
+    <div class="vs-sparks-layer" id="vsSparksLayer"></div>
+    <div class="vs-arena">
+      <div class="vs-tag">⚔️ Saldırı Anı</div>
+
+      <div class="vs-fighters-row">
+        <div class="vs-fighter vs-fighter-left" id="vsFighterLeft">
+          <div class="vs-f-icon">🐆</div>
+          <div class="vs-f-name" id="vsAttackerName">-</div>
+          <div class="vs-f-stats"><span>⚔️ <b id="vsAttackerAtk">0</b></span><span>🛡️ <b id="vsAttackerDef">0</b></span></div>
+        </div>
+        <div class="vs-burst" id="vsBurst">VS</div>
+        <div class="vs-lightning" id="vsLightning"></div>
+        <div class="vs-fighter vs-fighter-right" id="vsFighterRight">
+          <div class="vs-f-icon">😈</div>
+          <div class="vs-f-name" id="vsDefenderName">-</div>
+          <div class="vs-f-stats"><span>⚔️ <b id="vsDefenderAtk">0</b></span><span>🛡️ <b id="vsDefenderDef">0</b></span></div>
+        </div>
+      </div>
+
+      <div class="vs-countdown-wrap">
+        <div class="vs-countdown-circle" id="vsCountdownEl">5</div>
+        <div class="vs-tension-track"><div class="vs-tension-fill" id="vsTensionFill"></div></div>
+        <div class="vs-hype-label" id="vsHypeLabel">Gerilim yükseliyor...</div>
+      </div>
+
+      <div class="vs-clash-text" id="vsClashText">ÇARPIŞMA!</div>
+    </div>
+  </div>
 </div>
 
 <!-- Sonuç modalı (savaş sonucu göstermek için) -->
