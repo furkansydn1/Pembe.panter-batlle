@@ -1810,6 +1810,17 @@ async function equipItem(slot, itemId) {
   });
 }
 
+// Bir eşyanın toza çevrilince kaç toz vereceğini hesaplar (nadirlik + günün
+// olayı + "Tozlu" ufak pasifi dahil). Hem gerçek toza çevirme işleminde hem
+// de envanter ekranında butonun üstünde önizleme olarak gösterilir.
+function computeDustGainForItem(item) {
+  let dustGain = Math.round((DUST_FROM_RARITY[item.rarity] || 0) * getTodaysEvent().dustMult);
+  if (item.minorTrait?.id === "dust_boost") {
+    dustGain = Math.round(dustGain * (1 + item.minorTrait.pct / 100));
+  }
+  return dustGain;
+}
+
 async function disenchantItem(slot, itemId) {
   if (!currentPlayerData) return;
   const equippedId = currentPlayerData.equipment?.[slot]?.id;
@@ -1817,10 +1828,7 @@ async function disenchantItem(slot, itemId) {
   const target = getSlotInventory(slot).find(it => it.id === itemId);
   if (!target) { alert("Eşya bulunamadı."); return; }
   const newInvArr = getSlotInventory(slot).filter(it => it.id !== itemId);
-  let dustGain = Math.round((DUST_FROM_RARITY[target.rarity] || 0) * getTodaysEvent().dustMult);
-  if (target.minorTrait?.id === "dust_boost") {
-    dustGain = Math.round(dustGain * (1 + target.minorTrait.pct / 100));
-  }
+  const dustGain = computeDustGainForItem(target);
   await updateDoc(doc(db, PLAYERS_COL, currentPlayerId), {
     [`inventory.${slot}`]: newInvArr,
     dust: (currentPlayerData.dust || 0) + dustGain
@@ -1886,7 +1894,7 @@ function renderInventoryModal() {
         ${it.minorTrait ? `<div class="item-popup-passive minor-passive" style="margin-top:6px;">${it.minorTrait.icon} <b>${it.minorTrait.name}:</b> ${it.minorTrait.desc}</div>` : ""}
         <div class="inv-item-actions">
           <button class="btn-mini nadir-mini" data-action="equip" data-id="${it.id}" ${isEquipped ? "disabled" : ""}>Kuşan</button>
-          <button class="btn-mini" data-action="dust" data-id="${it.id}" ${isEquipped ? "disabled" : ""}>Toza Çevir</button>
+          <button class="btn-mini" data-action="dust" data-id="${it.id}" ${isEquipped ? "disabled" : ""}>Toza Çevir<span>✨ +${computeDustGainForItem(it)} Toz</span></button>
         </div>
       </div>`;
   }).join("");
@@ -3402,7 +3410,7 @@ async function performBoxOpen({ forcedRarity = null, costDust = 0, isFree = fals
       ? `<div class="item-popup-passive" style="color:var(--green)">✅ Boş slota otomatik kuşanıldı!</div>`
       : `<div class="popup-quick-actions">
           <button id="popupEquipBtn" class="btn-mini nadir-mini">✅ Şimdi Kuşan</button>
-          <button id="popupDustBtn" class="btn-mini">✨ Toza Çevir</button>
+          <button id="popupDustBtn" class="btn-mini">✨ Toza Çevir<span>+${computeDustGainForItem(item)} Toz</span></button>
         </div>`}
   `;
   itemPopup.classList.remove("hidden");
