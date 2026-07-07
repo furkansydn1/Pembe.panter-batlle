@@ -651,7 +651,7 @@ const LEGENDARY_ITEMS = [
   { name: "Kıl dönmesi kılıcı", slot: "kilic", atk: 24, def: 5, effect: "attack_multiplier",
     desc: "Saldırı gücü hesaplamasında %15 fazladan bonus verir." },
   { name: "Nargile kılıcı", slot: "kilic", atk: 22, def: 6, effect: "chill_risk",
-    desc: "Kazanırsa 3 puan fazladan alır, ama %20 ihtimalle nargile keyfine dalıp bu sefer saldıramaz." },
+    desc: "Kazanırsa 3 puan fazladan alır, ama nadiren (%5 ihtimalle) nargile keyfine dalıp bu sefer saldıramaz." },
   { name: "Yeşil kaş Kaskı", slot: "kask", atk: 3, def: 24, effect: "lucky_defense_roll",
     desc: "Savunmadayken zar atışı 2 katı sayılır, şansı yaver gider." },
   { name: "Karanın Airpodsları Kaskı", slot: "kask", atk: 4, def: 24, effect: "revenge_steal",
@@ -663,7 +663,7 @@ const LEGENDARY_ITEMS = [
   { name: "Emrenin yamuk parmak eldiveni", slot: "eldiven", atk: 25, def: 4, effect: "attack_multiplier",
     desc: "Saldırı gücü hesaplamasında %15 fazladan bonus verir." },
   { name: "Gay eldiveni", slot: "eldiven", atk: 21, def: 6, effect: "chill_risk",
-    desc: "Kazanırsa 3 puan fazladan alır, ama %20 ihtimalle o seferki saldırıyı pas geçer." },
+    desc: "Kazanırsa 3 puan fazladan alır, ama nadiren (%5 ihtimalle) o seferki saldırıyı pas geçer." },
 
   // ---- v1.14: Kalkan, Küpe, Kolye efsanevi eşyaları ----
   { name: "Kaymağın kalkanı", slot: "kalkan", atk: 3, def: 25, effect: "defense_multiplier",
@@ -681,7 +681,7 @@ const LEGENDARY_ITEMS = [
   { name: "Nazarlıklı amcanın kolyesi", slot: "kolye", atk: 25, def: 4, effect: "curse_defense_next",
     desc: "Saldırıda kazanırsa rakibe lanet okur: rakibin bir sonraki savaşında savunması %20 düşer." },
   { name: "Keyifli akşamın kolyesi", slot: "kolye", atk: 21, def: 6, effect: "chill_risk",
-    desc: "Kazanırsa 3 puan fazladan alır, ama %20 ihtimalle o seferki saldırıyı pas geçer." },
+    desc: "Kazanırsa 3 puan fazladan alır, ama nadiren (%5 ihtimalle) o seferki saldırıyı pas geçer." },
   { name: "Gıcık komşunun kolyesi", slot: "kolye", atk: 24, def: 5, effect: "attack_multiplier",
     desc: "Saldırı gücü hesaplamasında %15 fazladan bonus verir." }
 ];
@@ -1171,6 +1171,7 @@ const myPointsEl = document.getElementById("myPoints");
 const myDustEl = document.getElementById("myDust");
 const myStreakEl = document.getElementById("myStreak");
 const streakChip = document.getElementById("streakChip");
+const myDustBoxEl = document.getElementById("myDustBox");
 
 const boxWrapper = document.getElementById("boxWrapper");
 const epicChestEl = document.getElementById("epicChest");
@@ -2152,6 +2153,7 @@ function renderMyStats() {
   myDefenseEl.textContent = currentPlayerData.defense ?? BASE_DEFENSE;
   myPointsEl.textContent = currentPlayerData.points ?? 0;
   myDustEl.textContent = currentPlayerData.dust ?? 0;
+  if (myDustBoxEl) myDustBoxEl.textContent = currentPlayerData.dust ?? 0;
   const streak = currentPlayerData.boxStreak ?? 0;
   myStreakEl.textContent = streak;
   streakChip.classList.toggle("hidden", streak < 2);
@@ -3485,9 +3487,9 @@ async function runAttack(defenderId) {
       const isRepeat = attacker.lastAttackedId === defenderId;
       const repeatCount = isRepeat ? (attacker.attackStreakOnTarget || 1) + 1 : 1;
 
-      // --- Nargile kılıcı: %20 ihtimalle saldıramaz ---
+      // --- Nargile kılıcı: nadiren (%5 ihtimalle) saldıramaz ---
       const chillItem = getEffect(attacker.equipment, "chill_risk");
-      if (chillItem && Math.random() < 0.2) {
+      if (chillItem && Math.random() < 0.05) {
         const skippedQuests = incrementQuestProgress(attacker.dailyQuests, "attack_count", 1);
         const skippedWeeklyQuests = incrementQuestProgress(attacker.weeklyQuests, "attack_count", 1);
         const skippedMonthlyQuests = incrementQuestProgress(attacker.monthlyQuests, "attack_count", 1);
