@@ -753,6 +753,20 @@ const LEGENDARY_BY_SLOT = LEGENDARY_ITEMS.reduce((acc, it) => {
   return acc;
 }, {});
 
+// ÖNEMLİ: Bir eşyanın effectDesc metni, o eşya kutudan/görevden çıktığı ANDA
+// Firestore'a kaydedilip orada donuyor. Yani LEGENDARY_ITEMS içindeki desc
+// metnini (örn. aktivasyon şansı yüzdelerini) sonradan güncellersek, daha
+// ÖNCE düşmüş/kuşanılmış eski eşyaların üzerinde hâlâ eski metin görünür.
+// Bu yüzden ekranda gösterirken artık kayıtlı effectDesc'e değil, isme göre
+// bu haritadan CANLI olarak çekilen güncel açıklamaya bakılıyor (bkz.
+// getLiveEffectDesc). Eski eşyalar da böylece her zaman güncel yüzdeleri
+// gösterir.
+const LEGENDARY_DESC_BY_NAME = Object.fromEntries(LEGENDARY_ITEMS.map(it => [it.name, it.desc]));
+function getLiveEffectDesc(item) {
+  if (!item) return null;
+  return LEGENDARY_DESC_BY_NAME[item.name] || item.effectDesc || null;
+}
+
 // Koleksiyon kitabı için: her slotun tüm olası eşyaları (nadirlik etiketiyle birlikte)
 const ALL_ITEMS_BY_SLOT = Object.fromEntries(SLOTS.map(s => {
   const items = [
@@ -1974,7 +1988,7 @@ function renderInventoryModal() {
           <span class="inv-stat-pill def">🛡️ +${it.def}</span>
           ${it.enchantPct ? `<span class="inv-stat-pill enchant">✨ Efsun +%${it.enchantPct} ${statLabel}</span>` : ""}
         </div>
-        ${it.effectDesc ? `<div class="item-popup-passive" style="margin-top:6px;">✨ ${it.effectDesc}</div>` : ""}
+        ${getLiveEffectDesc(it) ? `<div class="item-popup-passive" style="margin-top:6px;">✨ ${getLiveEffectDesc(it)}</div>` : ""}
         ${it.minorTrait ? `<div class="item-popup-passive minor-passive" style="margin-top:6px;">${it.minorTrait.icon} <b>${it.minorTrait.name}:</b> ${it.minorTrait.desc}</div>` : ""}
         <div class="inv-item-actions">
           <button class="btn-mini nadir-mini" data-action="equip" data-id="${it.id}" ${isEquipped ? "disabled" : ""}>Kuşan</button>
@@ -3177,7 +3191,7 @@ async function claimQuest(period, questId) {
       <div class="item-popup-name rarity-${grantedItem.rarity}">${grantedItem.name}</div>
       <div class="item-popup-stats">⚔️ +${grantedItem.atk} &nbsp; 🛡️ +${grantedItem.def} &nbsp; · ${grantedItem.rarity.toUpperCase()} (${RARITY_CHANCE_LABELS[grantedItem.rarity]} şans)</div>
       ${grantedItem.enchantPct ? `<div class="item-popup-passive" style="color:var(--accent-2)">✨ Efsun: +%${grantedItem.enchantPct} ${SLOT_MAP[grantedItem.slot].type === "atk" ? "Saldırı" : "Savunma"}</div>` : ""}
-      ${grantedItem.effectDesc ? `<div class="item-popup-passive">✨ ${grantedItem.effectDesc}</div>` : ""}
+      ${getLiveEffectDesc(grantedItem) ? `<div class="item-popup-passive">✨ ${getLiveEffectDesc(grantedItem)}</div>` : ""}
       ${grantedItem.minorTrait ? `<div class="item-popup-passive minor-passive">${grantedItem.minorTrait.icon} ${grantedItem.minorTrait.name}: ${grantedItem.minorTrait.desc}</div>` : ""}
     `;
     itemPopup.classList.remove("hidden");
@@ -3488,7 +3502,7 @@ async function performBoxOpen({ forcedRarity = null, costDust = 0, isFree = fals
     <div class="item-popup-name rarity-${item.rarity}">${item.name}</div>
     <div class="item-popup-stats">⚔️ +${item.atk} &nbsp; 🛡️ +${item.def} &nbsp; · ${item.rarity.toUpperCase()} (${RARITY_CHANCE_LABELS[item.rarity]} şans)</div>
     ${item.enchantPct ? `<div class="item-popup-passive" style="color:var(--accent-2)">✨ Efsun: +%${item.enchantPct} ${SLOT_MAP[item.slot].type === "atk" ? "Saldırı" : "Savunma"}</div>` : ""}
-    ${item.effectDesc ? `<div class="item-popup-passive">✨ ${item.effectDesc}</div>` : ""}
+    ${getLiveEffectDesc(item) ? `<div class="item-popup-passive">✨ ${getLiveEffectDesc(item)}</div>` : ""}
     ${item.minorTrait ? `<div class="item-popup-passive minor-passive">${item.minorTrait.icon} ${item.minorTrait.name}: ${item.minorTrait.desc}</div>` : ""}
     ${wasEmpty
       ? `<div class="item-popup-passive" style="color:var(--green)">✅ Boş slota otomatik kuşanıldı!</div>`
