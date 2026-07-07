@@ -74,6 +74,69 @@ const DUST_COST_LEGENDARY_BOX = 55;
 const DOMINANCE_RATIO = 1.5;
 
 // ============================================================
+// HIZ & KRİTİK VURUŞ SİSTEMİ
+// Savaş artık tek seferlik bir "güç karşılaştırması" değil, kısa bir
+// simülasyon: her taraf kendi Hız statı kadar hızlı "vuruş göstergesini"
+// dolduruyor, gösterge dolunca 1 vuruş yapıyor (JRPG'lerdeki ATB/Speed
+// Gauge mantığı). Yani düşük saldırı + yüksek hız, yüksek saldırı + düşük
+// hıza karşı toplam hasarda öne geçebiliyor (çok ama küçük vuruş vs az ama
+// büyük vuruş). Kritik vuruş ise üstüne binen 3. bir eksen: her vuruşun,
+// vuranın Kritik statına göre bir ihtimalle çarpımlı hasar vermesi.
+// Hız ve Kritik statları TABANDA 0'dır, sadece bazı eşyalarda (şansa bağlı,
+// bkz. rollBonusStat) bulunur.
+// ============================================================
+const SPEED_TICKS = 100;       // simülasyon çözünürlüğü
+const SPEED_GAUGE_MAX = 100;   // bu gösterge dolunca 1 vuruş olur
+const DEF_MITIGATION = 0.4;    // savunmanın hasarı azaltma oranı
+const CRIT_MULTIPLIER = 1.6;   // kritik vuruşun hasar çarpanı
+const CRIT_CHANCE_CAP = 0.5;   // kritik şansı %50'de tavanlanır
+
+// crit stat'ı doğrudan yüzdeye çevrilir: crit=20 -> %20 kritik şansı (tavan %50)
+function critChanceFromStat(critStat) {
+  return Math.min(CRIT_CHANCE_CAP, Math.max(0, (critStat || 0) / 100));
+}
+
+// attacker/defender: { atk, def, spd, crit }. İki taraf da kendi hızına göre
+// vuruyor, kendi atk'sıyla karşı tarafın def'ini deliyor. Sonunda toplam
+// hasarlar (totalDmgA/totalDmgD) karşılaştırılarak kazanan belirlenir.
+function simulateSpeedBattle(attacker, defender) {
+  let gaugeA = 0, gaugeD = 0;
+  let hitsA = 0, hitsD = 0;
+  let critHitsA = 0, critHitsD = 0;
+  let dmgA = 0, dmgD = 0;
+
+  const critChanceA = critChanceFromStat(attacker.crit);
+  const critChanceD = critChanceFromStat(defender.crit);
+
+  for (let t = 0; t < SPEED_TICKS; t++) {
+    gaugeA += Math.max(1, attacker.spd || 0);
+    gaugeD += Math.max(1, defender.spd || 0);
+
+    while (gaugeA >= SPEED_GAUGE_MAX) {
+      gaugeA -= SPEED_GAUGE_MAX;
+      hitsA++;
+      const base = Math.max(1, attacker.atk - defender.def * DEF_MITIGATION);
+      const isCrit = Math.random() < critChanceA;
+      if (isCrit) { critHitsA++; dmgA += base * CRIT_MULTIPLIER; }
+      else dmgA += base;
+    }
+    while (gaugeD >= SPEED_GAUGE_MAX) {
+      gaugeD -= SPEED_GAUGE_MAX;
+      hitsD++;
+      const base = Math.max(1, defender.atk - attacker.def * DEF_MITIGATION);
+      const isCrit = Math.random() < critChanceD;
+      if (isCrit) { critHitsD++; dmgD += base * CRIT_MULTIPLIER; }
+      else dmgD += base;
+    }
+  }
+
+  return {
+    hitsA, hitsD, critHitsA, critHitsD,
+    totalDmgA: dmgA, totalDmgD: dmgD
+  };
+}
+
+// ============================================================
 // ŞANSLI ÇARK
 // 12 saatte bir bedava çevirme hakkı, küçük toz/puan bonusları verir.
 // ============================================================
@@ -633,57 +696,57 @@ const RARE_NAMES = {
 // Efsanevi eşyalar - her birinin gerçek oyun içi pasif etkisi var (effect kodu ile).
 const LEGENDARY_ITEMS = [
   { name: "Yasin ercile zırhı", slot: "zirh", atk: 4, def: 26, effect: "no_loss_on_defense_lose",
-    desc: "Savunmadayken maçı kaybetse bile puanı asla düşmez." },
+    desc: "Savunmadayken maçı kaybedersen %30 ihtimalle puanın hiç düşmez." },
   { name: "Portakal suyu kılıcı", slot: "kilic", atk: 27, def: 3, effect: "steal_extra_on_big_win",
-    desc: "Saldırıda 5'ten fazla güç farkıyla kazanırsa rakipten ekstra 2 puan çalar." },
+    desc: "Saldırıda 5'ten fazla güç farkıyla kazanırsan %50 ihtimalle rakipten ekstra 2 puan çalar." },
   { name: "Çingene eldiveni", slot: "eldiven", atk: 25, def: 5, effect: "curse_defense_next",
-    desc: "Saldırıda kazanırsa rakibe lanet okur: rakibin bir sonraki savaşında savunması %20 düşer." },
+    desc: "Saldırıda kazanırsan %35 ihtimalle rakibe lanet okur: rakibin bir sonraki savaşında savunması %20 düşer." },
   { name: "Cüce botları", slot: "ayakkabi", atk: 3, def: 24, effect: "revenge_steal",
-    desc: "Savunmada kaybetse bile intikam alır, saldırandan 3 puan çalar." },
+    desc: "Savunmada kaybedersen %35 ihtimalle intikam alır, saldırandan 3 puan çalar." },
   { name: "Dana kaskı", slot: "kask", atk: 4, def: 25, effect: "bonus_win_defense",
-    desc: "Savunmada kazanırsa normal ödülün üstüne 5 puan daha kazanır." },
+    desc: "Savunmada kazanırsan %45 ihtimalle normal ödülün üstüne 5 puan daha kazanır." },
   { name: "Sarı diş kılıcı", slot: "kilic", atk: 26, def: 4, effect: "crit_instant_win",
     desc: "Saldırıda %10 ihtimalle güç hesabına bakmadan anında ısırıp kazanır." },
   { name: "Kambur zırhı", slot: "zirh", atk: 3, def: 23, effect: "defense_multiplier",
-    desc: "Savunma gücü hesaplamasında %15 fazladan bonus verir." },
+    desc: "Savaş anında %50 ihtimalle savunma gücü hesaplamasında %15 fazladan bonus verir." },
   { name: "Yırtık menüsküs ayakkabıları", slot: "ayakkabi", atk: 2, def: 22, effect: "reduced_loss",
-    desc: "Savunmada kaybederse sadece 2 puan kaybeder, 5 değil." },
+    desc: "Savunmada kaybedersen %45 ihtimalle sadece 2 puan kaybedersin, 5 değil." },
   { name: "Kıl dönmesi kılıcı", slot: "kilic", atk: 24, def: 5, effect: "attack_multiplier",
-    desc: "Saldırı gücü hesaplamasında %15 fazladan bonus verir." },
+    desc: "Saldırı anında %50 ihtimalle saldırı gücü hesaplamasında %15 fazladan bonus verir." },
   { name: "Nargile kılıcı", slot: "kilic", atk: 22, def: 6, effect: "chill_risk",
-    desc: "Kazanırsa 3 puan fazladan alır, ama nadiren (%5 ihtimalle) nargile keyfine dalıp bu sefer saldıramaz." },
+    desc: "Kazanırsan %50 ihtimalle 3 puan fazladan alırsın, ama nadiren (%5 ihtimalle) nargile keyfine dalıp bu sefer saldıramazsın." },
   { name: "Yeşil kaş Kaskı", slot: "kask", atk: 3, def: 24, effect: "lucky_defense_roll",
-    desc: "Savunmadayken zar atışı 2 katı sayılır, şansı yaver gider." },
+    desc: "Savunmadayken %50 ihtimalle zar atışı 2 katı sayılır, şansı yaver gider." },
   { name: "Karanın Airpodsları Kaskı", slot: "kask", atk: 4, def: 24, effect: "revenge_steal",
-    desc: "Savunmada kaybetse bile taş çatlasa saldırandan 3 puan çalar." },
+    desc: "Savunmada kaybedersen %35 ihtimalle taş çatlasa saldırandan 3 puan çalar." },
   { name: "Götün zırhı", slot: "zirh", atk: 3, def: 25, effect: "no_loss_on_defense_lose",
-    desc: "Savunmadayken maçı kaybetse bile puanı asla düşmez." },
+    desc: "Savunmadayken maçı kaybedersen %30 ihtimalle puanın hiç düşmez." },
   { name: "Harput ayakkabıları", slot: "ayakkabi", atk: 2, def: 23, effect: "lucky_defense_roll",
-    desc: "Yavaş ama sağlam: savunmadayken zar atışı 2 katı sayılır." },
+    desc: "Yavaş ama sağlam: savunmadayken %50 ihtimalle zar atışı 2 katı sayılır." },
   { name: "Emrenin yamuk parmak eldiveni", slot: "eldiven", atk: 25, def: 4, effect: "attack_multiplier",
-    desc: "Saldırı gücü hesaplamasında %15 fazladan bonus verir." },
+    desc: "Saldırı anında %50 ihtimalle saldırı gücü hesaplamasında %15 fazladan bonus verir." },
   { name: "Gay eldiveni", slot: "eldiven", atk: 21, def: 6, effect: "chill_risk",
-    desc: "Kazanırsa 3 puan fazladan alır, ama nadiren (%5 ihtimalle) o seferki saldırıyı pas geçer." },
+    desc: "Kazanırsan %50 ihtimalle 3 puan fazladan alırsın, ama nadiren (%5 ihtimalle) o seferki saldırıyı pas geçersin." },
 
   // ---- v1.14: Kalkan, Küpe, Kolye efsanevi eşyaları ----
   { name: "Kaymağın kalkanı", slot: "kalkan", atk: 3, def: 25, effect: "defense_multiplier",
-    desc: "Savunma gücü hesaplamasında %15 fazladan bonus verir." },
+    desc: "Savaş anında %50 ihtimalle savunma gücü hesaplamasında %15 fazladan bonus verir." },
   { name: "Devrik minderin kalkanı", slot: "kalkan", atk: 4, def: 24, effect: "no_loss_on_defense_lose",
-    desc: "Savunmadayken maçı kaybetse bile puanı asla düşmez." },
+    desc: "Savunmadayken maçı kaybedersen %30 ihtimalle puanın hiç düşmez." },
   { name: "Sallanan dişin kalkanı", slot: "kalkan", atk: 3, def: 23, effect: "lucky_defense_roll",
-    desc: "Savunmadayken zar atışı 2 katı sayılır, şansı yaver gider." },
+    desc: "Savunmadayken %50 ihtimalle zar atışı 2 katı sayılır, şansı yaver gider." },
   { name: "Kelebeğin küpesi", slot: "kupe", atk: 25, def: 4, effect: "attack_multiplier",
-    desc: "Saldırı gücü hesaplamasında %15 fazladan bonus verir." },
+    desc: "Saldırı anında %50 ihtimalle saldırı gücü hesaplamasında %15 fazladan bonus verir." },
   { name: "Sarhoş amcanın küpesi", slot: "kupe", atk: 26, def: 3, effect: "steal_extra_on_big_win",
-    desc: "Saldırıda 5'ten fazla güç farkıyla kazanırsa rakipten ekstra 2 puan çalar." },
+    desc: "Saldırıda 5'ten fazla güç farkıyla kazanırsan %50 ihtimalle rakipten ekstra 2 puan çalar." },
   { name: "Işıltılı dedikodu küpesi", slot: "kupe", atk: 24, def: 5, effect: "crit_instant_win",
     desc: "Saldırıda %10 ihtimalle güç hesabına bakmadan anında ısırıp kazanır." },
   { name: "Nazarlıklı amcanın kolyesi", slot: "kolye", atk: 25, def: 4, effect: "curse_defense_next",
-    desc: "Saldırıda kazanırsa rakibe lanet okur: rakibin bir sonraki savaşında savunması %20 düşer." },
+    desc: "Saldırıda kazanırsan %35 ihtimalle rakibe lanet okur: rakibin bir sonraki savaşında savunması %20 düşer." },
   { name: "Keyifli akşamın kolyesi", slot: "kolye", atk: 21, def: 6, effect: "chill_risk",
-    desc: "Kazanırsa 3 puan fazladan alır, ama nadiren (%5 ihtimalle) o seferki saldırıyı pas geçer." },
+    desc: "Kazanırsan %50 ihtimalle 3 puan fazladan alırsın, ama nadiren (%5 ihtimalle) o seferki saldırıyı pas geçersin." },
   { name: "Gıcık komşunun kolyesi", slot: "kolye", atk: 24, def: 5, effect: "attack_multiplier",
-    desc: "Saldırı gücü hesaplamasında %15 fazladan bonus verir." }
+    desc: "Saldırı anında %50 ihtimalle saldırı gücü hesaplamasında %15 fazladan bonus verir." }
 ];
 const LEGENDARY_BY_SLOT = LEGENDARY_ITEMS.reduce((acc, it) => {
   (acc[it.slot] ||= []).push(it);
@@ -962,6 +1025,27 @@ function applyEnchant(slotInfo, atk, def, rarity) {
     def = Math.round(def * (1 + enchantPct / 100));
   }
   return { atk, def, enchantPct };
+}
+
+// ============================================================
+// HIZ / KRİTİK BONUS STAT (şansa bağlı)
+// Her eşya, düştüğü anda %BONUS_STAT_CHANCE ihtimalle EK olarak Hız YA DA
+// Kritik statlarından birini kazanır (ikisi birden asla gelmez). Slot
+// tipinden (atk/def) bağımsızdır, çünkü hız ve kritik saldırı tipi
+// eşyalara özgü değil, genel bir savaş avantajıdır. Tetiklenmezse eşyanın
+// spd/crit değeri 0'dır (taban her zaman 0, sadece eşyadan gelir).
+// ============================================================
+const BONUS_STAT_CHANCE = 0.25; // eşyanın hız/kritik bonusu alma ihtimali
+const BONUS_STAT_RANGE = {
+  standart: [3, 6],
+  nadir: [6, 12],
+  efsanevi: [12, 20]
+};
+function rollBonusStat(rarity) {
+  if (Math.random() >= BONUS_STAT_CHANCE) return { spd: 0, crit: 0 };
+  const [min, max] = BONUS_STAT_RANGE[rarity] || [0, 0];
+  const val = randInt(min, max);
+  return Math.random() < 0.5 ? { spd: val, crit: 0 } : { spd: 0, crit: val };
 }
 
 // ============================================================
@@ -3508,6 +3592,34 @@ function getEffect(equipment, effectName) {
 }
 
 // ============================================================
+// EFSANEVİ EŞYA EFEKTLERİNİN AKTİVASYON ŞANSI
+// Önceden her efsanevi eşyanın özel efekti, ilgili koşul sağlandığında
+// (kazanınca/kaybedince/vb.) %100 KESİN tetikleniyordu. Bu, birden fazla
+// efsanevi eşya aynı anda kuşanıldığında (örn. 5 slotun hepsi efsanevi)
+// savaşı neredeyse tamamen deterministik ve aşırı güçlü hale getiriyordu.
+// Artık her efekt türünün kendi "aktivasyon şansı" var: koşul sağlansa
+// bile efekt bu ihtimalle devreye giriyor, aksi halde sessizce hiç
+// tetiklenmemiş gibi geçiliyor. crit_instant_win zaten kendi %10'unu
+// koruyor, bu tabloya dahil değil (ayrıca yönetiliyor).
+// ============================================================
+const EFFECT_ACTIVATION_CHANCE = {
+  no_loss_on_defense_lose: 0.30,   // en güçlü efekt (puan kaybını tamamen siler), en düşük şans
+  revenge_steal: 0.35,
+  curse_defense_next: 0.35,
+  reduced_loss: 0.45,
+  bonus_win_defense: 0.45,
+  steal_extra_on_big_win: 0.50,
+  defense_multiplier: 0.50,
+  attack_multiplier: 0.50,
+  lucky_defense_roll: 0.50,
+  chill_risk: 0.50 // sadece "kazanınca +3 puan" kısmı; %5'lik saldıramama riski ayrı ve sabit kalıyor
+};
+function effectActivates(effectName) {
+  const chance = EFFECT_ACTIVATION_CHANCE[effectName];
+  return chance === undefined ? true : Math.random() < chance;
+}
+
+// ============================================================
 // SAVAŞ LOGU MESAJ ÇEŞİTLİLİĞİ
 // Durum bazlı (kazandı / kaybetti / aynı kişiye üst üste saldırdı)
 // en az 5-6 farklı, eğlenceli mesaj havuzu.
@@ -3844,15 +3956,15 @@ async function runAttack(defenderId) {
         legendaryLog.push(`${defender.name} üzerindeki ${curseItemName} laneti devreye girdi, savunması zayıfladı.`);
       }
 
-      // Kambur zırhı / Kaymağın kalkanı: savunma çarpanı
+      // Kambur zırhı / Kaymağın kalkanı: savunma çarpanı (artık %50 ihtimalle devreye girer)
       const defMultItem = getEffect(defender.equipment, "defense_multiplier");
-      if (defMultItem) {
+      if (defMultItem && effectActivates(defMultItem.effect)) {
         baseDefense *= 1.15;
         legendaryLog.push(`${defender.name}'in ${defMultItem.name} savunmasını güçlendirdi.`);
       }
-      // Kıl dönmesi kılıcı / Emrenin yamuk parmak eldiveni / Gıcık komşunun kolyesi: saldırı çarpanı
+      // Kıl dönmesi kılıcı / Emrenin yamuk parmak eldiveni / Gıcık komşunun kolyesi: saldırı çarpanı (%50 ihtimalle)
       const atkMultItem = getEffect(attacker.equipment, "attack_multiplier");
-      if (atkMultItem) {
+      if (atkMultItem && effectActivates(atkMultItem.effect)) {
         baseAttack *= 1.15;
         legendaryLog.push(`${attacker.name}'in ${atkMultItem.name} saldırısını güçlendirdi.`);
       }
@@ -3889,8 +4001,9 @@ async function runAttack(defenderId) {
         let attackRoll = (1 - spread) + Math.random() * (spread * 2);
         let defenseRoll = (1 - spread) + Math.random() * (spread * 2);
 
-        // Şanslı savunma eşyaları: zar 2 kez atılır, iyisi sayılır (avantaj mekaniği)
-        if (getEffect(defender.equipment, "lucky_defense_roll")) {
+        // Şanslı savunma eşyaları: zar 2 kez atılır, iyisi sayılır (artık %50 ihtimalle devreye girer)
+        const luckyDefItem = getEffect(defender.equipment, "lucky_defense_roll");
+        if (luckyDefItem && effectActivates(luckyDefItem.effect)) {
           const secondRoll = (1 - spread) + Math.random() * (spread * 2);
           defenseRoll = Math.max(defenseRoll, secondRoll);
           legendaryLog.push(`${defender.name}'in şanslı eşyası zarı 2 kez attı, iyisini seçti.`);
@@ -3911,32 +4024,34 @@ async function runAttack(defenderId) {
       if (attackerWins) {
         let winPts = 10, losePts = 5;
 
-        // Portakal suyu kılıcı / Sarhoş amcanın küpesi: rakip gücünün %30'undan fazla farkla kazanırsa ekstra 2 çalar
+        // Portakal suyu kılıcı / Sarhoş amcanın küpesi: rakip gücünün %30'undan fazla farkla kazanırsa %50 ihtimalle ekstra 2 çalar
         const stealItem = getEffect(attacker.equipment, "steal_extra_on_big_win");
-        if (!critTriggered && stealItem && diff > defensePower * 0.3) {
+        if (!critTriggered && stealItem && diff > defensePower * 0.3 && effectActivates(stealItem.effect)) {
           winPts += 2; losePts += 2;
           legendaryLog.push(`${attacker.name}'in ${stealItem.name} ezici farktan ekstra 2 puan çaldı.`);
         }
-        // Nargile kılıcı / Gay eldiveni / Keyifli akşamın kolyesi: kazanırsa +3 ekstra
-        if (chillItem) {
+        // Nargile kılıcı / Gay eldiveni / Keyifli akşamın kolyesi: kazanırsa %50 ihtimalle +3 ekstra
+        if (chillItem && effectActivates(chillItem.effect)) {
           winPts += 3;
           legendaryLog.push(`${attacker.name}'in ${chillItem.name} keyifli bir zafer bonusu verdi (+3).`);
         }
-        // Yasin ercile zırhı / Götün zırhı / Devrik minderin kalkanı: defender kaybetse de puan kaybetmez
+        // Yasin ercile zırhı / Götün zırhı / Devrik minderin kalkanı: defender kaybetse de %30 ihtimalle puan kaybetmez
         const noLossItem = getEffect(defender.equipment, "no_loss_on_defense_lose");
         const reducedLossItem = getEffect(defender.equipment, "reduced_loss");
-        if (noLossItem) {
+        const noLossActive = !!(noLossItem && effectActivates(noLossItem.effect));
+        const reducedLossActive = !noLossActive && !!(reducedLossItem && effectActivates(reducedLossItem.effect));
+        if (noLossActive) {
           losePts = 0;
           legendaryLog.push(`${defender.name}'in ${noLossItem.name} sayesinde hiç puan kaybetmedi.`);
         }
-        // Yırtık menüsküs: kaybederse sadece 2 kaybeder
-        else if (reducedLossItem) {
+        // Yırtık menüsküs: kaybederse %45 ihtimalle sadece 2 kaybeder
+        else if (reducedLossActive) {
           losePts = Math.min(losePts, 2);
           legendaryLog.push(`${defender.name}'in ${reducedLossItem.name} sayesinde daha az puan kaybetti.`);
         }
-        // Cüce botları / Karanın Airpodsları Kaskı: defender kaybetse bile intikamla 3 puan çalar
+        // Cüce botları / Karanın Airpodsları Kaskı: defender kaybetse bile %35 ihtimalle intikamla 3 puan çalar
         const revengeItem = getEffect(defender.equipment, "revenge_steal");
-        if (revengeItem) {
+        if (revengeItem && effectActivates(revengeItem.effect)) {
           winPts = Math.max(0, winPts - 3);
           defenderPoints += 3;
           legendaryLog.push(`${defender.name}'in ${revengeItem.name} intikam alıp saldırandan 3 puan çaldı.`);
@@ -3945,9 +4060,9 @@ async function runAttack(defenderId) {
         attackerPoints += Math.round(winPts * dailyEvent.pointsMult);
         defenderPoints = Math.max(0, defenderPoints - Math.round(losePts * dailyEvent.pointsMult));
 
-        // Çingene eldiveni / Nazarlıklı amcanın kolyesi: kazanırsa rakibe lanet
+        // Çingene eldiveni / Nazarlıklı amcanın kolyesi: kazanırsa %35 ihtimalle rakibe lanet
         const curseItem = getEffect(attacker.equipment, "curse_defense_next");
-        if (curseItem) {
+        if (curseItem && effectActivates(curseItem.effect)) {
           newCurseForDefenderTarget = { active: true, reduction: 0.2, itemName: curseItem.name };
           legendaryLog.push(`${attacker.name}'in ${curseItem.name} ${defender.name}'e lanet okudu.`);
         }
@@ -3956,9 +4071,9 @@ async function runAttack(defenderId) {
       } else {
         let winPts = 5, losePts = 3;
 
-        // Dana kaskı: savunmada kazanırsa +5 ekstra
+        // Dana kaskı: savunmada kazanırsa %45 ihtimalle +5 ekstra
         const bonusDefItem = getEffect(defender.equipment, "bonus_win_defense");
-        if (bonusDefItem) {
+        if (bonusDefItem && effectActivates(bonusDefItem.effect)) {
           winPts += 5;
           legendaryLog.push(`${defender.name}'in ${bonusDefItem.name} savunma zaferine +5 bonus kattı.`);
         }
