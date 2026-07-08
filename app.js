@@ -355,6 +355,16 @@ async function ensureWeeklyLeaderboardReset() {
   const currentWeekId = leaderboardWeekIdStr();
   const metaRef = doc(db, META_COL, WEEKLY_LEADERBOARD_DOC_ID);
 
+  // ÖNEMLİ (kota tüketimi düzeltmesi): Önceden bu fonksiyon HER ÇAĞRIDA
+  // (dakikada bir, her açık client için) tüm oyuncu koleksiyonunu (9 doküman)
+  // okuyordu — hafta değişmemiş olsa bile. Bu, Firestore'un günlük ücretsiz
+  // okuma kotasını çok hızlı tüketip normal işlemlerin (saldırı, kutu açma
+  // vb.) "Quota exceeded" hatası almasına sebep oluyordu. Artık önce tek bir
+  // meta dokümanı okunuyor; hafta zaten işlenmişse hiçbir oyuncu dokümanı
+  // okunmadan hemen çıkılıyor.
+  const preSnap = await getDoc(metaRef);
+  if (preSnap.exists() && preSnap.data().lastProcessedWeek === currentWeekId) return;
+
   // Oyuncu listesinin referanslarını transaction dışında al (Firestore
   // transaction'ları serbest sorgu değil, bilinen doküman referansları ister).
   const playersSnap = await getDocs(collection(db, PLAYERS_COL));
@@ -1339,9 +1349,6 @@ const oracleAmountInput = document.getElementById("oracleAmountInput");
 const placeOracleBtn = document.getElementById("placeOracleBtn");
 const oracleStatus = document.getElementById("oracleStatus");
 
-const ronaldoModal = document.getElementById("ronaldoModal");
-const ronaldoClaimBtn = document.getElementById("ronaldoClaimBtn");
-
 const newFeaturesModal = document.getElementById("newFeaturesModal");
 const newFeaturesTrack = document.getElementById("newFeaturesTrack");
 const newFeaturesDots = document.getElementById("newFeaturesDots");
@@ -1552,7 +1559,6 @@ function closeNewFeatures() {
   localStorage.setItem("gacha_last_seen_update", LATEST_UPDATE_VERSION);
   newFeaturesModal.classList.add("hidden");
   refreshUpdatesDot();
-  maybeShowRonaldoTribute();
 }
 if (closeNewFeaturesBtn) closeNewFeaturesBtn.onclick = closeNewFeatures;
 if (nfSkipBtn) nfSkipBtn.onclick = closeNewFeatures;
@@ -1599,7 +1605,6 @@ function closeTutorial() {
   localStorage.setItem("gacha_last_seen_update", LATEST_UPDATE_VERSION);
   refreshUpdatesDot();
   tutorialModal.classList.add("hidden");
-  maybeShowRonaldoTribute();
 }
 closeTutorialBtn.onclick = closeTutorial;
 if (tutSkipBtn) tutSkipBtn.onclick = closeTutorial;
@@ -1611,31 +1616,6 @@ howToBtn.onclick = () => openTutorial();
 // hemen sonra) bir kereliğine gösterilir. "Helvanı al" butonuna basınca
 // bir daha asla görünmez ve oyuncuya +10 toz hediye edilir.
 // ============================================================
-function maybeShowRonaldoTribute() {
-  if (!ronaldoModal || localStorage.getItem("gacha_ronaldo_seen")) return;
-  ronaldoModal.classList.remove("hidden");
-}
-async function claimRonaldoTribute() {
-  if (ronaldoClaimBtn.disabled) return;
-  ronaldoClaimBtn.disabled = true;
-  localStorage.setItem("gacha_ronaldo_seen", "1");
-  try {
-    if (currentPlayerId) {
-      const ref = doc(db, PLAYERS_COL, currentPlayerId);
-      const snap = await getDoc(ref);
-      if (snap.exists()) {
-        await updateDoc(ref, { dust: (snap.data().dust || 0) + 10 });
-      }
-    }
-    ronaldoClaimBtn.textContent = "+10 Toz Kazandın! 🍯";
-  } catch (e) {
-    console.error("Helva tozu verilemedi:", e);
-    ronaldoClaimBtn.textContent = "Kapat";
-  }
-  setTimeout(() => { ronaldoModal.classList.add("hidden"); }, 900);
-}
-if (ronaldoClaimBtn) ronaldoClaimBtn.onclick = claimRonaldoTribute;
-
 // ============================================================
 // YENİLİKLER / YOL HARİTASI
 // Her yeni özellik bittiğinde status'u "soon" -> "done" yapıp
@@ -2221,12 +2201,7 @@ async function startGame() {
 
   renderDailyEventBanner();
   const openedTutorial = maybeShowTutorial();
-  let openedNewFeatures = false;
-  if (!openedTutorial) openedNewFeatures = maybeShowNewFeatures();
-  // Ne tutorial ne de yenilikler ekranı açıldıysa (ör. ikisi de daha önce
-  // görülmüşse) anma modalını göstermek için başka bir tetikleyici olmaz,
-  // bu yüzden burada doğrudan bir son kontrol yapılıyor.
-  if (!openedTutorial && !openedNewFeatures) maybeShowRonaldoTribute();
+  if (!openedTutorial) maybeShowNewFeatures();
   await ensureStrangerForToday(snap.data());
   await ensureDailyQuestsForToday(snap.data());
   await ensureWeeklyQuestsForThisWeek(snap.data());
@@ -2312,7 +2287,7 @@ setInterval(renderWeeklyLeaderboardInfo, 60000);
 // gerçekten sıfırlanıp şampiyon ödülü veriliyor.
 setInterval(() => {
   if (currentPlayerId) ensureWeeklyLeaderboardReset().catch((e) => console.error("Haftalık sıfırlama kontrolü hatası:", e));
-}, 60000);
+}, 600000);
 
 function renderLeaderboard() {
   leaderboardEl.innerHTML = allPlayers.map((p, i) => {
