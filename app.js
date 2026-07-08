@@ -1354,6 +1354,19 @@ const closeNewFeaturesBtn = document.getElementById("closeNewFeaturesBtn");
 let currentBounty = null; // gameMeta/bounty dokümanının canlı kopyası
 let weeklyLeaderboardMeta = null; // gameMeta/weeklyLeaderboard dokümanının canlı kopyası
 
+// Bir saldırı işlemi (VS animasyonu + gerçek Firestore transaction'ı) sürerken
+// true olur. Bu süre boyunca (özellikle mobilde network daha yavaş olduğu için
+// birkaç saniye sürebiliyor) allPlayers/currentPlayerData dinleyicileri araya
+// girip renderAttackTargets()'ı tekrar çizerse butonlar yeniden aktif oluyordu;
+// bu da aynı saatlik pencerede ikinci bir saldırı denemesine ve "Saldırı
+// gönderilemedi" hatasına yol açıyordu. Artık bu kilit açıkken able=false
+// zorlanıyor, butonlar hep kapalı kalıyor.
+let attackInProgress = false;
+
+// Düşük güçlü / dokunmatik cihazlarda (çoğunlukla mobil) parçacık efektlerinin
+// sayısını azaltarak hissedilen gecikmeyi (jank) düşürmek için kullanılıyor.
+const IS_LOW_POWER = (window.matchMedia && matchMedia("(pointer: coarse)").matches) || window.innerWidth < 480;
+
 // ============================================================
 // SALDIRI (VS) EKRANI — DOM referansları
 // ============================================================
@@ -2743,7 +2756,7 @@ async function spinTheWheel() {
     void wheelShockwaveEl.offsetWidth; // reflow
     wheelShockwaveEl.classList.add("blast");
   }
-  explodeWheelEmbers(seg.glow, seg.id === "jackpot" ? 46 : 22);
+  explodeWheelEmbers(seg.glow, IS_LOW_POWER ? (seg.id === "jackpot" ? 22 : 10) : (seg.id === "jackpot" ? 46 : 22));
 
   await updateDoc(doc(db, PLAYERS_COL, currentPlayerId), {
     lastWheelSpinTime: Date.now(),
@@ -3310,7 +3323,7 @@ function setChestRarity(rarity) {
 }
 
 function explodeChestSparks(color) {
-  const particleCount = 50;
+  const particleCount = IS_LOW_POWER ? 22 : 50;
   for (let i = 0; i < particleCount; i++) {
     const spark = document.createElement("div");
     spark.className = "chest-spark";
@@ -3548,7 +3561,7 @@ function canAttackNow() {
 
 function renderAttackTargets() {
   if (!currentPlayerData) return;
-  const able = canAttackNow();
+  const able = canAttackNow() && !attackInProgress;
   const cooldowns = currentPlayerData.targetCooldowns || {};
   const anyLocked = Object.values(cooldowns).some(v => v > 0);
 
@@ -3819,7 +3832,7 @@ function playVsSequence({ attackerName, attackerAtk, attackerDef, defenderName, 
 
     setTimeout(() => {
       vsBurst.classList.add("go");
-      explodeVsSparks(["#ffcc4d", "#ff2d87", "#4d9bff"], 18);
+      explodeVsSparks(["#ffcc4d", "#ff2d87", "#4d9bff"], IS_LOW_POWER ? 8 : 18);
       sfxVsImpact();
     }, 550);
 
@@ -3853,7 +3866,7 @@ function playVsSequence({ attackerName, attackerAtk, attackerDef, defenderName, 
         vsFighterLeft.classList.add("lunge");
         vsFighterRight.classList.add("lunge");
         vsClashText.classList.add("go");
-        explodeVsSparks(["#fff", "#ffcc4d", "#ff5c6c"], 30);
+        explodeVsSparks(["#fff", "#ffcc4d", "#ff5c6c"], IS_LOW_POWER ? 14 : 30);
         sfxVsClash();
         setTimeout(() => {
           vsModal.classList.add("hidden");
@@ -3865,6 +3878,8 @@ function playVsSequence({ attackerName, attackerAtk, attackerDef, defenderName, 
 }
 
 async function runAttack(defenderId) {
+  if (attackInProgress) return; // aynı anda ikinci bir saldırı asla başlamasın
+  attackInProgress = true;
   attackTargetsEl.querySelectorAll("button").forEach(b => b.disabled = true);
   const dailyEvent = getTodaysEvent();
 
@@ -4233,6 +4248,7 @@ async function runAttack(defenderId) {
   } catch (e) {
     alert("Saldırı gönderilemedi: " + e.message);
   } finally {
+    attackInProgress = false;
     renderAttackTargets();
   }
 }
