@@ -1,0 +1,587 @@
+/* ============================================================
+   v1.15 GÜNCELLEMESİ — AFİLLİ SANDIK AÇILIŞ MOTORU
+   Kullanıcının sağladığı bağımsız prototipten birebir uyarlandı: katmanlı
+   SVG sandık (gövde + kapak + enerji mührü + güç kristali), şarj/patlama/
+   açılış durum makinesi ve parçacık patlaması. Nadirliğe göre renk paleti
+   JS tarafında (--chest-*) CSS değişkenleriyle değiştiriliyor. Eski sprite
+   tabanlı .loot-box artık kullanılmıyor ama koddaki eski kısımlara
+   dokunulmadı.
+   ============================================================ */
+:root{
+  --chest-body-1: #1a2030;
+  --chest-body-2: #0a0c13;
+  --chest-trim-1: #8b95ad;
+  --chest-trim-2: #3a4258;
+  --chest-glow: #e8a33d;
+  --chest-glow-dim: rgba(232,163,61,.28);
+}
+
+.scene-container{
+  position: relative;
+  height: 220px;
+  display:flex; align-items:center; justify-content:center;
+  perspective: 1200px;
+  margin: 6px 0;
+}
+.dark-void{
+  position:absolute; width:210px; height:210px;
+  background: radial-gradient(circle, #0a0c13 0%, #030308 70%);
+  border-radius:50%;
+  box-shadow: inset 0 0 50px rgba(0,0,0,.9), 0 0 20px rgba(0,0,0,.5);
+  z-index:1;
+  transition: box-shadow .5s ease;
+}
+.god-rays{
+  position:absolute; width:450px; height:450px;
+  background: repeating-conic-gradient(from 0deg, transparent 0deg, transparent 15deg, var(--chest-glow-dim) 15deg, var(--chest-glow-dim) 30deg);
+  border-radius:50%;
+  opacity:0; z-index:2; filter:blur(12px); transform:scale(.1);
+  pointer-events:none;
+  transition: opacity .5s ease;
+}
+.light-beam{
+  position:absolute; bottom:40px;
+  width:80px; height:280px;
+  background: linear-gradient(0deg, var(--chest-glow) 0%, transparent 100%);
+  opacity:0; z-index:4; filter:blur(15px);
+  transform-origin:bottom; transform:scaleY(0);
+  pointer-events:none;
+}
+.shockwave{
+  position:absolute; width:10px; height:10px; border-radius:50%;
+  border:10px solid var(--chest-glow);
+  opacity:0; z-index:20; pointer-events:none;
+}
+.chest-wrapper{
+  position:relative; width:150px; height:130px; z-index:5;
+  transform-style:preserve-3d;
+  animation: chestFloating 4s ease-in-out infinite;
+}
+@keyframes chestFloating{
+  0%,100%{ transform: translateY(0); }
+  50%{ transform: translateY(-8px); }
+}
+.chest-part{
+  position:absolute; inset:0; width:100%; height:100%;
+  transform-style:preserve-3d;
+  display:flex; justify-content:center; align-items:center;
+}
+.svg-chest{ width:100%; height:100%; overflow:visible; }
+.fill-body-1{ fill: var(--chest-body-1); }
+.fill-body-2{ fill: var(--chest-body-2); }
+.stroke-trim-1{ stroke: var(--chest-trim-1); }
+.stroke-trim-2{ stroke: var(--chest-trim-2); }
+.fill-trim-1{ fill: var(--chest-trim-1); }
+.glow-fill{ fill: var(--chest-glow); }
+.glow-stroke{ stroke: var(--chest-glow); }
+.glow-filter{ filter: drop-shadow(0 0 10px var(--chest-glow)); }
+
+.layer-base{ z-index:5; }
+.layer-base svg{ filter: drop-shadow(0 20px 15px rgba(0,0,0,.8)); margin-top:32px; }
+.layer-lid{ z-index:6; transform-origin: center 75%; transition: transform .8s cubic-bezier(.175,.885,.32,1.275); }
+.layer-lid svg{ margin-bottom:22px; }
+.layer-seal{ z-index:7; transition: all .5s ease; }
+.seal-ring{ transform-origin:center; animation: chestSpinRings 10s linear infinite; }
+@keyframes chestSpinRings{ 0%{ transform: rotate(0deg); } 100%{ transform: rotate(360deg); } }
+.layer-core{ z-index:8; transition: all .5s ease; }
+.layer-core svg{ width:56px; height:56px; margin-top:14px; animation: chestCorePulse 2s ease-in-out infinite alternate; }
+@keyframes chestCorePulse{
+  0%{ transform: scale(1); filter: drop-shadow(0 0 8px var(--chest-glow)); }
+  100%{ transform: scale(1.1); filter: drop-shadow(0 0 20px var(--chest-glow)); }
+}
+
+/* DURUM: ŞARJ (titreme) */
+.is-charging{ animation: chestBrutalShake .1s linear infinite !important; }
+.is-charging .layer-seal .glow-stroke{ stroke-width:4px; filter: drop-shadow(0 0 15px var(--chest-glow)); }
+.is-charging .layer-core svg{ animation: chestCoreFrantic .1s linear infinite; filter: drop-shadow(0 0 40px var(--chest-glow)) brightness(1.5); }
+.panel.is-shaking{ animation: chestPanelShake .1s linear infinite; }
+@keyframes chestBrutalShake{
+  0%{ transform: translate(2px,1px) rotate(0deg); }
+  10%{ transform: translate(-1px,-2px) rotate(-1deg); }
+  30%{ transform: translate(0px,2px) rotate(0deg); }
+  50%{ transform: translate(-1px,2px) rotate(-1deg); }
+  70%{ transform: translate(2px,1px) rotate(-1deg); }
+  90%{ transform: translate(2px,2px) rotate(0deg); }
+  100%{ transform: translate(1px,-2px) rotate(-1deg); }
+}
+@keyframes chestPanelShake{ 0%{ transform: translate(1px,1px); } 50%{ transform: translate(-1px,-1px); } 100%{ transform: translate(1px,-1px); } }
+@keyframes chestCoreFrantic{ 0%{ transform: scale(1.2) rotate(-5deg); } 50%{ transform: scale(1.3) rotate(5deg); } 100%{ transform: scale(1.2) rotate(-5deg); } }
+
+/* DURUM: PATLAMA (Mühür ve Kristal Parçalanır) */
+.is-bursting .layer-seal{ transform: scale(3) rotate(45deg); opacity:0; transition: all .5s cubic-bezier(.25,1,.5,1); }
+.is-bursting .layer-core{ transform: translate(-50%,-50%) scale(4) translateZ(300px); opacity:0; transition: all .5s cubic-bezier(.25,1,.5,1); }
+
+.flash-bang{ position:absolute; inset:0; background:#fff; z-index:100; opacity:0; pointer-events:none; border-radius: var(--radius); }
+.is-flashing{ animation: chestScreenFlash .8s ease-out forwards; }
+@keyframes chestScreenFlash{ 0%{ opacity:0; } 10%{ opacity:1; } 100%{ opacity:0; } }
+
+.shockwave-active{ animation: chestShockwaveExplode .6s ease-out forwards; }
+@keyframes chestShockwaveExplode{ 0%{ transform: scale(0); opacity:1; border-width:25px; } 100%{ transform: scale(20); opacity:0; border-width:0px; } }
+
+/* DURUM: AÇILDI (Kapak Yatar, Işıklar Çıkar) */
+.is-opened{ animation: none; }
+.is-opened .layer-lid{ transform: rotateX(115deg) scale(1.1); }
+.scene-container.scene-opened .light-beam{ opacity:.9; transform:scaleY(1); transition: all .6s ease; }
+.scene-container.scene-opened .god-rays{ opacity:1; transform:scale(1); animation: chestSpinGodRays 12s linear infinite; }
+.scene-container.scene-opened .dark-void{ box-shadow: inset 0 0 120px var(--chest-glow-dim), 0 0 60px var(--chest-glow-dim); }
+@keyframes chestSpinGodRays{ 0%{ transform: scale(1) rotate(0deg); } 100%{ transform: scale(1) rotate(360deg); } }
+
+/* Sandık patlamasından uçuşan kıvılcımlar (JS ile Web Animations API üzerinden oynatılır) */
+.chest-spark{ position:absolute; width:6px; height:6px; border-radius:50%; z-index:50; pointer-events:none; opacity:0; }
+
+/* ============================================================
+   v1.16 GÜNCELLEMESİ — SALDIRI (VS) EKRANI
+   Kullanıcının sağladığı bağımsız "vs-ekrani-prototip.html" prototipinden
+   uyarlandı: iki savaşçı kartı ortadan kayarak girer, "VS" harfleri patlar,
+   şimşek çakar, gerilim çubuğu dolar, sayaç son 3 saniyede kırmızıya döner
+   ve daha sert titrer, süre bitince iki savaşçı birbirine "hamle" (lunge)
+   yapıp ekran sarsılır. Tüm sınıflar mevcut sistemlerle çakışmasın diye
+   "vs-" öneki taşır ve oyunun mevcut renk paletindeki (--gold/--accent/
+   --panel vb.) değişkenleri kullanır. Sadece görsel/işitsel bir katmandır;
+   gerçek saldırı hesaplaması (runAttack transaction'ı) bu ekran kapandıktan
+   SONRA, olduğu gibi çalışmaya devam eder.
+   ============================================================ */
+.vs-modal-overlay{ padding: 14px; }
+.vs-frame{
+  position: relative;
+  width: 100%; max-width: 420px;
+  height: 520px; max-height: 88vh;
+  background: linear-gradient(180deg, #10131d, #05060a);
+  border-radius: 16px;
+  border: 1px solid rgba(163,38,56,.4);
+  box-shadow: 0 30px 70px -20px rgba(0,0,0,.9), inset 0 0 0 1px rgba(255,255,255,.04), inset 0 0 60px rgba(163,38,56,.12);
+  overflow: hidden;
+  display:flex; align-items:center; justify-content:center;
+}
+.vs-frame.shake{ animation: vsFrameShake .4s ease-in-out; }
+@keyframes vsFrameShake{
+  0%,100%{ transform: translate(0,0); }
+  20%{ transform: translate(-6px,3px); }
+  40%{ transform: translate(6px,-3px); }
+  60%{ transform: translate(-4px,2px); }
+  80%{ transform: translate(4px,-2px); }
+}
+.vs-bg-flash{
+  position:absolute; inset:0;
+  background: radial-gradient(circle, #fff8 0%, transparent 65%);
+  opacity:0; pointer-events:none; z-index:20;
+}
+.vs-bg-flash.go{ animation: vsBgFlashAnim .5s ease-out; }
+@keyframes vsBgFlashAnim{ 0%{opacity:0;} 15%{opacity:1;} 100%{opacity:0;} }
+
+.vs-sparks-layer{ position:absolute; inset:0; z-index:25; pointer-events:none; overflow:hidden; }
+.vs-spark{ position:absolute; width:7px; height:7px; border-radius:50%; }
+
+.vs-arena{ position:relative; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.vs-tag{
+  position:absolute; top: 22px; left:50%; transform:translateX(-50%);
+  font-family:'Cinzel', serif; font-weight:700;
+  font-size: .78rem; letter-spacing:.5px; text-transform:uppercase;
+  color: var(--gold); background: rgba(0,0,0,.35);
+  padding: 6px 16px; border-radius: 999px;
+  border: 1px solid #ffcc4d44;
+  opacity: 0; animation: vsFadeIn .5s ease-out .2s forwards;
+  z-index: 6;
+}
+@keyframes vsFadeIn{ from{opacity:0;} to{opacity:1;} }
+
+.vs-lightning{
+  position:absolute; top:44%; left:50%; transform:translate(-50%,-50%);
+  width: 260px; height:2px;
+  background: linear-gradient(90deg, transparent, #fff, var(--accent-2), #fff, transparent);
+  opacity:0; z-index:5;
+}
+.vs-lightning.go{ animation: vsLightningFlash 1.6s ease-out .55s forwards; }
+@keyframes vsLightningFlash{
+  0%{ opacity:0; transform:translate(-50%,-50%) scaleX(.2); }
+  8%{ opacity:1; transform:translate(-50%,-50%) scaleX(1.1); }
+  20%{ opacity:.3; }
+  30%{ opacity:.9; }
+  40%{ opacity:.1; }
+  100%{ opacity:0; }
+}
+
+.vs-fighters-row{ position:relative; display:flex; align-items:center; justify-content:center; gap: 6px; width:100%; z-index:4; margin-top: 30px; }
+.vs-fighter{
+  width: 116px; height:150px; border-radius:16px;
+  background: linear-gradient(180deg, var(--panel-light), var(--panel) 55%, var(--panel-edge));
+  border: 2px solid rgba(255,255,255,.08);
+  box-shadow: 0 8px 0 var(--panel-edge), 0 16px 30px -10px #00000077;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+  padding: 10px;
+  opacity: 0;
+}
+.vs-fighter-left{ transform: translateX(-220px); }
+.vs-fighter-right{ transform: translateX(220px); border-color:#ff5c6c44; }
+.vs-fighter-left.in{ animation: vsSlideInLeft .7s cubic-bezier(.34,1.56,.64,1) .1s forwards; }
+.vs-fighter-right.in{ animation: vsSlideInRight .7s cubic-bezier(.34,1.56,.64,1) .1s forwards; }
+@keyframes vsSlideInLeft{ to{ transform: translateX(0); opacity:1; } }
+@keyframes vsSlideInRight{ to{ transform: translateX(0); opacity:1; } }
+.vs-fighter-left.lunge{ animation: vsLungeLeft .5s ease-in-out; }
+.vs-fighter-right.lunge{ animation: vsLungeRight .5s ease-in-out; }
+@keyframes vsLungeLeft{ 0%,100%{ transform:translateX(0) rotate(0); } 45%{ transform:translateX(30px) rotate(-5deg); } }
+@keyframes vsLungeRight{ 0%,100%{ transform:translateX(0) rotate(0); } 45%{ transform:translateX(-30px) rotate(5deg); } }
+
+.vs-f-icon{ font-size: 2.3rem; filter: drop-shadow(0 6px 8px rgba(0,0,0,.5)); }
+.vs-f-name{ font-weight:700; font-size:.86rem; text-align:center; max-width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.vs-f-stats{ display:flex; gap:8px; font-size:.68rem; font-weight:700; color: var(--text-dim); }
+.vs-f-stats b{ color:var(--text); }
+
+.vs-burst{
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) scale(0);
+  z-index: 10;
+  font-family:'Cinzel', serif; font-weight:700;
+  font-size: 2.2rem; letter-spacing: 1px;
+  color: var(--gold);
+  text-shadow: 0 3px 0 var(--gold-dark), 0 0 26px #ffcc4dcc, 0 0 46px #e8a33d88;
+}
+.vs-burst.go{ animation: vsBurstAnim .55s cubic-bezier(.2,1.4,.4,1) forwards, vsPulseAnim 1s ease-in-out .55s infinite; }
+@keyframes vsBurstAnim{
+  0%{ transform:translate(-50%,-50%) scale(0) rotate(-25deg); }
+  60%{ transform:translate(-50%,-50%) scale(1.3) rotate(6deg); }
+  100%{ transform:translate(-50%,-50%) scale(1) rotate(0deg); }
+}
+@keyframes vsPulseAnim{
+  0%,100%{ text-shadow: 0 3px 0 var(--gold-dark), 0 0 26px #ffcc4dcc, 0 0 46px #e8a33d88; }
+  50%{ text-shadow: 0 3px 0 var(--gold-dark), 0 0 40px #ffcc4dff, 0 0 70px #e8a33dcc; }
+}
+
+.vs-countdown-wrap{ margin-top: 24px; z-index:4; display:flex; flex-direction:column; align-items:center; gap:8px; }
+.vs-countdown-circle{
+  width:56px; height:56px; border-radius:50%;
+  background: linear-gradient(180deg, var(--panel-light), var(--panel-edge));
+  border: 3px solid var(--gold);
+  box-shadow: 0 0 18px #ffcc4d55;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Cinzel', serif; font-weight:700; font-size:1.3rem; color:var(--text);
+  transition: border-color .2s ease, box-shadow .2s ease, color .2s ease;
+}
+.vs-countdown-circle.danger{
+  border-color: var(--red);
+  box-shadow: 0 0 22px #ff5c6c88;
+  color: var(--red);
+  animation: vsDangerPulse .5s ease-in-out infinite;
+}
+@keyframes vsDangerPulse{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.1); } }
+.vs-countdown-circle.tick{ animation: vsTickPop .3s ease-out; }
+@keyframes vsTickPop{ 0%{ transform:scale(1.3); } 100%{ transform:scale(1); } }
+
+.vs-tension-track{
+  width: 196px; height: 9px; border-radius:999px; overflow:hidden;
+  background: var(--panel-edge); border: 1px solid rgba(255,255,255,.08);
+}
+.vs-tension-fill{
+  height:100%; width:0%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--gold));
+}
+.vs-hype-label{
+  font-size:.72rem; font-weight:700; color: var(--text-dim); letter-spacing:.2px; text-align:center;
+  min-height: 1.2em; max-width: 260px;
+  transition: opacity .2s ease; opacity:1;
+}
+.vs-hype-label.fade{ opacity:0; }
+
+.vs-clash-text{
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) scale(0);
+  font-family:'Cinzel', serif; font-weight:700; font-size: 1.85rem;
+  color: var(--text); text-shadow: 0 3px 0 var(--pink-dark), 0 0 30px var(--accent);
+  z-index: 30; opacity:0; white-space: nowrap;
+}
+.vs-clash-text.go{ animation: vsClashPop .7s cubic-bezier(.2,1.6,.4,1) forwards; }
+@keyframes vsClashPop{
+  0%{ transform:translate(-50%,-50%) scale(0); opacity:0; }
+  40%{ transform:translate(-50%,-50%) scale(1.3); opacity:1; }
+  70%{ transform:translate(-50%,-50%) scale(1); opacity:1; }
+  100%{ transform:translate(-50%,-50%) scale(1); opacity:1; }
+}
+
+/* ============================================================
+   v1.16 — ANMA MODALI (siyah-beyaz, tek seferlik)
+   Oyunun rengarenk temasından bilinçli olarak kopan, sade siyah-beyaz bir
+   pencere. Sadece oyunun ilk açılışında (tutorial ya da yenilikler ekranı
+   kapatıldıktan hemen sonra) bir kereliğine gösterilir, kapatma butonuna
+   basınca bir daha hiç görünmez.
+   ============================================================ */
+.bw-modal-overlay{
+  background: rgba(0,0,0,.92);
+}
+.bw-card{
+  background: linear-gradient(180deg, #1a1a1a, #050505);
+  border: 1px solid #3a3a3a;
+  box-shadow: 0 8px 0 #000, 0 24px 60px -14px #000000cc;
+  color: #f0f0f0;
+  text-align: center;
+}
+.bw-icon{
+  font-size: 2.4rem;
+  margin-bottom: 8px;
+  filter: grayscale(1) brightness(1.2);
+}
+.bw-title{
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-style: normal;
+  font-size: 1.05rem;
+  letter-spacing: .2px;
+  color: #ffffff;
+  text-transform: none;
+  margin: 0 0 16px;
+  line-height: 1.5;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #333;
+}
+.bw-body{ text-align: left; margin-bottom: 18px; }
+.bw-body p{ font-size: .84rem; line-height: 1.7; color: #cfcfcf; margin: 0 0 12px; font-weight: 500; }
+.bw-body p:last-child{ margin-bottom: 0; }
+.bw-btn{
+  background: linear-gradient(180deg, #4a4a4a, #101010);
+  color: #ffffff;
+  border: 1px solid #555;
+  box-shadow: 0 5px 0 #000, 0 10px 20px -8px rgba(0,0,0,.85);
+}
+.bw-btn:active{ box-shadow: 0 2px 0 #000; }
+
+/* ============================================================
+   SEVİYE ATLAMA ANİMASYONU (V2 Faz 3 — Level/Exp sistemi)
+   Tam ekran, "coşkulu" gelişim animasyonu: dönen ışınlar + konfeti
+   patlaması + zıplayarak beliren seviye rozeti. app.js -> playLevelUpAnimation()
+   tarafından tetiklenir.
+   ============================================================ */
+.levelup-overlay{
+  position: fixed; inset:0; z-index: 200;
+  display:flex; align-items:center; justify-content:center;
+  pointer-events:none;
+  overflow:hidden;
+}
+.levelup-overlay.is-active{
+  pointer-events:auto;
+  background: radial-gradient(circle at 50% 45%, rgba(255,204,77,.22), rgba(4,5,10,.8) 65%);
+  animation: levelupBgFade 2.4s ease-out forwards;
+}
+@keyframes levelupBgFade{
+  0%{ opacity:0; }
+  12%{ opacity:1; }
+  82%{ opacity:1; }
+  100%{ opacity:0; }
+}
+
+.levelup-rays{
+  position:absolute; inset:-50%;
+  background: repeating-conic-gradient(from 0deg, #ffcc4d33 0deg 8deg, transparent 8deg 16deg);
+  opacity:0;
+}
+.levelup-overlay.is-active .levelup-rays{
+  animation: levelupRaysSpin 2.4s linear forwards, levelupRaysFade 2.4s ease-out forwards;
+}
+@keyframes levelupRaysSpin{ 0%{ transform: rotate(0deg); } 100%{ transform: rotate(130deg); } }
+@keyframes levelupRaysFade{ 0%{opacity:0;} 15%{opacity:1;} 78%{opacity:1;} 100%{opacity:0;} }
+
+.levelup-confetti-layer{
+  position:absolute; inset:0; pointer-events:none;
+}
+.levelup-confetti-piece{
+  position:absolute; top:52%; left:50%;
+  width:9px; height:14px;
+  border-radius:2px;
+  opacity:0;
+  animation: levelupConfettiFly 1.7s cubic-bezier(.2,.7,.3,1) forwards;
+}
+@keyframes levelupConfettiFly{
+  0%{ transform: translate(-50%,-50%) rotate(0deg) scale(.6); opacity:0; }
+  10%{ opacity:1; }
+  100%{ transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) rotate(var(--rot)) scale(1); opacity:0; }
+}
+
+.levelup-card{
+  position:relative;
+  text-align:center;
+  transform: scale(.3);
+  opacity:0;
+}
+.levelup-overlay.is-active .levelup-card{
+  animation: levelupCardIn .7s cubic-bezier(.34,1.56,.64,1) forwards;
+}
+@keyframes levelupCardIn{
+  0%{ transform: scale(.3) translateY(30px); opacity:0; }
+  55%{ transform: scale(1.12) translateY(-6px); opacity:1; }
+  75%{ transform: scale(.95); }
+  100%{ transform: scale(1) translateY(0); opacity:1; }
+}
+
+.levelup-burst{
+  position:absolute; top:50%; left:50%;
+  width:10px; height:10px;
+  transform: translate(-50%,-50%);
+  border-radius:50%;
+  opacity:0;
+}
+.levelup-overlay.is-active .levelup-burst{
+  animation: levelupBurstRing 1s ease-out .15s forwards;
+}
+@keyframes levelupBurstRing{
+  0%{ box-shadow: 0 0 0 0 #ffcc4dcc; opacity:1; }
+  100%{ box-shadow: 0 0 0 160px #ffcc4d00; opacity:0; }
+}
+
+.levelup-title{
+  font-family: 'Cinzel', serif;
+  font-weight: 800;
+  font-style: normal;
+  font-size: 1.5rem;
+  color: var(--text);
+  text-shadow: 0 3px 0 #8a5300, 0 0 22px #ffcc4dcc;
+  letter-spacing: .5px;
+  margin-bottom: 10px;
+  animation: levelupTitleShimmer 1.6s ease-in-out infinite .7s;
+}
+@keyframes levelupTitleShimmer{
+  0%,100%{ text-shadow: 0 3px 0 #8a5300, 0 0 22px #ffcc4dcc; }
+  50%{ text-shadow: 0 3px 0 #8a5300, 0 0 38px #ffe08aee; }
+}
+
+.levelup-level-badge{
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  width: 128px; height:128px;
+  margin: 0 auto 12px;
+  border-radius:50%;
+  background: radial-gradient(circle at 40% 30%, var(--accent-2), var(--accent) 55%, var(--pink-dark));
+  border: 4px solid #ffe08a;
+  box-shadow: 0 0 0 6px rgba(255,204,77,.25), 0 14px 0 rgba(0,0,0,.3), 0 0 46px #e8a33daa;
+  animation: levelupBadgePulse 1.4s ease-in-out infinite .7s;
+}
+@keyframes levelupBadgePulse{
+  0%,100%{ transform: scale(1); }
+  50%{ transform: scale(1.06); }
+}
+.levelup-level-label{
+  font-size:.62rem; font-weight:900; letter-spacing:1px;
+  color: rgba(255,255,255,.85); text-transform:uppercase;
+}
+.levelup-level-number{
+  font-family: 'Cinzel', serif;
+  font-weight: 900;
+  font-style: normal;
+  font-size: 2.6rem;
+  color:#fff;
+  line-height:1;
+  text-shadow: 0 3px 0 rgba(0,0,0,.35);
+}
+.levelup-reward{
+  font-size:.85rem; font-weight:800;
+  color: var(--gold);
+  background: rgba(4,5,10,.6);
+  border-radius:999px;
+  padding: 7px 18px;
+  display:inline-block;
+  animation: itemBounceIn .5s ease-out .5s both;
+}
+
+/* ============================================================
+   HARİTA SEKMESİ (V2 Faz 9) — Harita tier kartları + Kâşif Sahnesi
+   Kâşif Sahnesi motoru kullanıcının bağımsız "Prototip 5" dosyasından
+   uyarlandı (bkz. index.html #gameWrap ve ayrı <script> bloğu). Renk
+   tokenları (--bg/--text/--text-dim/--accent/--accent-2/--gold) zaten
+   yukarıdaki :root'ta AYNI değerlerle tanımlı olduğu için prototipin
+   kendi :root bloğu buraya taşınmadı (çakışma/tekrar önlendi). Prototipin
+   global html,body{overflow:hidden} kuralı da BİLEREK atlandı — tüm
+   sayfanın scroll'unu kilitleyip oyunu bozardı; bunun yerine her şey
+   #gameWrap içine hapsedildi (position:relative + overflow:hidden).
+   ============================================================ */
+.map-tier-card{
+  position: relative; overflow:hidden;
+  --realm-c: var(--gray);
+  background: linear-gradient(100deg, color-mix(in srgb, var(--realm-c) 12%, var(--bg-panel-alt)) 0%, var(--bg-panel-alt) 55%);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px; padding: 13px 14px 12px; margin-bottom: 10px;
+  transition: transform .15s ease, border-color .2s ease, box-shadow .25s ease;
+}
+.map-tier-card::before{
+  content:""; position:absolute; left:0; top:0; bottom:0; width:3px;
+  background: linear-gradient(180deg, var(--realm-c), transparent);
+}
+.map-tier-card:not(.locked):hover{
+  transform: translateX(3px);
+  border-color: color-mix(in srgb, var(--realm-c) 55%, transparent);
+  box-shadow: 0 10px 26px -16px var(--realm-c);
+}
+.map-tier-card.locked{ opacity: .55; }
+.map-tier-card.realm-standart{ --realm-c: #5aa06a; }
+.map-tier-card.realm-nadir{ --realm-c: var(--item-nadir); }
+.map-tier-card.realm-efsanevi{ --realm-c: var(--item-efsanevi); }
+.map-tier-card.realm-mitik{ --realm-c: var(--item-mitik); }
+.map-tier-card.realm-kabus{ --realm-c: var(--item-kabus); }
+.map-tier-card.realm-kabus .map-tier-label{ text-shadow: 0 0 14px rgba(255,26,77,.35); }
+.map-tier-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px; }
+.map-tier-label{
+  font-family:'Cinzel', serif; font-weight:700; font-size:.9rem; letter-spacing:.03em;
+  display:flex; align-items:center; gap:8px; color: var(--text);
+}
+.mt-ico{ font-size:1.05rem; filter: drop-shadow(0 0 8px var(--realm-c)); }
+.map-tier-lv{
+  font-size:.62rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
+  color: var(--realm-c); border: 1px solid color-mix(in srgb, var(--realm-c) 45%, transparent);
+  border-radius:5px; padding:2px 8px; flex-shrink:0;
+}
+.map-tier-stats{
+  display:flex; flex-wrap:wrap; gap:5px 14px;
+  font-size:.68rem; color: var(--text-dim); font-weight:600; margin-bottom:8px;
+}
+.map-tier-stats b{ color: var(--text); }
+.map-tier-stats .mt-drop b{ color: var(--realm-c); }
+.map-tier-stats .mt-death b{ color: var(--red); }
+
+#mapExplorerScene{ padding: 10px; }
+#gameWrap{
+  position:relative; width:100%; max-width:900px; margin:0 auto;
+  aspect-ratio: 3 / 2; overflow:hidden; border-radius:12px;
+  background:#000; touch-action:none; user-select:none;
+}
+#gameWrap canvas{
+  display:block; width:100%; height:100%;
+  image-rendering: pixelated;
+}
+#gameWrap .hud-top{
+  position:absolute; top:10px; left:10px; right:10px;
+  display:flex; justify-content:space-between; align-items:flex-start;
+  pointer-events:none; font-size:.72rem; font-weight:600; color: var(--text-dim);
+}
+#gameWrap .hud-badge{
+  background: rgba(8,10,16,.75); border: 1px solid rgba(255,255,255,.1);
+  border-radius: 10px; padding: 6px 10px; backdrop-filter: blur(3px);
+}
+#gameWrap .hud-badge b{ color: var(--text); }
+#gameWrap .hud-title{ font-weight:900; color: var(--gold); text-transform:uppercase; letter-spacing:.5px; }
+#touchControls{ position:absolute; inset:0; pointer-events:none; display:none; }
+#touchControls.active{ display:block; }
+#joystickZone{
+  position:absolute; left: 20px; bottom: 20px; width: 110px; height:110px;
+  border-radius:50%; background: rgba(255,255,255,.06);
+  border: 2px solid rgba(255,255,255,.15); pointer-events:auto; touch-action:none;
+}
+#joystickStick{
+  position:absolute; left:50%; top:50%; width:48px; height:48px; margin:-24px 0 0 -24px;
+  border-radius:50%; background: linear-gradient(180deg, var(--accent-2), var(--accent));
+  box-shadow: 0 4px 0 #7a3f0d, 0 8px 16px -4px #e8a33d88; transition: none;
+}
+#attackBtn{
+  position:absolute; right: 22px; bottom: 26px; width: 68px; height:68px;
+  border-radius:50%; background: linear-gradient(180deg, #ffe08a, var(--gold));
+  box-shadow: 0 6px 0 #c98a12, 0 10px 20px -6px #ffcc4d77; border: none;
+  font-size: 1.3rem; color:#1c1206; pointer-events:auto; touch-action:none;
+}
+#attackBtn:active{ transform: translateY(4px); box-shadow: 0 2px 0 #c98a12; }
+#gameWrap .hint-box{
+  position:absolute; bottom:10px; left:50%; transform:translateX(-50%);
+  font-size:.66rem; color: var(--text-dim); text-align:center;
+  background: rgba(8,10,16,.7); padding:5px 12px; border-radius:999px;
+  border:1px solid rgba(255,255,255,.08); pointer-events:none;
+}
+#mapClearOverlay{
+  display:none; position:absolute; inset:0; background:rgba(4,5,10,.94);
+  flex-direction:column; align-items:center; justify-content:center;
+  text-align:center; z-index:15; padding:20px;
+}
+.mapclear-title{ font-size:1.3rem; font-weight:900; color:var(--gold); margin-bottom:10px; letter-spacing:1px; }
+.mapclear-body{ margin-bottom:14px; color:var(--text-dim); font-size:.88rem; line-height:1.6; }
+.mapclear-countdown{ color:var(--text); font-size:1rem; font-weight:700; }
+

@@ -3,42 +3,79 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Pembe Panterler Battle</title>
+<title>Fadeless</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<!-- Baloo 2, Fredoka, Luckiest Guy, Bungee denendi; gövde/UI metni için
-     Fredoka, büyük başlık/logo şeritleri için Luckiest Guy seçildi. -->
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&family=Bungee&family=Cinzel:wght@600;700&family=Fredoka:wght@400;500;600;700&family=Luckiest+Guy&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
+<!-- FADELESS rebranding: kartonsu Baloo 2/Fredoka/Luckiest Guy/Bungee ailesi
+     kaldırıldı. Gövde/UI metni için Alegreya Sans (okunaklı, karanlık fantazi
+     hissi veren bir humanist sans), büyük başlıklar/logo için Cinzel (oyma taş/
+     kadim yazıt hissi) kullanılıyor. -->
+<link href="https://fonts.googleapis.com/css2?family=Alegreya+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Cinzel:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+<!-- SIRALAMA ÖNEMLİ (bkz. BENIOKU.md): 01 en başta (renk değişkenleri),
+     08 en sonda (öncekileri bilerek ezer). Sırayı bozma! -->
+<link rel="stylesheet" href="css/01-temel.css">
+<link rel="stylesheet" href="css/02-yerlesim.css">
+<link rel="stylesheet" href="css/03-paneller-gorevler.css">
+<link rel="stylesheet" href="css/04-savas-modallar.css">
+<link rel="stylesheet" href="css/05-karakter-cark.css">
+<link rel="stylesheet" href="css/06-envanter-rozetler.css">
+<link rel="stylesheet" href="css/07-efekt-motorlari.css">
+<link rel="stylesheet" href="css/08-fadeless-prototip.css">
+<link rel="stylesheet" href="css/09-login-tema.css">
 </head>
 <body>
 
-<!-- ============ GİRİŞ / OYUNCU SEÇİM EKRANI ============ -->
+<!-- FADELESS marka SVG gradyanları: alev sigili (giriş ekranı + topbar) ve
+     seviye halkası (profil sekmesi) bu tanımları paylaşır. -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="fadelessFlameOuter" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffb347"/><stop offset="60%" stop-color="#e8731f"/><stop offset="100%" stop-color="#8a2c0e"/>
+    </linearGradient>
+    <linearGradient id="fadelessFlameInner" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffe9b0"/><stop offset="100%" stop-color="#ff8c2f"/>
+    </linearGradient>
+    <linearGradient id="fadelessRingGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ff7a2f"/><stop offset="100%" stop-color="#e8a33d"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<!-- ============ GİRİŞ / KAYIT EKRANI ============ -->
 <div id="loginScreen" class="screen">
   <div class="login-card">
-    <h1 class="game-title">🐆 PEMBE PANTERLER BATTLE</h1>
-    <p class="login-sub">Kimsin kral? Aşağıdan ismini seç ya da yeni oyuncu olarak katıl.</p>
-    <div id="playerListLogin" class="player-list-login"></div>
-    <div id="newPlayerBox" class="new-player-box">
-      <input id="newPlayerName" type="text" maxlength="16" placeholder="Yeni isim yaz (max 9 oyuncu)">
-      <input id="newPlayerPin" type="password" inputmode="numeric" maxlength="4" pattern="[0-9]*" placeholder="4 haneli PIN belirle" class="pin-input-inline">
-      <button id="newPlayerBtn" class="btn btn-primary">Katıl</button>
+    <div class="flame-sigil">
+      <div class="flame-halo"></div>
+      <svg viewBox="0 0 100 120">
+        <path class="flame-outer" d="M50 4 C58 26 82 38 80 68 C79 94 66 112 50 116 C34 112 21 94 20 68 C18 38 42 26 50 4 Z"/>
+        <path class="flame-inner" d="M50 34 C56 48 68 56 66 76 C65 92 58 104 50 107 C42 104 35 92 34 76 C32 56 44 48 50 34 Z"/>
+        <path class="flame-core" d="M50 62 C53 70 58 74 57 84 C56 93 53 99 50 100 C47 99 44 93 43 84 C42 74 47 70 50 62 Z"/>
+      </svg>
     </div>
-    <p id="loginError" class="login-error"></p>
-  </div>
-</div>
+    <h1 class="game-title">FADELESS</h1>
+    <p class="login-tagline">Sönmeyen Kalır</p>
+    <p class="login-sub">Kullanıcı adı ve şifrenle giriş yap, ya da yeni bir hesap oluştur.</p>
 
-<!-- ============ PIN DOĞRULAMA MODALI ============ -->
-<div id="pinModal" class="modal-overlay hidden">
-  <div class="modal-card pin-card">
-    <h2 id="pinModalTitle" class="updates-title">🔒 PIN Gir</h2>
-    <p class="tut-text small">Bu hesaba ait 4 haneli PIN'ini gir. (İlk kez giriş yapıyorsan girdiğin 4 hane, o andan itibaren PIN'in olarak kaydedilir.)</p>
-    <input id="pinInput" type="password" inputmode="numeric" maxlength="4" pattern="[0-9]*" class="pin-input" placeholder="••••">
-    <p id="pinError" class="login-error"></p>
-    <div class="pin-modal-actions">
-      <button id="pinCancelBtn" class="btn btn-secondary">Vazgeç</button>
-      <button id="pinConfirmBtn" class="btn btn-primary">Giriş Yap</button>
+    <div class="login-tabs">
+      <button id="loginTabBtn" type="button" class="login-tab-btn active">Giriş Yap</button>
+      <button id="registerTabBtn" type="button" class="login-tab-btn">Kayıt Ol</button>
     </div>
+
+    <div id="loginFormBox" class="auth-form-box">
+      <input id="loginUsername" type="text" maxlength="24" autocomplete="username" placeholder="Kullanıcı adı">
+      <input id="loginPassword" type="password" maxlength="64" autocomplete="current-password" placeholder="Şifre">
+      <button id="loginSubmitBtn" class="btn btn-primary btn-block">Aleve Katıl</button>
+    </div>
+
+    <div id="registerFormBox" class="auth-form-box hidden">
+      <input id="registerUsername" type="text" maxlength="24" autocomplete="username" placeholder="Kullanıcı adı (max 10 oyuncu)">
+      <input id="registerPassword" type="password" maxlength="64" autocomplete="new-password" placeholder="Şifre (en az 6 karakter)">
+      <input id="registerPassword2" type="password" maxlength="64" autocomplete="new-password" placeholder="Şifre (tekrar)">
+      <input id="registerNick" type="text" maxlength="16" placeholder="Nick (oyunda görünecek isim)">
+      <button id="registerSubmitBtn" class="btn btn-primary btn-block">Ateşi Yak</button>
+    </div>
+
+    <p id="loginError" class="login-error"></p>
   </div>
 </div>
 
@@ -52,9 +89,9 @@
 
       <!-- Slayt 1: Karşılama -->
       <div class="tutorial-slide">
-        <div class="tut-hero">🐆</div>
-        <h2 class="tut-title">Pembe Panterler Battle'a Hoş Geldin!</h2>
-        <p class="tut-text">9 kişilik arenada her gün şansını dene, statlarını güçlendir ve haftada bir kez rakiplerinden birine saldırıp liderlik tablosunda zirveye tırman.</p>
+        <div class="tut-hero">🔥</div>
+        <h2 class="tut-title">Fadeless'a Hoş Geldin!</h2>
+        <p class="tut-text">10 kişilik arenada her gün şansını dene, statlarını güçlendir ve haftada bir kez rakiplerinden birine saldırıp liderlik tablosunda zirveye tırman.</p>
         <div class="tut-mini-steps">
           <div class="tut-mini-step"><span>📦</span>Sandık Aç</div>
           <div class="tut-mini-step"><span>🛡️</span>Kuşan</div>
@@ -67,25 +104,19 @@
       <div class="tutorial-slide">
         <div class="tut-hero">📦</div>
         <h2 class="tut-title">4 Saatte Bir Sandık</h2>
-        <p class="tut-text">Sandık açma hakkın <b>4 saatte bir</b> yenilenir. Çıkan eşya otomatik olarak üstüne kuşanılır ve statların anında güncellenir. Sık açıldığı için nadir/efsanevi şansı bilerek düşük tutuldu.</p>
+        <p class="tut-text">Sandık açma hakkın <b>4 saatte bir</b> yenilenir. Çıkan eşya otomatik olarak üstüne kuşanılır ve statların anında güncellenir. Günlük Sandık şu an sadece <b>Standart eşya + Hurda</b> veriyor.</p>
         <div class="rarity-bars">
-          <div class="rarity-bar standart"><span class="rarity-dot"></span> Standart <b>~%88</b></div>
-          <div class="rarity-bar nadir"><span class="rarity-dot"></span> Nadir <b>~%9</b></div>
-          <div class="rarity-bar efsanevi"><span class="rarity-dot"></span> Eşsiz / Efsanevi <b>~%3</b></div>
+          <div class="rarity-bar standart"><span class="rarity-dot"></span> Standart <b>%100</b></div>
         </div>
-        <p class="tut-text small">🍀 Şansın yaver gitmiyorsa üzülme: uzun süre nadir/efsanevi çıkmazsa şansın <b>otomatik artar</b>, belli bir noktada garanti verilir.</p>
+        <p class="tut-text small">🪙 Nadir/Efsanevi eşyaya ulaşmak istiyorsan <b>Çarşı</b> sekmesine bak: Günlük Market'te statı görünen eşyalar, ya da Altın karşılığı kalıcı garanti Nadir/Efsanevi Sandık satın alabilirsin.</p>
       </div>
 
-      <!-- Slayt 3: Toz & Seri Bonusu -->
+      <!-- Slayt 3: Hurda -->
       <div class="tutorial-slide">
         <div class="tut-hero">✨</div>
-        <h2 class="tut-title">Toz & Seri Bonusu</h2>
-        <p class="tut-text">Yeni eşya eskisinin yerini alırken eski eşya <b>toza</b> dönüşür. Biriken tozla garantili sandık satın alabilirsin:</p>
-        <div class="tut-slot-grid">
-          <div class="tut-slot-pill def">🔷 18 Toz → Garanti Nadir Sandık</div>
-          <div class="tut-slot-pill atk">🌟 55 Toz → Garanti Efsanevi Sandık</div>
-        </div>
-        <p class="tut-text small">🔥 Art arda gün sandık açarsan seri oluşur: <b>3 günde</b> garanti Nadir, <b>7 günde</b> (ve katlarında) garanti Efsanevi bonusu kazanırsın.</p>
+        <h2 class="tut-title">Hurda</h2>
+        <p class="tut-text">Yeni eşya eskisinin yerini alırken eski eşya <b>hurdaya</b> dönüşür. Hurda'yı eşyalarını <b>+basma</b> (yükseltme) ile güçlendirmek için kullanırsın — Envanter'deki her eşya kartında "+ Basma" butonunu bulabilirsin.</p>
+        <p class="tut-text small">🔥 Art arda gün sandık açarsan bir seri (streak) sayacı birikir, Profil'de görebilirsin.</p>
       </div>
 
       <!-- Slayt 4: Kuşanım -->
@@ -130,8 +161,8 @@
         <p class="tut-text">Oyunda seni bekleyen birkaç ekstra sistem daha var:</p>
         <div class="tut-slot-grid">
           <div class="tut-slot-pill def">📊 İstatistik — Kariyer karnen, en çok yendiğin/yenildiğin kişi, en uzun serin</div>
-          <div class="tut-slot-pill atk">🎡 Şanslı Çark — 12 saatte bir bedava çevir, toz/puan kazan</div>
-          <div class="tut-slot-pill atk">💀 Kelle Avcısı — Birinin kellesine toz koy, ilk yenen ödülü kapar</div>
+          <div class="tut-slot-pill atk">🎡 Şanslı Çark — 12 saatte bir bedava çevir, hurda/puan kazan</div>
+          <div class="tut-slot-pill atk">💀 Kelle Avcısı — Birinin kellesine hurda koy, ilk yenen ödülü kapar</div>
           <div class="tut-slot-pill def">👑 1.lik Avı — Zirvedekini yenersen ekstra bonus puan kazanırsın</div>
         </div>
         <p class="tut-text small">🦁 Ana ekranda ayrıca günün en çok kazananı (Allahın Aslanı) ve en çok kaybedeni (Grubun Sürtüğü) gösterilir.</p>
@@ -149,6 +180,110 @@
     </div>
 
     <button id="closeTutorialBtn" class="btn btn-primary btn-block">Anladım, Başlayalım!</button>
+  </div>
+</div>
+
+<!-- ============ [V2] YENİ TUTORIAL AKIŞI — İSKELET ============
+     Bilinçli olarak boş: içerik (metin/görsel) sonraki fazlarda eklenecek.
+     Yapı ve slayt-gezinme mantığı #tutorialModal standardıyla birebir aynı
+     (tutorial-track + tutorial-nav + dots), sadece id'ler "V2" ekli. -->
+<div id="tutorialModalV2" class="modal-overlay hidden">
+  <div class="modal-card tutorial-card">
+
+    <button id="tutV2SkipBtn" class="tut-skip-btn" type="button">Atla ✕</button>
+
+    <div id="tutorialTrackV2" class="tutorial-track">
+
+      <!-- Slayt 1: V2 Karşılama -->
+      <div class="tutorial-slide">
+        <div class="tut-hero">🎉</div>
+        <h2 class="tut-title">V2 Güncellemesi Burada!</h2>
+        <p class="tut-text">Arena büyüdü ve derinleşti: yeni bir Seviye/Stat sistemi, gerçek zamanlı 3 saniyelik savaşlar, eşya yükseltme ve oyuncular arası gerçek bir ekonomi seni bekliyor.</p>
+        <div class="tut-mini-steps">
+          <div class="tut-mini-step"><span>📈</span>Seviye Atla</div>
+          <div class="tut-mini-step"><span>⚔️</span>Yeni Savaş</div>
+          <div class="tut-mini-step"><span>🏪</span>Pazar</div>
+          <div class="tut-mini-step"><span>🚫</span>Kurallara Uy</div>
+        </div>
+      </div>
+
+      <!-- Slayt 2: Giriş/Kayıt + Nick -->
+      <div class="tutorial-slide">
+        <div class="tut-hero">🔑</div>
+        <h2 class="tut-title">Hesabın Artık Güvende</h2>
+        <p class="tut-text">Eski PIN listesi kalktı. Artık kullanıcı adı + şifre ile <b>Kayıt Ol</b>/<b>Giriş Yap</b> ediyorsun, ayrıca herkesin arenada göreceği ayrı bir <b>Nick</b> seçiyorsun.</p>
+        <p class="tut-text small">✏️ Nick'ini beğenmezsen dert değil — Profil sekmesinden istediğin an değiştirebilirsin.</p>
+        <p class="tut-text small">👥 Arena artık 10 kişilik — bir koltuk daha açıldı!</p>
+      </div>
+
+      <!-- Slayt 3: Seviye / XP / Stat Puanı -->
+      <div class="tutorial-slide">
+        <div class="tut-hero">📈</div>
+        <h2 class="tut-title">Seviye Atla, Güçlen</h2>
+        <p class="tut-text">Savaşarak, sandık açarak ve görev tamamlayarak XP kazanırsın. Her seviye atlayışında bir <b>Stat Puanı</b> kazanırsın — bunu Profil ekranından Saldırı ya da Savunmana serbestçe dağıtabilirsin.</p>
+        <p class="tut-text small">💀 Kaybettiğin savaşlar bile teselli XP'si verir, hiçbir maç boşa gitmez.</p>
+      </div>
+
+      <!-- Slayt 4: Ekipman — Yüzük + Yükseltme -->
+      <div class="tutorial-slide">
+        <div class="tut-hero">💍</div>
+        <h2 class="tut-title">Yeni Slot, Yeni Güç</h2>
+        <p class="tut-text">9. bir ekipman slotu olarak <b>Yüzük</b> eklendi. Üstelik artık eşyalarını Hurda ve Kitap harcayarak <b>+basma</b> ile kademe kademe güçlendirebilirsin — Envanter'deki her eşya kartında "+ Basma" butonunu bulursun.</p>
+        <p class="tut-text small">🌟 Rarity ailesine iki yeni üye katıldı: <b>Mitik</b> ve <b>Kabus</b>. Renkleri ve altyapıları hazır, çok yakında sahaya inecekler.</p>
+      </div>
+
+      <!-- Slayt 5: Yeni Savaş Sistemi -->
+      <div class="tutorial-slide">
+        <div class="tut-hero">⚔️</div>
+        <h2 class="tut-title">3 Saniyelik Gerçek Savaş</h2>
+        <p class="tut-text">Saldırılar artık tek atışlık zar değil: Hız, Kritik ve Can stat'larının devreye girdiği 3 saniyelik gerçek bir çarpışma. Rakibinin Canını sıfırlarsan nakavt, süre dolduğunda daha fazla Can'a sahip olan kazanır.</p>
+        <div class="tut-slot-grid">
+          <div class="tut-slot-pill atk">🏅 Elo puanın ve 5 kademeli Ligin (Çaylak → Efsane) her savaşta güncellenir</div>
+          <div class="tut-slot-pill def">🛡️ Çok daha zayıf birine saldırırsan ödülün ciddi şekilde kısılır — adil oyun korunuyor</div>
+        </div>
+      </div>
+
+      <!-- Slayt 6: Market -->
+      <div class="tutorial-slide">
+        <div class="tut-hero">🏪</div>
+        <h2 class="tut-title">Günlük Market & Kalıcı Sandık</h2>
+        <p class="tut-text">Yeni Market sekmesinde her gün yenilenen 5 eşyalık bir <b>Günlük Market</b> seni bekliyor. Altın'ını harcayarak buradan eşya satın alabilir, ya da Nadir/Efsanevi eşyaya kalıcı garantili ulaşmak için özel sandıkları açabilirsin.</p>
+        <p class="tut-text small">🌑 Kabus ve Mitik Özel Kutular vitrinde — içerikleri çok yakında açılacak.</p>
+      </div>
+
+      <!-- Slayt 7: Oyuncular Arası Pazar -->
+      <div class="tutorial-slide">
+        <div class="tut-hero">🤝</div>
+        <h2 class="tut-title">Oyuncular Arası Pazar</h2>
+        <p class="tut-text">İhtiyacın olmayan eşyalarını Envanter'den "🪙 Pazara Çıkar" diyerek Altın karşılığı listeleyebilir, Market sekmesinden diğer oyuncuların ilanlarını satın alabilirsin. Fiyatı sen belirlersin, ama sistem her eşya için <b>adil bir fiyat aralığı</b> hesaplar ve bu aralığı senin için korur.</p>
+        <p class="tut-text small">📜 Tüm alım-satımlar Market sekmesindeki Ticaret Logları'nda herkese açık şekilde görünür.</p>
+      </div>
+
+      <!-- Slayt 8: Ticaret Cezaları / Ban Sistemi -->
+      <div class="tutorial-slide">
+        <div class="tut-hero">🚫</div>
+        <h2 class="tut-title">Ticaret Kuralları — Dikkatli Ol!</h2>
+        <p class="tut-text">Pazar herkes için adil kalsın diye arka planda otomatik bir denetim sistemi çalışıyor. Kuralları çiğnersen eşya ve altın kimseye geçmez, üstelik ticaret yapman tamamen engellenir.</p>
+        <div class="tut-result-preview">
+          <div class="lose">🚫 Adil fiyatın <b>%35</b> dışına çıkan alım-satımlar otomatik reddedilir</div>
+          <div class="lose">🚫 Aynı iki oyuncu <b>24 saatte 3'ten</b> fazla ticaret yaparsa ikisi de banlanır</div>
+          <div class="lose">🚫 Banlı oyuncu ne yeni ilan açabilir ne satın alma yapabilir</div>
+        </div>
+        <p class="tut-text small">⚠️ Banlandığında ekranın üstünde bir uyarı göreceksin. Pazarı hileyle değil, adil ticaretle kazan!</p>
+      </div>
+
+    </div>
+
+    <div class="tutorial-nav">
+      <button id="tutV2PrevBtn" class="tut-nav-btn">‹</button>
+      <div class="tutorial-dots-wrap">
+        <div id="tutorialDotsV2" class="tutorial-dots"></div>
+        <span id="tutStepLabelV2" class="tut-step-label">1 / 8</span>
+      </div>
+      <button id="tutV2NextBtn" class="tut-nav-btn">›</button>
+    </div>
+
+    <button id="closeTutorialV2Btn" class="btn btn-primary btn-block">Anladım, Başlayalım!</button>
   </div>
 </div>
 
@@ -174,7 +309,7 @@
 
   <header class="topbar">
     <div class="topbar-left">
-      <span class="game-title small">🐆 Pembe Panterler Battle</span>
+      <span class="game-title small">🔥 Fadeless</span>
     </div>
     <div class="topbar-right">
       <span id="currentPlayerName" class="current-player-name"></span>
@@ -186,6 +321,17 @@
       <button id="switchPlayerBtn" class="icon-btn" title="Oyuncu Değiştir">🔄</button>
     </div>
   </header>
+
+  <!-- FADELESS: sekmeler arasında sabit kalan kaynak şeridi. Değerler
+       renderMyStats()/renderEnergy() içinde mevcut per-sekme kopyalarıyla
+       (myPoints, myScrap, myGoldBox... / energyBarFill) BİRLİKTE, aynı
+       desenle güncelleniyor — hiçbir mevcut elementin yerini almıyor. -->
+  <div id="resourceStrip" class="resource-strip">
+    <span class="res-chip pts"><span class="ri">✦</span><b id="topPointsVal">0</b> Puan</span>
+    <span class="res-chip scrap"><span class="ri">⛭</span><b id="topScrapVal">0</b> Hurda</span>
+    <span class="res-chip gold"><span class="ri">◉</span><b id="topGoldVal">0</b> Altın</span>
+    <span class="energy-pill">⚡ Enerji <span class="energy-track"><span id="topEnergyFillEl" class="energy-fill"></span></span> <b id="topEnergyLabelEl">0/0</b></span>
+  </div>
 
   <div id="dailyEventBanner" class="daily-event-banner"></div>
   <div id="topPerformersBanner" class="top-performers-banner">
@@ -208,23 +354,30 @@
     <span>🕵️ Gizemli bir yabancı, <b id="strangerName"></b>, sana meydan okuyor!</span>
     <button id="strangerDuelBtn" class="btn-mini nadir-mini">Düelloya Gir</button>
   </div>
+  <div id="tradeBanBanner" class="stranger-banner trade-ban-banner hidden">
+    <span>🚫 Ticaret yasaklısın: <b id="tradeBanReasonText"></b></span>
+  </div>
 
   <main class="tab-container">
 
-    <!-- SEKME: SANDIK (sadece sandık açma + toz/enerji ekonomisi) -->
+    <!-- SEKME: SANDIK (sadece sandık açma + hurda/enerji ekonomisi) -->
     <section id="tabKutu" class="tab-panel active">
-      <div class="tab-hero">
-        <span class="tab-hero-ribbon">📦 Günlük Sandık</span>
-        <p class="tab-hero-sub">Şansını dene, eşya ve toz kazan</p>
+      <div class="tab-keystone">
+        <span class="tk-ico">⚱</span>
+        <h2 class="tk-title">Kadim <span class="lit">Sandık</span></h2>
+        <p class="tk-sub">Mühür her dört saatte bir zayıflar</p>
+        <div class="tk-ornament"></div>
       </div>
 
       <div class="panel">
         <div class="box-area-top">
-          <h2 class="panel-title">📦 Sandık</h2>
-          <span id="boxDustChip" class="streak-chip">✨ <b id="myDustBox">0</b> Toz</span>
+          <h2 class="panel-title">⚱ Mühürlü Emanet</h2>
+          <span id="boxScrapChip" class="streak-chip">✨ <b id="myScrapBox">0</b> Hurda</span>
+          <span class="streak-chip">💰 <b id="myGoldBox">0</b> Altın</span>
           <span id="streakChip" class="streak-chip hidden">🔥 <b id="myStreak">0</b> gün seri</span>
         </div>
         <div id="boxWrapper" class="scene-container">
+          <span class="altar-caption">— Mühürlü Emanet —</span>
           <div class="dark-void"></div>
           <div class="god-rays"></div>
           <div class="light-beam"></div>
@@ -273,29 +426,22 @@
             <div id="itemPopupInner" class="item-popup-inner"></div>
           </div>
         </div>
-        <button id="openBoxBtn" class="btn btn-gold btn-block">Sandığı Aç</button>
+        <button id="openBoxBtn" class="btn btn-gold btn-block">Mührü Kır</button>
         <p id="boxStatus" class="box-status"></p>
-        <div class="guarantee-row">
-          <button id="guaranteeRareBtn" class="btn btn-mini nadir-mini" title="18 toz karşılığı garanti Nadir eşya">
-            🔷 Garanti Nadir <span>18 toz</span>
-          </button>
-          <button id="guaranteeLegendaryBtn" class="btn btn-mini efsanevi-mini" title="55 toz karşılığı garanti Efsanevi eşya">
-            🌟 Garanti Efsanevi <span>55 toz</span>
-          </button>
-        </div>
+        <p class="equip-hint">🪙 Garanti Nadir/Efsanevi Sandık satın almak için <b>Çarşı</b> sekmesine bak.</p>
       </div>
 
       <div class="panel">
-        <h2 class="panel-title">⚡ Enerji</h2>
+        <h2 class="panel-title">⚡ Enerji İşleri</h2>
         <div class="energy-bar-track"><div id="energyBarFill" class="energy-bar-fill"></div></div>
         <p id="energyStatus" class="box-status"></p>
-        <p class="equip-hint">👆 Görevlerden birini seç, enerjine göre toz kazan</p>
+        <p class="equip-hint">👆 Görevlerden birini seç, enerjine göre hurda kazan</p>
         <div id="energyTasksRow" class="energy-tasks-row"></div>
       </div>
 
       <div class="panel wheel-panel" id="wheelPanel">
-        <h2 class="panel-title">🎡 Şanslı Çark</h2>
-        <p class="tut-text small" style="margin:0 0 4px;">12 saatte bir kez bedava çevir, küçük toz/puan ödülleri kazan.</p>
+        <h2 class="panel-title">✦ Kader Mührü</h2>
+        <p class="tut-text small" style="margin:0 0 4px;">12 saatte bir kez bedava çevir, küçük hurda/puan ödülleri kazan.</p>
         <div class="wheel-scene" id="wheelScene">
           <div class="wheel-runic-circle"></div>
           <div class="wheel-bg-glow" id="wheelBgGlow"></div>
@@ -320,71 +466,78 @@
 
     <!-- SEKME: GÖREV (sadece günlük görevler) -->
     <section id="tabGorev" class="tab-panel">
-      <div class="tab-hero">
-        <span class="tab-hero-ribbon">🎯 Görevler</span>
-        <p class="tab-hero-sub">Bugünün hedeflerini tamamla, ödülünü al</p>
+      <div class="tab-keystone">
+        <span class="tk-ico">📜</span>
+        <h2 class="tk-title">Ahit<span class="lit">ler</span></h2>
+        <p class="tk-sub">Sözünü tut, karşılığını al</p>
+        <div class="tk-ornament"></div>
       </div>
       <div class="panel">
-        <h2 class="panel-title">🎯 Günlük Görevler</h2>
+        <h2 class="panel-title">☀ Günlük Ahitler</h2>
         <div id="questsList" class="quests-list"></div>
       </div>
 
       <div class="panel">
-        <h2 class="panel-title">🗓️ Haftalık Görevler</h2>
+        <h2 class="panel-title">☾ Haftalık Ahitler</h2>
         <div id="weeklyQuestsList" class="quests-list"></div>
       </div>
 
       <div class="panel">
-        <h2 class="panel-title">📅 Aylık Görevler</h2>
+        <h2 class="panel-title">📅 Aylık Ahitler</h2>
         <div id="monthlyQuestsList" class="quests-list"></div>
       </div>
     </section>
 
     <!-- SEKME: SAVAŞ (sadece saldırı hedefleri + savaş geçmişi) -->
     <section id="tabSavas" class="tab-panel">
-      <div class="tab-hero tab-hero-red">
-        <span class="tab-hero-ribbon">⚔️ Savaş Arenası</span>
-        <p class="tab-hero-sub">Rakibini seç, meydan oku</p>
+      <div class="tab-keystone">
+        <span class="tk-ico">⚔</span>
+        <h2 class="tk-title">Kan <span class="lit">Arenası</span></h2>
+        <p class="tk-sub">Saat başı bir hak. Boşa harcama.</p>
+        <div class="tk-ornament"></div>
       </div>
       <div class="panel">
         <div class="stat-summary">
           <span class="stat-chip atk">⚔️ Saldırı: <b id="myAttackWar">0</b></span>
           <span class="stat-chip def">🛡️ Savunma: <b id="myDefenseWar">0</b></span>
           <span class="stat-chip pts">⭐ Puan: <b id="myPointsWar">0</b></span>
-          <span class="stat-chip dust">✨ Toz: <b id="myDustWar">0</b></span>
+          <span class="stat-chip scrap">✨ Hurda: <b id="myScrapWar">0</b></span>
+          <span class="stat-chip gold">💰 Altın: <b id="myGoldWar">0</b></span>
         </div>
       </div>
       <div class="panel bounty-panel">
-        <h2 class="panel-title">💀 Kelle Avcısı</h2>
+        <h2 class="panel-title">☠ Kelle Bedeli</h2>
         <div id="bountyActive" class="bounty-active hidden">
-          <p class="tut-text small" style="margin:0;"><b id="bountyTargetName"></b>'in kellesine <b id="bountyAmount" class="bounty-amount-inline"></b> toz ödül kondu! İlk yenen ödülü kapar.</p>
+          <p class="tut-text small" style="margin:0;"><b id="bountyTargetName"></b>'in kellesine <b id="bountyAmount" class="bounty-amount-inline"></b> hurda ödül kondu! İlk yenen ödülü kapar.</p>
           <p class="tut-text small" style="margin:4px 0 0;">İlan eden: <span id="bountyPlacer"></span></p>
         </div>
         <div id="bountyForm" class="bounty-form">
           <select id="bountyTargetSelect" class="bounty-select"></select>
-          <input id="bountyAmountInput" type="number" min="1" placeholder="Toz miktarı" class="bounty-input">
+          <input id="bountyAmountInput" type="number" min="1" placeholder="Hurda miktarı" class="bounty-input">
           <button id="placeBountyBtn" class="btn-mini nadir-mini">İlan Et</button>
         </div>
         <p id="bountyStatus" class="box-status"></p>
       </div>
 
       <div class="panel">
-        <h2 class="panel-title">⚔️ Saldırı (Saat Başı)</h2>
+        <h2 class="panel-title">⚔ Rakipler (Saat Başı)</h2>
         <div id="attackTargets" class="attack-targets"></div>
         <p id="attackStatus" class="box-status"></p>
       </div>
 
       <div class="panel battlelog-panel">
-        <h2 class="panel-title">📜 Savaş Geçmişi</h2>
+        <h2 class="panel-title">🕮 Kan Kroniği</h2>
         <div id="battleLog" class="battle-log"></div>
       </div>
     </section>
 
     <!-- SEKME: SIRA (sadece liderlik tablosu) -->
     <section id="tabSira" class="tab-panel">
-      <div class="tab-hero tab-hero-gold">
-        <span class="tab-hero-ribbon">🏆 Liderlik Tablosu</span>
-        <p class="tab-hero-sub">Zirveye kim çıkacak?</p>
+      <div class="tab-keystone">
+        <span class="tk-ico">♛</span>
+        <h2 class="tk-title">Sönmeyen <span class="lit">Taht</span></h2>
+        <p class="tk-sub">Hafta bitiminde tahtta kim oturuyorsa, ödül onundur</p>
+        <div class="tk-ornament"></div>
       </div>
       <div id="weeklyLeaderboardInfo" class="weekly-leaderboard-info"></div>
       <div class="panel leaderboard-panel">
@@ -392,14 +545,14 @@
       </div>
 
       <div class="panel oracle-panel">
-        <h2 class="panel-title">🔮 Kahin Bahsi</h2>
-        <p class="tut-text small" style="margin:0 0 4px;">Günün sonunda kimin 1. olacağını tahmin et, tozunu ikiye katla. Günde 1 tahmin hakkın var, en fazla 10 toz yatırabilirsin ve kendine bahis oynayamazsın.</p>
+        <h2 class="panel-title">👁 Kâhinin Bahsi</h2>
+        <p class="tut-text small" style="margin:0 0 4px;">Günün sonunda kimin 1. olacağını tahmin et, hurdanı ikiye katla. Günde 1 tahmin hakkın var, en fazla 10 hurda yatırabilirsin ve kendine bahis oynayamazsın.</p>
         <div id="oraclePending" class="oracle-pending hidden">
-          <p class="tut-text small" style="margin:0;">Bugünkü tahminin: <b id="oracleTargetLabel"></b> 1. olacak — <b id="oracleAmountLabel" class="oracle-amount-inline"></b> toz yatırdın.</p>
+          <p class="tut-text small" style="margin:0;">Bugünkü tahminin: <b id="oracleTargetLabel"></b> 1. olacak — <b id="oracleAmountLabel" class="oracle-amount-inline"></b> hurda yatırdın.</p>
         </div>
         <div id="oracleForm" class="oracle-form">
           <select id="oracleTargetSelect" class="bounty-select"></select>
-          <input id="oracleAmountInput" type="number" min="1" placeholder="Toz miktarı" class="bounty-input">
+          <input id="oracleAmountInput" type="number" min="1" placeholder="Hurda miktarı" class="bounty-input">
           <button id="placeOracleBtn" class="btn-mini nadir-mini">Tahmin Et</button>
         </div>
         <p id="oracleStatus" class="box-status"></p>
@@ -408,22 +561,48 @@
 
     <!-- SEKME: PROFİL (kişisel bilgiler + kariyer istatistikleri birleşik) -->
     <section id="tabProfil" class="tab-panel">
-      <div class="tab-hero tab-hero-blue">
-        <span class="tab-hero-ribbon">🐆 Profilim</span>
-        <p class="tab-hero-sub">İstatistiklerin ve kariyerin</p>
+      <div class="tab-keystone">
+        <span class="tk-ico">🜂</span>
+        <h2 class="tk-title">Ruh <span class="lit">Kaydı</span></h2>
+        <p class="tk-sub">Alevinin ne kadar parladığının kanıtı</p>
+        <div class="tk-ornament"></div>
       </div>
 
-      <div class="panel">
+      <div class="panel char-panel-v2">
+        <h2 class="panel-title">🐾 Karakter</h2>
+
+        <div class="char-level-header">
+          <span id="charLevelBadge" class="char-level-badge">Seviye 1</span>
+          <span id="charXpLabel" class="char-xp-label">0 / 40 XP</span>
+        </div>
+        <div class="char-xp-bar">
+          <div id="charXpFill" class="char-xp-fill"></div>
+        </div>
+
         <div class="stat-summary">
           <span class="stat-chip atk">⚔️ Saldırı: <b id="myAttack">0</b></span>
           <span class="stat-chip def">🛡️ Savunma: <b id="myDefense">0</b></span>
           <span class="stat-chip pts">⭐ Puan: <b id="myPoints">0</b></span>
-          <span class="stat-chip dust">✨ Toz: <b id="myDust">0</b></span>
+          <span class="stat-chip scrap">✨ Hurda: <b id="myScrap">0</b></span>
+        </div>
+
+        <div id="charStatPointsRow" class="char-stat-points-row hidden">
+          <div class="char-stat-points-banner">🌟 Dağıtılacak <b id="charStatPointsCount">0</b> Stat Puanın var!</div>
+          <div class="char-stat-alloc-grid">
+            <button id="statAllocAtkBtn" type="button" class="btn-mini stat-alloc-btn atk-alloc" data-stat="attack">
+              ⚔️ Saldırıya +1
+              <span>Dağıtılan: +<span id="charAllocAtk">0</span></span>
+            </button>
+            <button id="statAllocDefBtn" type="button" class="btn-mini stat-alloc-btn def-alloc" data-stat="defense">
+              🛡️ Savunmaya +1
+              <span>Dağıtılan: +<span id="charAllocDef">0</span></span>
+            </button>
+          </div>
         </div>
       </div>
 
       <div class="panel">
-        <h2 class="panel-title">📈 Genel Karne</h2>
+        <h2 class="panel-title">🕮 Karne</h2>
         <div id="statsOverview" class="stats-overview"></div>
       </div>
 
@@ -438,7 +617,7 @@
       </div>
 
       <div class="panel">
-        <h2 class="panel-title">🎖️ Rozetler</h2>
+        <h2 class="panel-title">❖ Nişanlar</h2>
         <p id="badgesProgress" class="tut-text small" style="margin:0 0 4px;"></p>
         <div id="badgesGrid" class="badges-grid"></div>
       </div>
@@ -446,9 +625,11 @@
 
     <!-- SEKME: ENVANTER (paper doll karakter ekipmanı + Metin2 tarzı slot slot çanta) -->
     <section id="tabEnvanter" class="tab-panel">
-      <div class="tab-hero tab-hero-blue">
-        <span class="tab-hero-ribbon">🎒 Envanter</span>
-        <p class="tab-hero-sub">Ekipmanın ve çantandaki eşyalar</p>
+      <div class="tab-keystone">
+        <span class="tk-ico">🛡</span>
+        <h2 class="tk-title">Cephane<span class="lit">lik</span></h2>
+        <p class="tk-sub">Taşıdığın her şey; kuşandığın her parça</p>
+        <div class="tk-ornament"></div>
       </div>
 
       <div class="panel">
@@ -456,32 +637,147 @@
           <span class="stat-chip atk">⚔️ Saldırı: <b id="myAttackEnv">0</b></span>
           <span class="stat-chip def">🛡️ Savunma: <b id="myDefenseEnv">0</b></span>
           <span class="stat-chip pts">⭐ Puan: <b id="myPointsEnv">0</b></span>
-          <span class="stat-chip dust">✨ Toz: <b id="myDustEnv">0</b></span>
+          <span class="stat-chip scrap">✨ Hurda: <b id="myScrapEnv">0</b></span>
+          <span class="stat-chip gold">💰 Altın: <b id="myGoldEnv">0</b></span>
         </div>
       </div>
 
       <div class="rpg-panel char-panel">
-        <div class="panel-header">Karakter Ekipmanı</div>
+        <div class="panel-header">🜂 Kuşanım</div>
         <div class="paper-doll-container">
+          <div class="doll-ring"></div>
           <div class="avatar-backdrop">
-            <div class="char-avatar">🐆</div>
+            <div class="char-avatar">🔥</div>
           </div>
           <div id="charStageSlots" class="char-stage-slots"></div>
-          <div class="char-stage-decor">
-            <div class="char-slot slot-pos-ring empty" title="Aksesuar (Yakında)">
-              <span class="char-slot-icon">💍</span>
-            </div>
-          </div>
+          <!-- V2 Faz 2: Yüzük slotu aktif edildiği için buradaki statik
+               "Aksesuar (Yakında)" yer tutucusu kaldırıldı — artık
+               #charStageSlots içine SLOTS'tan dinamik olarak render
+               ediliyor (aynı .slot-pos-ring konumunda çakışma yaratıyordu). -->
+          <div class="char-stage-decor"></div>
         </div>
         <p class="equip-hint">👆 Kuşanmak veya değiştirmek için bir slota dokun</p>
       </div>
 
+      <!-- V2 Faz 2 (madde 2/3/4): Materyaller paneli — Hurda ve 5 tier Kitap.
+           İçerik app.js -> renderMaterialsPanel() tarafından dolduruluyor.
+           Kitap ikonları şimdilik placeholder emoji (BOOK_TIER_ICONS);
+           gerçek asset/sprite Faz 3'te (harita drop sistemiyle) gelecek. -->
+      <div class="rpg-panel materials-panel">
+        <div class="panel-header">⛭ Materyaller</div>
+        <p class="equip-hint">✨ Eşya yükseltmede (+basma) kullanılır</p>
+        <div id="materialsGrid" class="mat-row"></div>
+      </div>
+
       <div class="rpg-panel bag-panel">
-        <div class="panel-header">Çanta <span id="bagSlotCountLabel" class="bag-slot-count"></span></div>
-        <p class="equip-hint">👆 Bir eşyaya dokun; kuşanmak veya toza çevirmek için seç. Sandıktan çıkan eşyalar buraya düşer.</p>
+        <div class="panel-header">🎒 Çanta <span id="bagSlotCountLabel" class="bag-slot-count"></span></div>
+        <p class="equip-hint">👆 Bir eşyaya dokun; kuşanmak veya hurdaya çevirmek için seç. Sandıktan çıkan eşyalar buraya düşer.</p>
         <div class="inventory-container">
           <div id="bagGrid" class="bag-grid"></div>
         </div>
+      </div>
+    </section>
+
+    <!-- SEKME: MARKET (V2 Faz 4 — Günlük Market + Kalıcı Nadir/Efsanevi + Özel Kutu) -->
+    <section id="tabMarket" class="tab-panel">
+      <div class="tab-keystone">
+        <span class="tk-ico">⚖</span>
+        <h2 class="tk-title">Kara <span class="lit">Çarşı</span></h2>
+        <p class="tk-sub">Her şeyin bir bedeli var — bazen fazlası</p>
+        <div class="tk-ornament"></div>
+      </div>
+
+      <div class="panel">
+        <div class="box-area-top">
+          <h2 class="panel-title">🪙 Bakiyen</h2>
+          <span class="streak-chip">💰 <b id="myGoldMarket">0</b> Altın</span>
+        </div>
+        <p class="equip-hint">👆 Altın şu an sadece test amaçlı elle veriliyor — kazanım kaynağı (görev/savaş ödülü vb.) ayrı bir aşamada eklenecek.</p>
+      </div>
+
+      <div class="rpg-panel">
+        <div class="panel-header">☀ Günün Tezgâhı</div>
+        <p class="equip-hint">👆 Statlar zaten görünür, sürpriz yok. Her gün 5 yeni eşya, gece yarısı yenilenir.</p>
+        <div id="marketDailyGrid" class="inventory-list"></div>
+      </div>
+
+      <div class="rpg-panel">
+        <div class="panel-header">🗝 Kalıcı Sandıklar</div>
+        <p class="equip-hint">👆 Rotasyondan bağımsız, her zaman satın alınabilir — garanti Nadir/Efsanevi sandık açar.</p>
+        <div class="chest-duo">
+          <button id="buyNadirChestBtn" type="button" class="chest-offer co-nadir" title="Garanti Nadir Sandık">
+            <span class="co-ico">🔷</span>
+            <span class="co-n">Nadir Sandık</span>
+            <span class="co-p">◉ <span class="co-p-val">0</span> Altın</span>
+          </button>
+          <button id="buyEfsaneviChestBtn" type="button" class="chest-offer co-efsanevi" title="Garanti Efsanevi Sandık">
+            <span class="co-ico">🌟</span>
+            <span class="co-n">Efsanevi Sandık</span>
+            <span class="co-p">◉ <span class="co-p-val">0</span> Altın</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="rpg-panel">
+        <div class="panel-header">🜏 Yasak Kutular</div>
+        <p class="equip-hint">👆 Ayrı bir satın alma akışı — içerik havuzu eklenene kadar pasif, tıklayınca bilgi verir.</p>
+        <div class="chest-duo">
+          <button id="buyMitikBoxBtn" type="button" class="chest-offer co-mitik locked" title="Mitik Kutusu (yakında)">
+            <span class="co-ico">🔮</span>
+            <span class="co-n">Mitik Kutusu</span>
+            <span class="co-p">◉ <span class="co-p-val">0</span> Altın</span>
+          </button>
+          <button id="buyKabusBoxBtn" type="button" class="chest-offer co-kabus locked" title="Kabus Kutusu (yakında)">
+            <span class="co-ico">💀</span>
+            <span class="co-n">Kabus Kutusu</span>
+            <span class="co-p">◉ <span class="co-p-val">0</span> Altın</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- V2 Faz 4 (madde 4): Oyuncular Arası Pazar. Eşya satışa çıkarmak
+           Envanter → bir eşyaya dokun → "🪙 Pazara Çıkar" üzerinden yapılıyor
+           (bkz. renderInventoryModal). Burası SADECE satın alma/iptal tarafı. -->
+      <div class="rpg-panel">
+        <div class="panel-header">⚖ Oyuncu Pazarı</div>
+        <p class="equip-hint">👆 Diğer oyuncuların Altın karşılığı sattığı eşyalar. Eşyanı satışa çıkarmak için Çanta'da bir eşyaya dokun.</p>
+        <div id="marketListingsGrid" class="inventory-list"></div>
+      </div>
+
+      <div class="rpg-panel">
+        <div class="panel-header">📤 Listelemelerim</div>
+        <p class="equip-hint">👆 Aktif satış ilanların — istediğin an iptal edip eşyanı geri alabilirsin.</p>
+        <div id="myListingsGrid" class="inventory-list"></div>
+      </div>
+
+      <div class="rpg-panel">
+        <div class="panel-header">🕮 Ticaret Kaydı</div>
+        <p class="equip-hint">👆 Tamamlanan ve güvenlik nedeniyle engellenen/geri alınan tüm ticaretlerin herkese açık kaydı.</p>
+        <div id="tradeLogsFeed" class="battle-log"></div>
+      </div>
+    </section>
+
+    <!-- SEKME: HARİTA — tek kapı: Canlı Harita (MAP/index.html).
+         Eski "Diyar Seç" kartları, anlık sonuç ekranı ve Kâşif Sahnesi
+         KALDIRILDI (emekli). İçeriği map.js/renderMapTab dolduruyor:
+         Haritaya Gir butonu + sağ üstte ℹ️ bilgi paneli. -->
+    <section id="tabHarita" class="tab-panel">
+      <div class="tab-keystone">
+        <span class="tk-ico">🕯</span>
+        <h2 class="tk-title">Solgun <span class="lit">Diyarlar</span></h2>
+        <p class="tk-sub">Işığın ne kadar derine taşırsan, karanlık o kadar bedel ister</p>
+        <div class="tk-ornament"></div>
+      </div>
+
+      <div class="rpg-panel">
+        <div class="panel-header">Diyar Seç</div>
+        <p class="equip-hint">👆 Bir diyara gir; enerjin ve seviyene göre zorluk değişir.</p>
+        <div id="mapTierGrid"></div>
+      </div>
+
+      <div id="mapResultCard" class="rpg-panel hidden">
+        <div class="panel-header">Sonuç</div>
+        <div id="mapResultBody"></div>
       </div>
     </section>
 
@@ -495,23 +791,31 @@
     </button>
     <button type="button" class="nav-btn" data-target="tabGorev">
       <svg class="nav-icon" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="4" rx="2"/><rect x="4" y="17" width="16" height="4" rx="2"/><rect x="6" y="5" width="12" height="14"/></svg>
-      <span class="nav-label">Görev</span>
+      <span class="nav-label">Ahitler</span>
     </button>
     <button type="button" class="nav-btn" data-target="tabSavas">
       <svg class="nav-icon" viewBox="0 0 24 24"><path d="M6 18L17 7L18.5 8.5L7.5 19.5L5 20L4 19L4.5 16.5L6 18Z"/><path d="M14 6L18 2L22 6L18 10L14 6Z"/></svg>
-      <span class="nav-label">Savaş</span>
+      <span class="nav-label">Arena</span>
     </button>
     <button type="button" class="nav-btn" data-target="tabSira">
       <svg class="nav-icon" viewBox="0 0 24 24"><path d="M2 20L4 8L9 13L12 4L15 13L20 8L22 20H2Z"/></svg>
-      <span class="nav-label">Sıra</span>
+      <span class="nav-label">Taht</span>
     </button>
     <button type="button" class="nav-btn" data-target="tabProfil">
       <svg class="nav-icon" viewBox="0 0 24 24"><path d="M4 4L7 10C7 10 9 8 12 8C15 8 17 10 17 10L20 4L18 13C18 17.5 15 21 12 21C9 21 6 17.5 6 13L4 4Z"/></svg>
-      <span class="nav-label">Profil</span>
+      <span class="nav-label">Ruh</span>
     </button>
     <button type="button" class="nav-btn" data-target="tabEnvanter">
       <svg class="nav-icon" viewBox="0 0 24 24"><path d="M5 10C5 6 8 5 12 5C16 5 19 6 19 10C19 15 17 21 12 21C7 21 5 15 5 10Z"/><path d="M8 5L7 2H17L16 5H8Z"/></svg>
-      <span class="nav-label">Envanter</span>
+      <span class="nav-label">Çanta</span>
+    </button>
+    <button type="button" class="nav-btn" data-target="tabMarket">
+      <svg class="nav-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7V17M9.5 9.5C9.5 8.4 10.6 7.5 12 7.5C13.4 7.5 14.5 8.4 14.5 9.5C14.5 10.6 13.4 11.2 12 11.5C10.6 11.8 9.5 12.4 9.5 13.5C9.5 14.6 10.6 15.5 12 15.5C13.4 15.5 14.5 14.6 14.5 13.5" stroke="var(--panel)" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+      <span class="nav-label">Çarşı</span>
+    </button>
+    <button type="button" class="nav-btn" data-target="tabHarita">
+      <svg class="nav-icon" viewBox="0 0 24 24"><path d="M9 3L3 5V21L9 19L15 21L21 19V3L15 5L9 3Z"/><path d="M9 3V19M15 5V21" stroke="var(--panel)" stroke-width="1.2" fill="none"/></svg>
+      <span class="nav-label">Diyar</span>
     </button>
   </nav>
 </div>
@@ -526,7 +830,7 @@
 
       <div class="vs-fighters-row">
         <div class="vs-fighter vs-fighter-left" id="vsFighterLeft">
-          <div class="vs-f-icon">🐆</div>
+          <div class="vs-f-icon">🔥</div>
           <div class="vs-f-name" id="vsAttackerName">-</div>
           <div class="vs-f-stats"><span>⚔️ <b id="vsAttackerAtk">0</b></span><span>🛡️ <b id="vsAttackerDef">0</b></span></div>
         </div>
@@ -591,9 +895,24 @@
 <!-- ============ ENVANTER MODALI ============ -->
 <div id="inventoryModal" class="modal-overlay hidden">
   <div class="modal-card inventory-card">
-    <h2 id="inventoryModalTitle" class="updates-title">Envanter</h2>
+    <h2 id="inventoryModalTitle" class="updates-title">Cephanelik</h2>
     <div id="inventoryList" class="inventory-list"></div>
     <button id="closeInventoryBtn" class="btn btn-primary btn-block">Kapat</button>
+  </div>
+</div>
+
+<!-- ============ SEVİYE ATLAMA ANİMASYONU (V2 Faz 3) ============ -->
+<div id="levelUpOverlay" class="levelup-overlay hidden">
+  <div id="levelUpConfettiLayer" class="levelup-confetti-layer"></div>
+  <div class="levelup-rays"></div>
+  <div class="levelup-card">
+    <div class="levelup-burst"></div>
+    <div class="levelup-title">SEVİYE ATLADIN!</div>
+    <div class="levelup-level-badge">
+      <span class="levelup-level-label">SEVİYE</span>
+      <span id="levelUpLevelNumber" class="levelup-level-number">2</span>
+    </div>
+    <div class="levelup-reward">🌟 +1 Stat Puanı kazandın!</div>
   </div>
 </div>
 

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Pembe Panterler — Unutulmuş Orman</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="gameWrap">
+  <canvas id="game" width="900" height="600"></canvas>
+
+  <!-- ============ OYUNA DÖN ============ -->
+  <a id="backToGameBtn" href="../index.html" title="Ana oyuna dön">&larr; Oyuna Dön</a>
+
+  <!-- ============ SOL ÜST: KAHRAMAN PLAKASI ============
+       DİKKAT: id'ler oyun koduna kilitli — hpLabel'ı 03-player ve canavar
+       dosyaları, pointsLabel'ı 04-economy/14-hero-stats kendisi günceller. -->
+  <div class="char-frame" id="charFrame">
+    <div class="seal">
+      <small>SV</small>
+      <span id="levelLabel">1</span>
+    </div>
+    <div class="char-bars">
+      <div class="char-name-row">
+        <span class="char-name" id="heroNameLabel">Kahraman</span>
+        <span class="char-points">PUAN <b id="pointsLabel">0</b></span>
+      </div>
+      <div class="bar hp-bar" id="hpBarBox">
+        <div class="bar-fill" id="hpBarFill" style="width:100%"></div>
+        <div class="bar-text"><small>CAN</small> <b id="hpLabel">100</b><span class="bar-sep">/</span><span id="hpMaxLabel">100</span></div>
+      </div>
+      <div class="bar exp-bar" id="expBarBox">
+        <div class="bar-fill" id="expBarFill" style="width:0%"></div>
+        <div class="bar-text"><small>EXP</small> <b id="expCurLabel">0</b><span class="bar-sep">/</span><span id="expMaxLabel">--</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SAĞ ÜST: KAYNAK DEFTERİ ============
+       id eşleşmesi (oyun kodundaki sayaç → görünen ad):
+       itemsLabel = Sıradan Kitap · rareLabel = Altın · legendaryLabel = Hurda
+       expLabel = EXP. Bu id'leri DEĞİŞTİRME — 04-economy.js doğrudan bunlara yazar. -->
+  <div class="resource-panel">
+    <div class="res-cell" title="Altın">
+      <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="2.6"/></svg>
+      <b id="rareLabel">0</b><small>ALTIN</small>
+    </div>
+    <div class="res-cell" title="Sıradan Kitap">
+      <svg viewBox="0 0 16 16"><path d="M8 3.2C6.6 2.2 4.4 2 2.5 2.4V12.6C4.4 12.2 6.6 12.4 8 13.4c1.4-1 3.6-1.2 5.5-.8V2.4C11.6 2 9.4 2.2 8 3.2Z"/><path d="M8 3.2v10.2"/></svg>
+      <b id="itemsLabel">0</b><small>KİTAP</small>
+    </div>
+    <div class="res-cell" title="Hurda">
+      <svg viewBox="0 0 16 16"><path d="M8 1.8 13.4 4.9v6.2L8 14.2 2.6 11.1V4.9Z"/><circle cx="8" cy="8" r="1.9"/></svg>
+      <b id="legendaryLabel">0</b><small>HURDA</small>
+    </div>
+  </div>
+
+  <div class="fps-badge">FPS <b id="fpsLabel">0</b></div>
+
+  <div id="touchControls">
+    <div id="joystickZone"><div id="joystickStick"></div></div>
+    <button id="attackBtn" aria-label="Saldır">
+      <svg viewBox="0 0 24 24"><path d="M13.5 3 21 10.5l-2.2 2.2-2-2-6.1 6.1.9.9L9.4 20 4 14.6l2.3-2.2.9.9 6.1-6.1-2-2Z"/><path d="M4.5 19.5 3 21"/></svg>
+    </button>
+  </div>
+
+  <div class="hint-box" id="hintBox">
+    PC: WASD / Ok tuşları hareket, Boşluk veya J saldırı &nbsp;&middot;&nbsp; Mobil: joystick + saldırı düğmesi
+  </div>
+
+  <!-- ============ HARİTA TEMİZLENDİ EKRANI ============
+       clearDustLabel: 09-wave.js hâlâ yazdığı için gizli tutuluyor (Toz emekli). -->
+  <div id="mapClearOverlay">
+    <div class="clear-panel">
+      <div class="clear-title">Harita Temizlendi</div>
+      <div class="clear-divider"></div>
+      <div class="clear-sub">Bu oturumda kazandıkların</div>
+      <span id="clearDustLabel" style="display:none">0</span>
+      <div class="clear-loot-row">
+        <div class="clear-loot"><b id="clearItemsLabel">0</b><span>Kitap</span></div>
+        <div class="clear-loot"><b id="clearRareLabel">0</b><span>Altın</span></div>
+        <div class="clear-loot"><b id="clearLegendaryLabel">0</b><span>Hurda</span></div>
+      </div>
+      <div class="clear-countdown">Yeni canavarlar: <span id="mapClearCountdownLabel">00:10</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- SIRALAMA ÖNEMLİ: dosyalar yukarıdan aşağı bu sırayla yüklenir, sırayı bozma!
+     13-account-bridge: kazançları ana oyuna taşır · 14-hero-stats: hesap
+     statlarını haritaya uygular · 15-hud: HUD canlandırma (bar, seviye, isim). -->
+<script src="js/00-core.js"></script>
+<script src="js/01-assets.js"></script>
+<script src="js/02-world.js"></script>
+<script src="js/03-player.js"></script>
+<script src="js/04-economy.js"></script>
+<script src="js/05-effects.js"></script>
+<script src="js/06-orc.js"></script>
+<script src="js/07-soldier.js"></script>
+<script src="js/08-goblin.js"></script>
+<script src="js/09-wave.js"></script>
+<script src="js/10-input.js"></script>
+<script src="js/11-render.js"></script>
+<script src="js/13-account-bridge.js"></script>
+<script src="js/14-hero-stats.js"></script>
+<script src="js/12-main.js"></script>
+<script src="js/15-hud.js"></script>
+
+<!-- ============ MOBİL: TAM EKRAN + YATAY KİLİT ============
+Tarayıcılar tam ekranı ancak bir kullanıcı dokunuşundan sonra verir; bu
+yüzden ilk dokunuşta bir kez denenir. Yatay kilit (orientation.lock) sadece
+tam ekran aktifken çalışır ve bazı tarayıcılarda (özellikle iOS Safari)
+desteklenmez — desteklenmiyorsa sessizce geçilir, oyun yine oynanır. -->
+<script>
+(function () {
+  const isMobile = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+  if (!isMobile) return;
+  let done = false;
+  async function goFullscreenLandscape() {
+    if (done) return;
+    done = true;
+    try {
+      const el = document.documentElement;
+      if (el.requestFullscreen) await el.requestFullscreen();
+      else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
+      if (screen.orientation && screen.orientation.lock) {
+        await screen.orientation.lock("landscape").catch(() => {});
+      }
+    } catch (e) { /* tam ekran opsiyonel konfor katmanı, verilmezse sessiz geç */ }
+  }
+  document.addEventListener("touchstart", goFullscreenLandscape, { once: true, passive: true });
+})();
+</script>
+
+</body>
+</html>

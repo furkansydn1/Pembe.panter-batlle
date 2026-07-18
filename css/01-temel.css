@@ -1,0 +1,154 @@
+:root{
+  /* ---- FADELESS — "Sönmeyen Kalır" — karanlık MMORPG kimliği ----
+     Dünya soğuk, ölü, mavi-siyah. Sönmeyen olan tek şey: kor altını.
+     Marka rengi (--accent/--accent-2/--pink-dark) eski pembeden bu
+     kor-altını ailesine taşındı; panel/arkaplan ailesi mor cangıldan
+     çıkıp abanoz-lacivert bir derinliğe indi. Rarity (--gold/--blue/
+     --green/--red/--item-*) renkleri BİLEREK aynı tonlarda bırakıldı —
+     bunlar hem app.js'teki hardcoded spark/glow renkleriyle hem de
+     dosyanın geri kalanındaki onlarca literal alfa-varyantıyla (örn.
+     #ffcc4d55, #4d9bff44) birebir kilitli; değiştirmek onlarca noktayı
+     senkron dışı bırakırdı (bkz. SKILL.md "Kritik uyarı"). Zaten bu
+     doygun tonlar neredeyse-siyah bir zemin üstünde eskisinden daha
+     güçlü/daha "epik" okunuyor, ayrı bir sorun çıkarmıyor. */
+  --bg: #06070c;
+  --bg-mid: #0c0e17;
+  --panel: #10131d;
+  --panel-light: #1a2030;
+  --panel-edge: #05060a;
+  --bg-panel: #0c0e17;
+  --bg-panel-alt: #0a0c13;
+  --border: rgba(160,180,220,.12);
+  --text: #c9d4e8;
+  --text-dim: #8b95ad;
+  --ink: #1c1206;
+
+  --accent: #e8a33d;      /* kor altını — ana marka rengi */
+  --accent-2: #ffc16a;    /* açık kor */
+  --pink-dark: #7a3f0d;   /* sönmüş kor — bevel/gölge tonu (eski değişken adı korunuyor) */
+
+  /* rarity/system renkleri app.js içindeki hardcoded spark/glow renkleriyle
+     bire bir aynı tutuluyor ki efektler (spawnSparks, glow keyframes) bozulmasın */
+  --gold: #ffcc4d;
+  --gold-dark: #c98a12;
+  --gold-dim: #ffcc4d33;
+  --blue: #4d9bff;
+  --blue-dark: #0b8fc9;
+  --gray: #94a3b8;
+  --green: #4dd68a;
+  --green-dark: #159a54;
+  --red: #ff5c6c;
+  --red-dark: #c31f30;
+
+  --radius: 10px;
+  font-size: 15px;
+
+  /* ---- Ekipman SVG ikonları: nadirlik renkleri (yeni ekipman görselleri) ---- */
+  /* V2 Faz 2: 3 tier'den 5 tier'e çıkarıldı. --item-mitik ve --item-kabus,
+     app.js içindeki CHEST_RARITY_STYLES.mitik/kabus.glow ve spawnSparks()
+     colors.mitik/kabus ile bilerek birebir aynı tutuluyor — biri değişirse
+     diğeri de güncellenmeli (bkz. SKILL.md "Kritik uyarı"). */
+  --item-standart: #94a3b8;
+  --item-nadir: #3b82f6;
+  --item-efsanevi: #fbbf24;
+  --item-mitik: #b845ff;
+  --item-kabus: #ff1a4d;
+
+  /* ============================================================
+     PROTOTİP DEĞİŞKENLERİ — fadeless-prototip.html'den BİREBİR kopyalandı.
+     Yukarıdaki oyun değişkenleriyle isim çakışması yok (--panel ve --radius
+     zaten aynı değerlere sahip). Aşağıdaki .f-panel/.f-btn/.res-chip/
+     .tab-keystone/.gear-slot/.doll-stage/.mat-row/.bag-item/.ware-card/
+     .chest-offer/.realm-card blokları bu değişkenleri kullanıyor.
+     ============================================================ */
+  --etch:#232a3d;
+  --etch-soft:#1a2032;
+  --steel:#8b95ad;
+  --steel-dim:#5a6379;
+  --moon:#c9d4e8;
+  --frost:#7fb2c9;
+  --ember:#e8a33d;
+  --ember-hot:#ff7a2f;
+  --ember-deep:#8a4a12;
+  --ember-glow:rgba(232,163,61,.35);
+  --blood:#a32638;
+  --blood-bright:#ff4d5e;
+  --venom:#4dd68a;
+  --r-standart:#8b93a5;
+  --r-nadir:#4f8fe8;
+  --r-efsanevi:#e8b64f;
+  --r-mitik:#b06cff;
+  --r-kabus:#ff2e4d;
+  --font-display:'Cinzel', serif;
+  --font-body:'Alegreya Sans', system-ui, sans-serif;
+  --panel-2:#0c0e17;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:
+    radial-gradient(ellipse 90% 55% at 50% 100%, rgba(232,163,61,.08) 0%, transparent 60%),
+    radial-gradient(circle at 15% 0%, rgba(28,38,66,.55) 0%, transparent 55%),
+    radial-gradient(circle at 90% 10%, rgba(20,28,50,.5) 0%, transparent 50%),
+    radial-gradient(circle at 50% 100%, #0a0c13 0%, transparent 60%),
+    linear-gradient(180deg, var(--bg), var(--bg-mid) 55%, var(--bg));
+  background-attachment: fixed;
+  color: var(--text);
+  font-family: 'Alegreya Sans', 'Baloo 2', -apple-system, "Segoe UI", Roboto, system-ui, Arial, sans-serif;
+  min-height: 100vh;
+}
+
+.hidden{display:none !important;}
+
+button{font-family:inherit;cursor:pointer;border:none;}
+input{font-family:inherit;}
+
+::-webkit-scrollbar{width:8px; height:8px;}
+::-webkit-scrollbar-thumb{background:var(--panel-light); border-radius:8px;}
+::-webkit-scrollbar-track{background:transparent;}
+
+/* ---------- BUTTONS (kalın, "kabartma" 3D stil) ---------- */
+.btn{
+  padding: 13px 18px;
+  border-radius: 14px;
+  font-weight: 900;
+  font-size: 0.92rem;
+  letter-spacing: .3px;
+  text-transform: uppercase;
+  transition: transform .08s ease, box-shadow .08s ease, opacity .12s ease, filter .12s ease;
+}
+.btn:active{transform: translateY(3px);}
+.btn:disabled{opacity:1; filter:grayscale(.45) brightness(.65); cursor:not-allowed; transform:none;}
+.btn-block{width:100%; display:block;}
+.btn-primary{
+  background: linear-gradient(180deg, var(--accent-2), var(--accent));
+  color: var(--text);
+  box-shadow: 0 5px 0 var(--pink-dark), 0 10px 22px -8px #e8a33d55;
+}
+.btn-primary:active{box-shadow: 0 2px 0 var(--pink-dark);}
+.btn-gold{
+  background: linear-gradient(180deg, #ffe08a, var(--gold));
+  color: var(--ink);
+  box-shadow: 0 5px 0 var(--gold-dark), 0 10px 22px -8px #ffcc4d55;
+}
+.btn-gold:active{box-shadow: 0 2px 0 var(--gold-dark);}
+.btn-secondary{
+  background: linear-gradient(180deg, var(--panel-light), var(--panel-edge));
+  color: var(--text);
+  border: 1px solid rgba(255,255,255,.08);
+  box-shadow: 0 5px 0 var(--panel-edge);
+}
+.btn-secondary:active{box-shadow: 0 2px 0 var(--panel-edge);}
+.icon-btn{
+  background: linear-gradient(180deg, var(--panel-light), var(--panel-edge));
+  border: 1px solid rgba(255,255,255,.08);
+  color: var(--text);
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  font-size: 1.05rem;
+  box-shadow: 0 3px 0 var(--panel-edge);
+  transition: transform .08s ease, box-shadow .08s ease;
+}
+.icon-btn:active{ transform: translateY(2px); box-shadow: 0 1px 0 var(--panel-edge); }
+

@@ -1,0 +1,386 @@
+/* ---------- ATTACK TARGETS ---------- */
+.attack-targets{display:flex; flex-direction:column; gap:8px;}
+.attack-target-row{
+  display:flex; align-items:center; gap:10px;
+  background: var(--bg-panel-alt);
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 12px;
+  padding: 9px 11px;
+}
+.attack-target-row .name{flex:1; font-weight:700; font-size:.88rem;}
+.attack-target-row .stats{font-size:.72rem; color:var(--text-dim); font-weight:600;}
+.attack-target-row button{
+  background: linear-gradient(180deg, #ff8a93, var(--red));
+  color: var(--text);
+  padding: 7px 14px;
+  border-radius: 10px;
+  font-size: .76rem;
+  font-weight:800;
+  text-transform: uppercase;
+  box-shadow: 0 3px 0 var(--red-dark);
+  transition: transform .08s ease, box-shadow .08s ease;
+}
+.attack-target-row button:active{ transform: translateY(2px); box-shadow: 0 1px 0 var(--red-dark); }
+.attack-target-row button:disabled{ box-shadow:none; }
+
+/* ---------- BATTLE LOG ---------- */
+.battle-log{
+  display:flex; flex-direction:column; gap:8px;
+  max-height: 70vh;
+  overflow-y:auto;
+  padding-right:4px;
+}
+.log-entry{
+  background: var(--bg-panel-alt);
+  border-left: 3px solid var(--accent);
+  border-radius: 10px;
+  padding: 9px 11px;
+  font-size: .78rem;
+  line-height:1.4;
+  font-weight: 600;
+}
+.log-entry.win{border-left-color: var(--green);}
+.log-entry.legendary-trigger{border-left-color: var(--gold);}
+.log-time{color: var(--text-dim); font-size:.68rem; display:block; margin-top:2px; font-weight:600;}
+
+/* ---------- MODALS ---------- */
+.modal-overlay{
+  position: fixed; inset:0; z-index: 100;
+  background: rgba(3,4,8,.86);
+  display:flex; align-items:center; justify-content:center;
+  padding: 20px;
+  backdrop-filter: blur(3px);
+}
+.modal-card{
+  background: linear-gradient(180deg, var(--panel-light), var(--panel) 55%, var(--panel-edge));
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: var(--radius);
+  padding: 26px 22px;
+  max-width: 480px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y:auto;
+  box-shadow: 0 8px 0 var(--panel-edge), 0 24px 60px -14px #00000088;
+}
+/* ---------- TUTORIAL CAROUSEL ---------- */
+.tutorial-card{ padding: 0; overflow: hidden; display:flex; flex-direction:column; }
+.tutorial-track{
+  display:flex;
+  overflow-x:auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior:smooth;
+  -webkit-overflow-scrolling: touch;
+}
+.tutorial-track::-webkit-scrollbar{display:none;}
+.tutorial-slide{
+  flex: 0 0 100%;
+  scroll-snap-align: center;
+  padding: 30px 26px 10px;
+  display:flex; flex-direction:column; align-items:center; text-align:center;
+  max-height: 56vh;
+  overflow-y:auto;
+}
+.tut-hero{
+  font-size: 3rem;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 0 18px #e8a33d55);
+}
+.tut-title{
+  display:inline-block;
+  font-family: 'Cinzel', serif;
+  font-size: 1.1rem;
+  font-weight: 800;
+  font-style: normal;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  margin: 0 0 12px;
+  padding: 0 0 8px;
+  color: var(--text);
+  background: none;
+  border-radius: 0;
+  border-bottom: 1px solid rgba(232,163,61,.3);
+  box-shadow: none;
+  transform: none;
+  text-shadow: 0 0 18px rgba(232,163,61,.35);
+}
+.tut-text{ font-size: .88rem; color: var(--text-dim); line-height:1.5; margin: 0 0 14px; font-weight:600; }
+.tut-text.small{ font-size: .78rem; margin-top: 12px; }
+.tut-text b{ color: var(--text); }
+
+.tut-mini-steps{
+  display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-top:6px;
+}
+.tut-mini-step{
+  background: var(--bg-panel-alt);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: .78rem;
+  font-weight:700;
+  display:flex; flex-direction:column; align-items:center; gap:4px;
+  min-width: 70px;
+  box-shadow: 0 3px 0 rgba(0,0,0,.2);
+}
+.tut-mini-step span{font-size:1.3rem;}
+
+.rarity-bars{ width:100%; display:flex; flex-direction:column; gap:8px; }
+.rarity-bar{
+  display:flex; align-items:center; gap:8px;
+  background: var(--bg-panel-alt);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: .82rem;
+  font-weight:700;
+}
+.rarity-bar b{ margin-left:auto; }
+.rarity-dot{ width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.rarity-bar.standart .rarity-dot{ background: var(--gray); box-shadow: 0 0 8px var(--gray); }
+.rarity-bar.nadir .rarity-dot{ background: var(--blue); box-shadow: 0 0 8px var(--blue); }
+.rarity-bar.nadir{ border-color: #4d9bff55; }
+.rarity-bar.efsanevi .rarity-dot{ background: var(--gold); box-shadow: 0 0 10px var(--gold); }
+.rarity-bar.efsanevi{ border-color: #ffcc4d66; }
+
+.tut-slot-grid{ width:100%; display:flex; flex-direction:column; gap:8px; }
+.tut-slot-pill{
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: .82rem;
+  font-weight:700;
+  text-align:left;
+}
+.tut-slot-pill.atk{ background: #ff5c6c1a; border: 1px solid #ff5c6c55; color: #ffb3ba; }
+.tut-slot-pill.def{ background: #4d9bff1a; border: 1px solid #4d9bff55; color: #a9cdff; }
+
+.tut-result-preview{ width:100%; display:flex; flex-direction:column; gap:8px; margin-bottom:6px; }
+.tut-result-preview .win, .tut-result-preview .lose{
+  border-radius: 12px; padding: 10px 12px; font-size:.85rem; font-weight:800;
+}
+.tut-result-preview .win{ background:#4dd68a1a; border:1px solid #4dd68a55; color: var(--green); }
+.tut-result-preview .lose{ background:#ff5c6c1a; border:1px solid #ff5c6c55; color: var(--red); }
+
+.legend-slide{ max-height: 60vh; }
+.legendary-showcase{
+  width:100%;
+  display:flex; flex-direction:column; gap:8px;
+  max-height: 34vh; overflow-y:auto; padding-right:2px; margin-top:6px;
+}
+.legend-card{
+  display:flex; align-items:flex-start; gap:10px;
+  background: linear-gradient(135deg, #ffcc4d1a, var(--bg-panel-alt));
+  border: 1px solid #ffcc4d4d;
+  border-radius: 14px;
+  padding: 10px 12px;
+  text-align:left;
+}
+.legend-icon{
+  width: 36px; height:36px; flex-shrink:0;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #ffe08a, var(--gold));
+  box-shadow: 0 2px 0 var(--gold-dark);
+  display:flex; align-items:center; justify-content:center;
+  font-size: 1.1rem;
+}
+.legend-body{flex:1; min-width:0;}
+.legend-name{ font-weight:900; color: var(--gold); font-size: .86rem; margin-bottom:3px; }
+.legend-passive{ font-size: .74rem; color: var(--text-dim); line-height:1.4; font-weight:600; }
+
+.tutorial-nav{
+  display:flex; align-items:center; justify-content:center; gap:14px;
+  padding: 12px 0 6px;
+}
+.tut-nav-btn{
+  width: 36px; height:36px; border-radius:50%;
+  background: linear-gradient(180deg, var(--panel-light), var(--panel-edge));
+  border: 1px solid rgba(255,255,255,.08);
+  color: var(--text);
+  font-size: 1.2rem;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow: 0 3px 0 var(--panel-edge);
+}
+.tut-nav-btn:active{ transform: translateY(2px); box-shadow:0 1px 0 var(--panel-edge); }
+.tutorial-dots{ display:flex; gap:6px; }
+.tut-dot{
+  width: 8px; height:8px; border-radius:50%;
+  background: rgba(255,255,255,.2);
+  padding:0;
+}
+.tut-dot.active{ background: var(--gold); width:20px; border-radius:5px; transition: all .25s ease; }
+
+.tutorial-card > .btn-block{ margin: 6px 22px 22px; width: calc(100% - 44px); }
+
+.result-card{text-align:center;}
+.result-title{font-size:1.2rem; font-weight:900; margin-bottom:10px; text-transform:uppercase;}
+.result-title.win{color: var(--green);}
+.result-title.lose{color: var(--red);}
+.result-line{font-size:.85rem; color: var(--text-dim); margin: 4px 0; font-weight:600;}
+.result-passive{
+  margin-top:10px; padding:10px; border-radius:12px;
+  background: var(--gold-dim); color: var(--gold); font-size:.8rem; font-weight:700;
+}
+
+/* ---------- UPDATES / YOL HARİTASI ---------- */
+.icon-btn{ position: relative; }
+.update-dot{
+  position:absolute; top:-3px; right:-3px;
+  width:10px; height:10px; border-radius:50%;
+  background: var(--gold);
+  box-shadow: 0 0 0 rgba(255,204,77,.6);
+  animation: dotPulse 1.6s infinite;
+}
+@keyframes dotPulse{
+  0%{ box-shadow: 0 0 0 0 rgba(255,204,77,.55); }
+  70%{ box-shadow: 0 0 0 8px rgba(255,204,77,0); }
+  100%{ box-shadow: 0 0 0 0 rgba(255,204,77,0); }
+}
+
+.updates-title{
+  display:inline-block;
+  font-family: 'Cinzel', serif;
+  font-size: 1.05rem; font-weight:800; font-style:normal; text-transform:uppercase; letter-spacing:.1em;
+  margin: 0 0 6px;
+  padding: 0 0 8px;
+  color: var(--text);
+  background: none;
+  border-radius: 0;
+  border-bottom: 1px solid rgba(232,163,61,.3);
+  box-shadow: none;
+  transform: none;
+  text-shadow: 0 0 18px rgba(232,163,61,.35);
+}
+.updates-list{
+  display:flex; flex-direction:column; gap:10px;
+  max-height: 52vh; overflow-y:auto; margin: 14px 0; padding-right:4px;
+}
+.update-entry{
+  background: var(--bg-panel-alt);
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+.update-entry.done{ border-color: #4dd68a55; }
+.update-entry.soon{ border-color: rgba(255,255,255,.07); opacity: .88; }
+.update-entry-top{
+  display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:5px;
+}
+.update-entry-title{ font-weight:800; font-size:.9rem; display:flex; align-items:center; gap:6px; }
+.update-badge{
+  font-size: .65rem; font-weight:900; letter-spacing:.03em; text-transform:uppercase;
+  padding: 3px 8px; border-radius: 999px; flex-shrink:0; white-space:nowrap;
+}
+.update-badge.done{ background: #4dd68a22; color: var(--green); border: 1px solid #4dd68a55; }
+.update-badge.soon{ background: rgba(255,255,255,.06); color: var(--text-dim); border: 1px solid rgba(255,255,255,.08); }
+.update-entry-desc{ font-size: .78rem; color: var(--text-dim); line-height:1.4; font-weight:600; }
+
+.release-block{ margin-bottom: 16px; }
+.release-header{
+  display:flex; align-items:baseline; gap:10px; margin-bottom:8px;
+  padding-bottom:6px; border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.release-version{
+  font-size:.85rem; font-weight:900; color: var(--ink);
+  background: linear-gradient(180deg,#fff0a8,var(--gold)); padding: 3px 11px; border-radius: 999px;
+  box-shadow: 0 2px 0 var(--gold-dark);
+}
+.release-date{ font-size:.72rem; color: var(--text-dim); font-weight:600; }
+.release-items{ margin:0; padding-left:18px; display:flex; flex-direction:column; gap:6px; }
+.release-items li{ font-size:.8rem; color: var(--text); line-height:1.45; font-weight:500; }
+.roadmap-block{ margin-top: 6px; padding-top: 12px; border-top: 1px dashed rgba(255,255,255,.15); }
+.roadmap-header{ font-size:.9rem; font-weight:800; color: var(--accent-2); margin-bottom:8px; }
+.roadmap-items li{ color: var(--text-dim); }
+
+/* ---------- KOLEKSİYON KİTABI ---------- */
+.collection-list{
+  display:flex; flex-direction:column; gap:16px;
+  max-height: 55vh; overflow-y:auto; margin: 14px 0; padding-right:4px;
+}
+.coll-section-title{
+  font-size: .85rem; font-weight:800; margin-bottom:8px;
+  display:flex; align-items:center; justify-content:space-between;
+  color: var(--text);
+}
+.coll-section-title span{ font-size:.72rem; color: var(--text-dim); font-weight:700; }
+.coll-grid{
+  display:flex; flex-wrap:wrap; gap:6px;
+}
+.coll-chip{
+  font-size: .7rem; font-weight:700;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: var(--bg-panel-alt);
+  border: 1px solid rgba(255,255,255,.08);
+  color: var(--text-dim);
+}
+.coll-chip.locked{ opacity:.5; font-style:italic; }
+.coll-chip.owned.rarity-standart{ border-color: var(--gray); color: var(--gray); }
+.coll-chip.owned.rarity-nadir{ border-color: var(--blue); color: var(--blue); background: #4d9bff14; }
+.coll-chip.owned.rarity-efsanevi{ border-color: var(--gold); color: var(--gold); background: #ffcc4d14; box-shadow: 0 0 8px #ffcc4d33; }
+.coll-chip.owned.rarity-mitik{ border-color: var(--item-mitik); color: var(--item-mitik); background: #b845ff14; box-shadow: 0 0 8px #b845ff33; }
+.coll-chip.owned.rarity-kabus{ border-color: var(--item-kabus); color: var(--item-kabus); background: #ff1a4d14; box-shadow: 0 0 10px #ff1a4d44; }
+
+/* ---------- PIN ---------- */
+.pin-input-inline{
+  padding: 12px; border-radius:12px; border:1px solid rgba(255,255,255,.1);
+  background: var(--bg-panel-alt); color: var(--text); width:100%;
+  letter-spacing: 4px; text-align:center;
+}
+.pin-input-inline::placeholder{color:var(--text-dim);}
+.pin-card{ text-align:center; max-width: 340px; }
+.pin-input{
+  width: 100%; padding: 14px; border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.1); background: var(--bg-panel-alt); color: var(--text);
+  font-size: 1.6rem; letter-spacing: 10px; text-align:center; margin: 10px 0 4px;
+}
+.pin-modal-actions{ display:flex; gap:10px; margin-top: 14px; }
+.pin-modal-actions .btn{ flex:1; }
+
+/* ---------- GÜNÜN OLAYI & GİZEMLİ YABANCI ---------- */
+.daily-event-banner{
+  margin: 0 18px; margin-top: 12px;
+  padding: 11px 16px; border-radius: 14px;
+  font-size: .82rem;
+  display:flex; align-items:center; gap:10px;
+  background: var(--bg-panel-alt);
+  border: 1px solid rgba(255,255,255,.08);
+  font-weight: 600;
+}
+.daily-event-banner.type-buff{ border-color:#4dd68a55; background: #4dd68a14; }
+.daily-event-banner.type-nerf{ border-color:#ff5c6c55; background: #ff5c6c14; }
+.daily-event-banner.type-neutral{ border-color: rgba(255,255,255,.08); }
+.event-icon{ font-size:1.2rem; flex-shrink:0; }
+.event-text b{ color: var(--text); }
+
+.stranger-banner{
+  margin: 10px 18px 0; padding: 11px 16px; border-radius: 14px;
+  background: linear-gradient(135deg, #e8a33d22, var(--bg-panel-alt));
+  border: 1px solid #e8a33d55;
+  display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+  font-size: .82rem; font-weight:600;
+}
+.stranger-banner b{ color: var(--accent-2); }
+.trade-ban-banner{ background: linear-gradient(135deg, #ff5c6c22, var(--bg-panel-alt)); border-color: #ff5c6c55; }
+.trade-ban-banner b{ color: var(--red); }
+.log-badge.reversed{ background:#ff5c6c22; color:var(--red); border:1px solid #ff5c6c55; }
+.log-badge.gold{ background:#ffcc4d22; color:var(--gold); border:1px solid #ffcc4d55; }
+.log-entry.reversed{ border-left-color: var(--red); }
+
+/* ---------- ENVANTER ---------- */
+button.equip-slot{ font-family: inherit; cursor:pointer; width:100%; }
+.inventory-list{
+  display:flex; flex-direction:column; gap:10px;
+  max-height: 55vh; overflow-y:auto; margin:14px 0; padding-right:4px;
+}
+.inv-item{
+  background: var(--bg-panel-alt); border: 1px solid rgba(255,255,255,.08);
+  border-radius: 14px; padding: 12px 14px;
+}
+.inv-item.rarity-nadir{ border-color: var(--blue); animation: nadirPulse 2.2s ease-in-out infinite; }
+.inv-item.rarity-efsanevi{ border-color: var(--gold); box-shadow: 0 0 10px #ffcc4d22; animation: efsaneviPulse 1.8s ease-in-out infinite; }
+.inv-item-top{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:4px; }
+.inv-item-name{ font-weight:800; font-size:.86rem; }
+.inv-item-stats{ font-size:.75rem; color: var(--text-dim); font-weight:600; }
+.inv-item-actions{ display:flex; gap:8px; margin-top:10px; }
+.inv-item-actions .btn-mini{ flex:1; min-width:0; }
+.popup-quick-actions{ display:flex; gap:8px; margin-top:10px; }
+.popup-quick-actions .btn-mini{ flex:1; min-width:0; }
+

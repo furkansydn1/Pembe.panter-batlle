@@ -1,0 +1,459 @@
+/* ============================================================
+   v1.8 TASARIM GÜNCELLEMESİ
+   Sekme başlıkları (tab-hero), karakter sahnesi (paper-doll),
+   savaş geçmişi rozetleri, öğretici/güncellemeler iyileştirmeleri
+   ============================================================ */
+
+/* ---------- SEKME BAŞLIKLARI (kalın şerit banner) ---------- */
+.tab-hero{
+  --hero-c: var(--accent);
+  text-align:center;
+  padding: 18px 0 6px;
+  position: relative;
+}
+.tab-hero-ribbon{
+  display:inline-block;
+  font-family: 'Cinzel', serif;
+  font-size: 1.18rem;
+  font-weight: 800;
+  font-style: normal;
+  text-transform: uppercase;
+  letter-spacing: .16em;
+  padding: 0;
+  color: var(--text);
+  background: none;
+  border-radius: 0;
+  border-bottom: none;
+  box-shadow: none;
+  transform: none;
+  text-shadow: 0 0 22px color-mix(in srgb, var(--hero-c) 45%, transparent);
+}
+.tab-hero-sub{
+  margin: 5px 0 0;
+  font-size: .8rem;
+  font-weight: 500;
+  font-style: italic;
+  color: var(--text-dim);
+}
+.tab-hero::after{
+  content:"";
+  display:block; width:150px; height:1px; margin:12px auto 0;
+  background: linear-gradient(90deg, transparent, var(--hero-c), transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--hero-c) 60%, transparent);
+}
+.tab-hero-red{ --hero-c: var(--red); }
+.tab-hero-gold{ --hero-c: var(--gold); }
+.tab-hero-blue{ --hero-c: var(--blue); }
+
+/* ============================================================
+   KARAKTER SAHNESİ + ÇANTA — METİN2 TARZI YENİDEN TASARIM
+   (yüklenen "Envanter Sistemi" mockup'ından uyarlandı; oyunun kendi renk
+   paletindeki --bg/--panel/--gold/--blue vb. değişkenleri kullanıyor,
+   yeni bir renk şeması eklenmedi. JS'in ürettiği id/class isimleri
+   (charStageSlots, char-slot, slot-pos-X, bagGrid, bag-slot) hiç
+   değişmedi; sadece görsel katman baştan tasarlandı.)
+   ============================================================ */
+.rpg-panel{
+  position: relative;
+  background: linear-gradient(180deg, var(--bg-mid), var(--bg));
+  border: 2px solid #141a2a;
+  border-radius: 14px;
+  box-shadow: inset 0 0 20px rgba(0,0,0,.8), 0 10px 26px -8px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.05);
+  overflow: hidden;
+  padding-bottom: 14px;
+}
+.rpg-panel .panel-header{
+  background: linear-gradient(180deg, var(--panel-light), var(--panel));
+  border-bottom: 2px solid var(--panel-edge);
+  padding: 12px;
+  text-align: center;
+  font-family: 'Cinzel', serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 1.3px;
+  text-shadow: 0 2px 4px rgba(0,0,0,.8);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.1);
+  margin-bottom: 12px;
+}
+.bag-slot-count{
+  color: var(--text-dim); font-size:.7rem; font-weight:600;
+  font-family:'Alegreya Sans', sans-serif; letter-spacing:0; text-transform:none;
+}
+.rpg-panel .equip-hint{ padding: 0 16px; margin: 8px 0 0; }
+
+/* ---------- KARAKTER (PAPER DOLL) ---------- */
+.paper-doll-container{
+  position: relative;
+  height: 300px;
+  margin: 0 auto 4px;
+  max-width: 340px;
+  border-radius: 10px;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 60% 45% at 50% 88%, rgba(127,178,201,.08), transparent 60%),
+    radial-gradient(ellipse 110% 70% at 50% 0%, rgba(24,32,56,.5), transparent 65%),
+    linear-gradient(180deg,#080a11,#05060a);
+  border: 1px solid var(--etch-soft);
+  display:flex; align-items:center; justify-content:center;
+}
+.avatar-backdrop{
+  position:absolute; left:50%; top:52%; transform:translate(-50%,-50%);
+  width:96px; height:170px;
+  display:flex; align-items:center; justify-content:center;
+  z-index:1;
+  pointer-events:none;
+  filter: grayscale(.5) drop-shadow(0 0 24px rgba(127,178,201,.25));
+}
+.avatar-backdrop::before{
+  content:"";position:absolute; inset:-14px -30px;
+  background:radial-gradient(ellipse,rgba(139,149,173,.09),transparent 65%);
+}
+.char-avatar{
+  font-size: 3rem;
+  position: relative; z-index:1;
+  animation: idleBob 2.6s ease-in-out infinite;
+}
+.char-stage-slots, .char-stage-decor{ position:absolute; inset:0; }
+.char-stage-slots{ z-index:10; }
+.char-stage-decor{ z-index:9; pointer-events:none; }
+.char-stage-decor .gear-slot{ pointer-events:auto; }
+
+/* FADELESS: temel görünüm (boyut/renk/köşe/etiket) artık dosyanın en
+   altındaki "PROTOTİP — BİREBİR KOPYALANAN BİLEŞENLER" bloğundaki
+   .gear-slot/.gs-label/.gs-r-* kurallarından geliyor. Burada SADECE
+   gerçek oyunun ihtiyaç duyduğu ama prototipte olmayan iki şey kalıyor:
+   (1) SLOTS'tan gelen yüzde-tabanlı slot-pos-X konumlandırması,
+   (2) dolu/boş + rarity durumlarına göre canlı nabız (pulse) geri
+   bildirimi — statik prototip demosunda buna gerek yoktu. */
+.char-slot-icon{ font-size:1.5rem; filter: drop-shadow(0 2px 2px rgba(0,0,0,.4)); position:relative; z-index:1; }
+.gear-slot.empty .char-slot-icon{ opacity:.4; filter: grayscale(1) drop-shadow(0 2px 2px rgba(0,0,0,.4)); }
+.gear-slot.filled.gs-r-nadir{
+  animation: nadirPulse 2.2s ease-in-out infinite;
+}
+.gear-slot.filled.gs-r-efsanevi{
+  animation: legendPulseChar 2s infinite alternate;
+}
+@keyframes legendPulseChar{
+  0%{ box-shadow: inset 0 0 14px rgba(255,204,77,.45), 0 0 8px rgba(255,204,77,.55); }
+  100%{ box-shadow: inset 0 0 22px rgba(255,204,77,.75), 0 0 16px rgba(255,204,77,.85); }
+}
+.gear-slot.filled.gs-r-mitik{
+  animation: mitikPulseChar 2s infinite alternate;
+}
+@keyframes mitikPulseChar{
+  0%{ box-shadow: inset 0 0 14px rgba(184,69,255,.45), 0 0 8px rgba(184,69,255,.55); }
+  100%{ box-shadow: inset 0 0 22px rgba(184,69,255,.75), 0 0 16px rgba(184,69,255,.85); }
+}
+.gear-slot.filled.gs-r-kabus{
+  animation: kabusPulseChar 1.3s infinite alternate, kabusThrob 2s ease-in-out infinite;
+}
+@keyframes kabusPulseChar{
+  0%{ box-shadow: inset 0 0 14px rgba(255,26,77,.5), 0 0 9px rgba(255,26,77,.6); }
+  100%{ box-shadow: inset 0 0 26px rgba(255,26,77,.85), 0 0 20px rgba(255,26,77,.95); }
+}
+/* Kusursuz simetrik Metin2 yerleşimi: merkez / sol / sağ sütun.
+   Sabit piksel yerine paper-doll-container'a göre YÜZDE konum kullanılıyor
+   ki her ekran genişliğinde (dar telefonlarda dahi) oranlar bozulmasın. */
+.gear-slot.slot-pos-kask     { top: 12.2%; left: 50%; }
+.gear-slot.slot-pos-zirh     { top: 41.9%; left: 50%; }
+.gear-slot.slot-pos-ayakkabi { top: 85.6%; left: 50%; }
+.gear-slot.slot-pos-kupe     { top: 19.1%; left: 14.4%; width:42px; height:42px; }
+.gear-slot.slot-pos-kilic    { top: 41.9%; left: 15.3%; }
+.gear-slot.slot-pos-eldiven  { top: 70%;   left: 15.3%; }
+.gear-slot.slot-pos-kolye    { top: 19.1%; left: 85.6%; width:42px; height:42px; }
+.gear-slot.slot-pos-kalkan   { top: 41.9%; left: 84.7%; }
+.gear-slot.slot-pos-ring     { top: 70%;   left: 85.6%; width:42px; height:42px; }
+
+/* ---------- SAVAŞ GEÇMİŞİ ROZETLERİ ---------- */
+.log-entry{ animation: logFadeIn .3s ease; }
+@keyframes logFadeIn{
+  from{ opacity:0; transform: translateY(6px); }
+  to{ opacity:1; transform: translateY(0); }
+}
+.log-entry-top{
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  flex-wrap:wrap;
+  margin-bottom: 4px;
+}
+.log-fighters{ font-weight:900; font-size:.82rem; color: var(--text); }
+.log-vs{ color: var(--text-dim); margin: 0 3px; font-weight:400; }
+.log-badges{ display:flex; gap:5px; flex-wrap:wrap; }
+.log-badge{
+  font-size:.6rem; font-weight:900; text-transform:uppercase; letter-spacing:.2px;
+  padding: 3px 9px; border-radius:999px; white-space:nowrap;
+}
+.log-badge.win{ background:#4dd68a22; color:var(--green); border:1px solid #4dd68a55; }
+.log-badge.lose{ background:#ff5c6c22; color:var(--red); border:1px solid #ff5c6c55; }
+.log-badge.legendary{ background:#ffcc4d22; color:var(--gold); border:1px solid #ffcc4d55; }
+.log-badge.skip{ background:rgba(255,255,255,.07); color:var(--text-dim); border:1px solid rgba(255,255,255,.1); }
+.log-message{ margin:0; font-size:.78rem; line-height:1.45; color:var(--text-dim); font-weight:600; }
+
+/* ---------- SALDIRI HEDEFİ: STREAK/KİLİT ROZETİ ---------- */
+.attack-target-row .name{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.target-streak-badge{
+  font-size:.6rem; font-weight:800; text-transform:uppercase;
+  padding: 2px 7px; border-radius:999px;
+  background: #ffcc4d22; color: var(--gold); border:1px solid #ffcc4d55;
+}
+.target-streak-badge.locked{
+  background: rgba(255,255,255,.07); color: var(--text-dim); border:1px solid rgba(255,255,255,.12);
+}
+.attack-target-row.locked{ opacity:.7; }
+
+/* ---------- ÖĞRETİCİ: ATLA BUTONU + ADIM SAYACI ---------- */
+.tut-skip-btn{
+  position:absolute; top:14px; right:14px; z-index:5;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.15);
+  color: var(--text-dim);
+  font-size:.68rem; font-weight:800; text-transform:uppercase;
+  padding: 6px 12px; border-radius:999px;
+  transition: background .15s ease, color .15s ease;
+}
+.tut-skip-btn:hover{ background: rgba(255,255,255,.16); color: var(--text); }
+.tutorial-dots-wrap{ display:flex; flex-direction:column; align-items:center; gap:6px; }
+.tut-step-label{ font-size:.68rem; font-weight:700; color: var(--text-dim); }
+.tut-nav-btn:disabled{ opacity:.3; cursor:not-allowed; box-shadow:none; transform:none; }
+
+/* ---------- GÜNCELLEMELER: AKORDEON ---------- */
+.release-header{
+  width:100%;
+  display:flex; align-items:baseline; gap:10px;
+  margin-bottom:0; padding-bottom:6px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  background:none; border-top:none; border-left:none; border-right:none;
+  color: inherit; font: inherit; text-align:left; cursor:pointer;
+}
+.release-chevron{ margin-left:auto; color: var(--text-dim); transition: transform .2s ease; }
+.release-block .release-items{ display:none; margin:10px 0 0; }
+.release-block.open .release-items{ display:flex; }
+.release-block.open .release-chevron{ transform: rotate(180deg); color: var(--accent-2); }
+.roadmap-block .release-items{ display:flex; }
+
+/* ============================================================
+   v1.9 GÜNCELLEMESİ
+   Günün Yıldızı/Sürtüğü banner'ı, Şanslı Çark, Kelle Avcısı,
+   1.lik Avı rozeti ve Kişisel İstatistik sekmesi
+   ============================================================ */
+
+/* ---------- GÜNÜN YILDIZI / GRUBUN SÜRTÜĞÜ BANNER ---------- */
+.top-performers-banner{
+  display:flex; gap:8px; flex-wrap:wrap;
+  margin: 10px 18px 0;
+}
+.tp-chip{
+  flex: 1; min-width: 150px;
+  display:flex; align-items:center; gap:8px;
+  padding: 9px 12px; border-radius: 14px;
+  background: var(--bg-panel-alt);
+  border: 1px solid rgba(255,255,255,.08);
+}
+.tp-chip.tp-best{ border-color:#ffcc4d55; background: #ffcc4d14; }
+.tp-chip.tp-worst{ border-color:#ff5c6c55; background: #ff5c6c14; }
+.tp-icon{ font-size:1.3rem; flex-shrink:0; }
+.tp-body{ min-width:0; display:flex; flex-direction:column; }
+.tp-label{ font-size:.62rem; font-weight:800; text-transform:uppercase; color: var(--text-dim); letter-spacing:.2px; }
+.tp-name{ font-size:.8rem; font-weight:800; color: var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tp-chip.tp-best .tp-name{ color: var(--gold); }
+.tp-chip.tp-worst .tp-name{ color: var(--red); }
+
+/* ---------- ŞANSLI ÇARK — "Karanlık Kader Çarkı" teması ---------- */
+/* Kullanıcının sağladığı bağımsız (karanlık fantezi / obsidyen) prototipten
+   birebir uyarlandı: dönen rün çemberi, şeytan gözü göbek, kan kanallı bıçak
+   ibre, patlama şok dalgası, ekran sarsıntısı ve fizik motorlu kor/kıvılcım
+   parçacıkları. Segment yazıları artık ayrı val/lbl rozetleriyle gösteriliyor
+   (JACKPOT yazısının taşması buradaki sabit genişlikli rozet + küçültülmüş
+   font ile çözüldü). Oyunun ödül mantığına (dust/points/weight) dokunulmadı.
+*/
+.wheel-panel{ --wheel-glow: var(--accent); }
+.wheel-scene{
+  position:relative; width:100%; height:236px;
+  display:flex; align-items:center; justify-content:center;
+  margin: 2px 0;
+}
+.wheel-runic-circle{
+  position:absolute; width:252px; height:252px; border-radius:50%;
+  background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'><circle cx='50' cy='50' r='48' fill='none' stroke='%23e8a33d' stroke-width='0.5' stroke-dasharray='2 4'/><circle cx='50' cy='50' r='40' fill='none' stroke='%234d9bff' stroke-width='0.5' stroke-dasharray='10 5 2 5'/><path d='M50 2 L50 8 M50 92 L50 98 M2 50 L8 50 M92 50 L98 50' stroke='%23ffcc4d' stroke-width='1'/></svg>");
+  background-size: cover;
+  opacity: .3; z-index:0; pointer-events:none;
+  animation: wheelRunicSpin 30s linear infinite;
+  filter: drop-shadow(0 0 10px var(--accent));
+}
+.wheel-bg-glow{
+  position:absolute; width:172px; height:172px; border-radius:50%;
+  background: var(--wheel-glow); filter: blur(48px); opacity:.15; z-index:0;
+  transition: opacity .5s ease, box-shadow .5s ease;
+  pointer-events:none;
+}
+.wheel-shockwave{
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) scale(0);
+  width:198px; height:198px; border-radius:50%;
+  border: 14px solid var(--wheel-glow); opacity:0; z-index:20; pointer-events:none;
+}
+.wheel-shockwave.blast{ animation: wheelBlastWave .7s cubic-bezier(.1,.8,.3,1) forwards; }
+
+.wheel-outer{
+  position:relative; width:198px; height:198px; border-radius:50%;
+  background: #1a1a24;
+  box-shadow: 0 16px 32px rgba(0,0,0,.8), inset 0 0 18px rgba(0,0,0,.8);
+  border: 7px solid #2c2c3a;
+  display:flex; align-items:center; justify-content:center;
+  z-index:5;
+}
+.wheel-outer::after{
+  content:""; position:absolute; inset:-3px; border-radius:50%;
+  border: 2px solid var(--wheel-glow); opacity:.55;
+  box-shadow: 0 0 14px var(--wheel-glow), inset 0 0 14px var(--wheel-glow);
+  z-index:6; pointer-events:none; transition: all .4s ease;
+}
+.wheel-outer.win-highlight{ animation: wheelEpicGlow 1.2s ease-out; }
+
+.wheel-dial{
+  width:174px; height:174px; border-radius:50%;
+  position:relative; z-index:2; overflow:hidden;
+  box-shadow: inset 0 0 24px rgba(0,0,0,.85);
+}
+.wheel-spokes{ position:absolute; inset:0; border-radius:50%; pointer-events:none; z-index:3; }
+
+/* Segment yazı rozetleri: sabit maksimum genişlik + tek satıra sığdırma
+   sayesinde JACKPOT dahil hiçbir etiket artık çemberden taşmıyor. */
+.wheel-seg-container{
+  position:absolute; top:50%; left:50%;
+  width:83px; height:0;
+  transform-origin: left center;
+  z-index:4;
+  display:flex; align-items:center; justify-content:flex-end;
+  pointer-events:none;
+}
+.wheel-text-badge{
+  background: rgba(10,5,16,.85);
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 7px;
+  padding: 4px 7px 4px 5px;
+  margin-right: 7px;
+  max-width: 54px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  box-shadow: 0 3px 5px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.1);
+  transform: rotate(90deg);
+}
+.wheel-text-val{
+  font-family: 'Cinzel', serif; font-weight:700; font-style:normal;
+  font-size:.68rem; color:#fff; line-height:1.15;
+  text-shadow: 0 2px 2px #000;
+  white-space: nowrap;
+}
+.wheel-text-lbl{
+  font-size:.5rem; font-weight:800; color: var(--text-dim); text-transform:uppercase;
+  white-space: nowrap;
+}
+.jackpot-badge{
+  background: linear-gradient(135deg, #3d1f05, #1a0005);
+  border-color: #ff2a2a;
+  box-shadow: 0 0 10px rgba(255,42,42,.6);
+  max-width: 60px;
+  padding: 4px 6px;
+}
+.jackpot-badge .wheel-text-val{ color: var(--gold); text-shadow: 0 0 5px #ff2a2a, 0 2px 2px #000; font-size:.62rem; }
+.jackpot-badge .wheel-text-lbl{ font-size:.46rem; }
+
+.wheel-hub{
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:50px; height:50px; border-radius:50%;
+  background: radial-gradient(circle at 40% 40%, #ff8a93, #ff2a2a 50%, #3d1f05 90%);
+  border: 3px solid #1a1a24;
+  box-shadow: 0 0 16px #ff2a2a, inset 0 0 8px #000;
+  z-index:10;
+  animation: wheelDemonEyePulse 2s infinite alternate;
+}
+.wheel-hub::after{
+  content:""; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:7px; height:21px; border-radius:50%;
+  background:#111; box-shadow: 0 0 5px #000;
+}
+
+.wheel-pointer{
+  position:absolute; top:-13px; left:50%;
+  transform: translateX(-50%);
+  width:38px; height:50px; z-index:15;
+  filter: drop-shadow(0 8px 8px rgba(0,0,0,.8));
+  transform-origin: top center;
+}
+.wheel-pointer svg{ width:100%; height:100%; }
+.wheel-scene.is-spinning .wheel-pointer{ animation: wheelPointerBounce .08s linear infinite; }
+
+.wheel-ember{
+  position:absolute; width:6px; height:6px; border-radius:50%;
+  z-index:50; pointer-events:none;
+}
+
+@keyframes wheelRunicSpin{ 0%{ transform: rotate(0deg) scale(1); } 50%{ transform: rotate(180deg) scale(1.05); } 100%{ transform: rotate(360deg) scale(1); } }
+@keyframes wheelDemonEyePulse{ 0%{ box-shadow: 0 0 8px #ff2a2a, inset 0 0 8px #000; } 100%{ box-shadow: 0 0 26px #ff2a2a, inset 0 0 14px #000; } }
+@keyframes wheelPointerBounce{
+  0%{ transform: translateX(-50%) rotate(0deg); }
+  50%{ transform: translateX(-50%) rotate(-15deg); }
+  100%{ transform: translateX(-50%) rotate(0deg); }
+}
+@keyframes wheelBlastWave{
+  0%{ transform: translate(-50%,-50%) scale(.5); opacity:1; border-width:26px; }
+  100%{ transform: translate(-50%,-50%) scale(2.3); opacity:0; border-width:0px; }
+}
+@keyframes wheelScreenShake{
+  0%,100%{ transform: translate(0,0) rotate(0deg); }
+  20%{ transform: translate(-5px,-3px) rotate(-1.5deg); }
+  40%{ transform: translate(5px,3px) rotate(1.5deg); }
+  60%{ transform: translate(-3px,5px) rotate(-1deg); }
+  80%{ transform: translate(3px,-5px) rotate(1deg); }
+}
+.wheel-panel.wheel-is-shaking{ animation: wheelScreenShake .4s ease-in-out; }
+@keyframes wheelEpicGlow{
+  0%,100%{ box-shadow: 0 16px 32px rgba(0,0,0,.8), inset 0 0 18px rgba(0,0,0,.8); }
+  50%{ box-shadow: 0 0 50px var(--wheel-glow), inset 0 0 30px var(--wheel-glow); }
+}
+
+/* ---------- KELLE AVCISI ---------- */
+.bounty-panel{ border: 1px solid #e8a33d33; }
+.bounty-active{
+  background: linear-gradient(135deg, #e8a33d22, var(--bg-panel-alt));
+  border: 1px solid #e8a33d55;
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.bounty-amount-inline{ color: var(--gold); }
+.bounty-form{ display:flex; gap:8px; flex-wrap:wrap; }
+.bounty-select{
+  flex: 1.4; min-width:110px; padding:11px; border-radius:12px;
+  border:1px solid rgba(255,255,255,.1); background: var(--bg-panel-alt); color: var(--text);
+}
+.bounty-input{
+  flex:1; min-width:90px; padding:11px; border-radius:12px;
+  border:1px solid rgba(255,255,255,.1); background: var(--bg-panel-alt); color: var(--text);
+}
+.bounty-input::placeholder{ color: var(--text-dim); }
+.bounty-badge{
+  background: #e8a33d22 !important; color: var(--accent-2) !important; border-color:#e8a33d55 !important;
+}
+
+/* ---------- 1.LİK AVI ROZETİ ---------- */
+.throne-crown{ filter: drop-shadow(0 0 4px #ffcc4daa); }
+
+/* ---------- İSTATİSTİK SEKMESİ ---------- */
+.stats-mini-grid{ display:grid; grid-template-columns: repeat(2,1fr); gap:8px; }
+.stats-mini-cell{
+  background: var(--bg-panel-alt); border:1px solid rgba(255,255,255,.07);
+  border-radius: 12px; padding: 10px 12px;
+  display:flex; flex-direction:column; gap:4px;
+}
+.stats-mini-cell span{ font-size:.68rem; color: var(--text-dim); font-weight:700; text-transform:uppercase; }
+.stats-mini-cell b{ font-size:.92rem; color: var(--text); }
+.stats-opponents{ display:flex; flex-direction:column; gap:10px; }
+.stats-opp-row{
+  display:flex; align-items:center; gap:10px;
+  background: var(--bg-panel-alt); border:1px solid rgba(255,255,255,.07);
+  border-radius:12px; padding:10px 12px;
+}
+.stats-opp-icon{ font-size:1.4rem; flex-shrink:0; }
+.stats-opp-label{ font-size:.68rem; color: var(--text-dim); font-weight:700; text-transform:uppercase; }
+.stats-opp-value{ font-size:.86rem; color: var(--text); font-weight:700; margin-top:2px; }
+.stats-opp-value b{ color: var(--gold); }
+
