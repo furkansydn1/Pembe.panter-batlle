@@ -296,6 +296,81 @@
 }
 
 /* ============================================================
+   v4 — CANLI DÜELLO EKRANI (vs-duel-live)
+   Giriş animasyonu (kartlar kayması + çarpışma) bittikten sonra aynı
+   .vs-frame'in üstüne açılır; duel-engine.js'in gerçek turns[]/commentary
+   dizisini tur tur oynatır. .hidden zaten projede genel bir utility class
+   (display:none) — burada sadece görünüm/animasyon tanımlanıyor.
+   ============================================================ */
+.vs-duel-live{
+  position:absolute; inset:0; z-index: 50;
+  background: linear-gradient(180deg, #10131d, #05060a);
+  display:flex; flex-direction:column; padding: 16px 14px 14px;
+  opacity: 0; animation: vsDuelFadeIn .25s ease-out forwards;
+}
+.vs-duel-live.hidden{ display:none; }
+@keyframes vsDuelFadeIn{ from{opacity:0;} to{opacity:1;} }
+
+.vs-duel-cards{ display:grid; grid-template-columns: 1fr auto 1fr; gap:8px; align-items:stretch; margin-bottom: 10px; }
+.vs-duel-vslabel{
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Cinzel', serif; font-weight:700; font-size:1.3rem; color: var(--gold);
+  padding: 0 2px;
+}
+.vs-duel-card{
+  background: linear-gradient(180deg, var(--panel-light), var(--panel) 55%, var(--panel-edge));
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 12px; padding: 10px 11px;
+  box-shadow: 0 0 0 2px transparent;
+  transition: box-shadow .12s ease;
+}
+.vs-duel-card.hit-crit{ box-shadow: 0 0 0 3px var(--gold), 0 0 16px #ffcc4d88; }
+.vs-duel-card.hit-normal{ box-shadow: 0 0 0 3px var(--red), 0 0 14px #ff5c6c77; }
+.vs-duel-name{
+  font-weight:700; font-size:.82rem; color: var(--text);
+  text-align:center; margin-bottom:6px;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.vs-duel-hpbar{
+  height:8px; border-radius:999px; overflow:hidden;
+  background: var(--panel-edge); border: 1px solid rgba(255,255,255,.08);
+}
+.vs-duel-hpfill{
+  height:100%; width:100%;
+  background: linear-gradient(90deg, var(--accent-2), var(--accent));
+  transition: width .3s ease;
+}
+.vs-duel-hpfill-b{ background: linear-gradient(90deg, #ff8a3d, var(--red)); }
+.vs-duel-hptxt{ font-size:.66rem; color: var(--text-dim); text-align:center; margin-top:4px; }
+
+.vs-duel-logwrap{ flex: 1; min-height: 0; margin-bottom: 10px; }
+.vs-duel-log{
+  height:100%; overflow-y:auto;
+  background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.08);
+  border-radius: 10px; padding: 10px 12px;
+  display:flex; flex-direction:column; gap:6px;
+}
+.vs-duel-logline{
+  font-size:.78rem; line-height:1.4; color: var(--text-dim);
+  opacity: 0; transition: opacity .3s ease;
+}
+.vs-duel-logline.show{ opacity: 1; }
+.vs-duel-logline.intro{ color: var(--gold); }
+.vs-duel-logline.crit{ color: var(--gold); font-weight:700; }
+.vs-duel-logline.extra{ color: var(--accent-2); }
+.vs-duel-logline.finish{ color: var(--green, #4dd68a); font-weight:700; }
+.vs-duel-logline.timeout{ color: var(--text-dim); font-style:italic; }
+
+.vs-duel-result{ text-align:center; min-height: 34px; }
+.vs-duel-winbanner{
+  display:inline-block; padding:9px 26px; border-radius:999px;
+  font-family:'Cinzel', serif; font-weight:700; font-size:.95rem; letter-spacing:.05em;
+}
+.vs-duel-winbanner.win{ background: linear-gradient(180deg, var(--gold), var(--gold-dark)); color:#2a2010; }
+.vs-duel-winbanner.lose{ background: rgba(163,38,56,.25); color: var(--red); border:1px solid var(--red); }
+.vs-duel-continue{ margin-top: 8px; }
+
+/* ============================================================
    v1.16 — ANMA MODALI (siyah-beyaz, tek seferlik)
    Oyunun rengarenk temasından bilinçli olarak kopan, sade siyah-beyaz bir
    pencere. Sadece oyunun ilk açılışında (tutorial ya da yenilikler ekranı
