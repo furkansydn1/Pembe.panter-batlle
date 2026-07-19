@@ -91,11 +91,24 @@
 /* V2 Faz 9: Mobil swipe-to-equip/scrap desteği. .swipeable kartlar padding'i
    üstlerinden alıp .inv-swipe-content'e devrediyor ki altındaki yeşil/kırmızı
    ipucu katmanları (.inv-swipe-hint) kaydırma sırasında görünebilsin. */
-.inv-item.swipeable{ padding: 0; position: relative; overflow: hidden; }
+/* BUG FIX: Aksiyon butonları (Kuşan/Hurdaya Çevir/+Bas/Pazara Çıkar) swipeable
+   kartlarda görünmüyordu. Sebep: overflow:hidden, içeriğin (butonlar dahil) kart
+   kutusu sınırında kesilmesine yol açıyordu. Kuşanılı kartta .swipeable sınıfı
+   olmadığından overflow:hidden yoktu — bu yüzden kılıçta (kuşanılı) butonlar
+   çıkıp kaskta (envanterdeki kopyalar) çıkmıyordu.
+   ÇÖZÜM: overflow kaldırıldı. Swipe-hint'ler (yeşil/kırmızı ipucu) zaten absolute
+   + z-index:1 + pointer-events:none dekoratif katman; üstlerindeki .inv-swipe-content
+   (z-index:2, opak arka plan) onları örtüyor, sadece kaydırma sırasında kenardan
+   görünüyorlar. overflow'a gerek yok, butonlar artık tam görünür. */
+.inv-item.swipeable{ padding: 0; position: relative; }
 .inv-item.swipeable .inv-swipe-content{
   padding: 12px 14px; background: var(--bg-panel-alt); position: relative;
   z-index: 2; touch-action: pan-y; will-change: transform;
+  border-radius: 14px; /* kart köşeleriyle hizalı kalsın (overflow gidince köşe taşmasın) */
 }
+/* Kaydırma ipuçları kartın DIŞINA taşmasın diye onları kartın kendi
+   köşe yarıçapında tutuyoruz; overflow yerine bunu kullanıyoruz. */
+.inv-item.swipeable .inv-swipe-hint{ border-radius: 14px; }
 .inv-swipe-hint{
   position: absolute; top: 0; bottom: 0; width: 55%; z-index: 1;
   display: flex; align-items: center; font-weight: 800; font-size: .82rem;

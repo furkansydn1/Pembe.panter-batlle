@@ -30,7 +30,7 @@
 /* ---------- BATTLE LOG ---------- */
 .battle-log{
   display:flex; flex-direction:column; gap:8px;
-  max-height: 70vh;
+  max-height: 70vh; max-height: 70dvh;
   overflow-y:auto;
   padding-right:4px;
 }
@@ -62,7 +62,7 @@
   padding: 26px 22px;
   max-width: 480px;
   width: 100%;
-  max-height: 85vh;
+  max-height: 85vh; max-height: 85dvh;
   overflow-y:auto;
   box-shadow: 0 8px 0 var(--panel-edge), 0 24px 60px -14px #00000088;
 }
@@ -81,7 +81,7 @@
   scroll-snap-align: center;
   padding: 30px 26px 10px;
   display:flex; flex-direction:column; align-items:center; text-align:center;
-  max-height: 56vh;
+  max-height: 56vh; max-height: 56dvh;
   overflow-y:auto;
 }
 .tut-hero{
@@ -163,11 +163,11 @@
 .tut-result-preview .win{ background:#4dd68a1a; border:1px solid #4dd68a55; color: var(--green); }
 .tut-result-preview .lose{ background:#ff5c6c1a; border:1px solid #ff5c6c55; color: var(--red); }
 
-.legend-slide{ max-height: 60vh; }
+.legend-slide{ max-height: 60vh; max-height: 60dvh; }
 .legendary-showcase{
   width:100%;
   display:flex; flex-direction:column; gap:8px;
-  max-height: 34vh; overflow-y:auto; padding-right:2px; margin-top:6px;
+  max-height: 34vh; max-height: 34dvh; overflow-y:auto; padding-right:2px; margin-top:6px;
 }
 .legend-card{
   display:flex; align-items:flex-start; gap:10px;
@@ -254,7 +254,7 @@
 }
 .updates-list{
   display:flex; flex-direction:column; gap:10px;
-  max-height: 52vh; overflow-y:auto; margin: 14px 0; padding-right:4px;
+  max-height: 52vh; max-height: 52dvh; overflow-y:auto; margin: 14px 0; padding-right:4px;
 }
 .update-entry{
   background: var(--bg-panel-alt);
@@ -296,7 +296,7 @@
 /* ---------- KOLEKSİYON KİTABI ---------- */
 .collection-list{
   display:flex; flex-direction:column; gap:16px;
-  max-height: 55vh; overflow-y:auto; margin: 14px 0; padding-right:4px;
+  max-height: 55vh; max-height: 55dvh; overflow-y:auto; margin: 14px 0; padding-right:4px;
 }
 .coll-section-title{
   font-size: .85rem; font-weight:800; margin-bottom:8px;
@@ -372,7 +372,7 @@
 button.equip-slot{ font-family: inherit; cursor:pointer; width:100%; }
 .inventory-list{
   display:flex; flex-direction:column; gap:10px;
-  max-height: 55vh; overflow-y:auto; margin:14px 0; padding-right:4px;
+  max-height: 55vh; max-height: 55dvh; overflow-y:auto; margin:14px 0; padding-right:4px;
 }
 .inv-item{
   background: var(--bg-panel-alt); border: 1px solid rgba(255,255,255,.08);
