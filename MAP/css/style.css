@@ -232,16 +232,16 @@ canvas{
 #touchControls.active{ display:block; }
 #joystickZone{
   position:absolute;
-  left:calc(24px + env(safe-area-inset-left, 0px));
-  bottom:calc(24px + env(safe-area-inset-bottom, 0px));
-  width:130px; height:130px; border-radius:50%;
+  left:calc(20px + env(safe-area-inset-left, 0px));
+  bottom:calc(38px + env(safe-area-inset-bottom, 0px)); /* MOBİL FIX: yukarı alındı (eski: 24px) */
+  width:96px; height:96px; border-radius:50%;           /* MOBİL FIX: küçültüldü (eski: 130px) */
   background: rgba(16,17,23,.4);
   border:1px solid var(--etch-dim);
   pointer-events:auto; touch-action:none;
 }
 #joystickStick{
   position:absolute; left:50%; top:50%;
-  width:56px; height:56px; margin:-28px 0 0 -28px;
+  width:40px; height:40px; margin:-20px 0 0 -20px;      /* MOBİL FIX: küçültüldü (eski: 56px) */
   border-radius:50%;
   background: radial-gradient(circle at 35% 30%, #34363f, #191b22 75%);
   border:1px solid var(--etch);
@@ -249,9 +249,9 @@ canvas{
 }
 #attackBtn{
   position:absolute;
-  right:calc(28px + env(safe-area-inset-right, 0px));
-  bottom:calc(32px + env(safe-area-inset-bottom, 0px));
-  width:84px; height:84px; border-radius:50%;
+  right:calc(24px + env(safe-area-inset-right, 0px));
+  bottom:calc(46px + env(safe-area-inset-bottom, 0px)); /* MOBİL FIX: yukarı alındı (eski: 32px) */
+  width:68px; height:68px; border-radius:50%;           /* MOBİL FIX: küçültüldü (eski: 84px) */
   background: radial-gradient(circle at 35% 30%, #2a2d38, #14161d 75%);
   border:1px solid var(--etch);
   box-shadow: 0 5px 14px rgba(0,0,0,.65), inset 0 1px 0 rgba(255,255,255,.07),
@@ -260,7 +260,7 @@ canvas{
   pointer-events:auto; touch-action:none;
 }
 #attackBtn svg{
-  width:34px; height:34px;
+  width:28px; height:28px;                              /* MOBİL FIX: küçültüldü (eski: 34px) */
   stroke:var(--gold); fill:none; stroke-width:1.6;
   stroke-linecap:round; stroke-linejoin:round;
 }
