@@ -9,6 +9,56 @@ import { createMarketListing } from "./market.js";
 import { S } from "./state.js";
 
 // ============================================================
+// SEVİYE-DIŞI EŞYA OTOMATİK SÖKÜMÜ (kalıcı çözüm)
+// ------------------------------------------------------------
+// SORUN: Geçmişte (level kontrolü eklenmeden önce) kutu/pazar "slot boşsa
+// otomatik kuşan" akışı seviyeye bakmadan eşya takıyordu. box-open/market
+// düzeltmesi YENİ kuşanmaları engelledi ama ZATEN takılı olanları sökmedi —
+// bu yüzden bazı oyuncularda hâlâ seviyesinin üstünde eşya takılı kalıyor.
+// ÇÖZÜM: Bu fonksiyon oyuncu verisi yüklendiğinde çağrılır; kuşanılı ama
+// seviyesi yetmeyen her eşyayı slottan çıkarıp envantere geri koyar (kaybol-
+// maz), statları yeniden hesaplayıp Firestore'a yazar. Böylece admin komutuna
+// gerek kalmadan HERKES girişte otomatik temizlenir — kalıcı, tek seferlik.
+// Değişiklik yoksa Firestore'a hiç yazmaz (gereksiz yazma yok).
+export async function autoUnequipOverleveledItems() {
+  const data = S.currentPlayerData;
+  if (!data || !S.currentPlayerId || !data.equipment) return;
+  const level = data.level || 1;
+  const newEquipment = { ...data.equipment };
+  const newInventory = { ...(data.inventory || {}) };
+  let changed = false;
+
+  for (const slot in newEquipment) {
+    const item = newEquipment[slot];
+    if (!item || !item.rarity) continue;
+    const req = LEVEL_REQUIREMENT_BY_RARITY[item.rarity] ?? 1;
+    if (level < req) {
+      newInventory[slot] = [...(newInventory[slot] || []), item];
+      newEquipment[slot] = null;
+      changed = true;
+    }
+  }
+
+  if (!changed) return; // seviye-dışı eşya yok, dokunma
+  try {
+    const patch = { equipment: newEquipment, inventory: newInventory };
+    // statlar ekipmandan yeniden hesaplanabiliyorsa güncelle
+    try {
+      const stats = computeStatsFromEquipment(newEquipment);
+      if (stats && typeof stats.attack === "number") { patch.attack = stats.attack; patch.defense = stats.defense; }
+    } catch (e) { /* stat hesaplama imzası farklıysa sadece ekipman/envanteri yaz */ }
+    await updateDoc(doc(db, PLAYERS_COL, S.currentPlayerId), patch);
+    // yerel veriyi de güncelle ki UI hemen doğru göstersin
+    S.currentPlayerData.equipment = newEquipment;
+    S.currentPlayerData.inventory = newInventory;
+    if (patch.attack !== undefined) { S.currentPlayerData.attack = patch.attack; S.currentPlayerData.defense = patch.defense; }
+    console.warn("[Otomatik söküm] Seviyeni aşan eşyalar envantere alındı.");
+  } catch (e) {
+    console.error("[Otomatik söküm] hata:", e);
+  }
+}
+
+// ============================================================
 // KOLEKSİYON KİTABI
 // ============================================================
 export function renderCollection() {
@@ -44,8 +94,7 @@ closeCollectionBtn.onclick = () => collectionModal.classList.add("hidden");
 // slot boşsa otomatik kuşanılır; doluysa envantere eklenir ve oyuncu
 // istediği eşyayı manuel olarak kuşanabilir ya da hurdaya çevirebilir.
 // ============================================================
-export function getSlotInventory(slot) {
-  const invRaw = (S.currentPlayerData?.inventory && S.currentPlayerData.inventory[slot]) || [];
+export function getSlotInventory(slot) {  const invRaw = (S.currentPlayerData?.inventory && S.currentPlayerData.inventory[slot]) || [];
   // BUG FIX: İki farklı sorun tek yerde çözülüyor:
   //  (1) Eski eşyaların id'si HİÇ yok → karta basınca ayırt edilemiyordu.
   //  (2) id üreteci geçmişte AYNI id'yi iki esyaya vermiş (çakışma) → iki kart

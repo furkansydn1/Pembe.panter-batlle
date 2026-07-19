@@ -5,7 +5,7 @@ import { BASE_ATTACK, BASE_DEFENSE, ENERGY_MAX, ENERGY_REGEN_MS_PER_POINT, ENERG
 import { badgesGridEl, badgesProgressEl, charAllocAtkEl, charAllocDefEl, charLevelBadgeEl, charStatPointsCountEl, charStatPointsRowEl, charXpFillEl, charXpLabelEl, closeViewEquipmentBtn, collectionModal, currentPlayerNameEl, dailyEventBanner, energyBarFill, energyStatus, energyTasksRow, gameScreen, inventoryModal, leaderboardEl, levelUpConfettiLayer, levelUpLevelNumberEl, levelUpOverlay, loginScreen, materialsGridEl, myAttackEl, myAttackEnvEl, myAttackWarEl, myDefenseEl, myDefenseEnvEl, myDefenseWarEl, myGoldBoxEl, myGoldEnvEl, myGoldMarketEl, myGoldWarEl, myPointsEl, myPointsEnvEl, myPointsWarEl, myScrapBoxEl, myScrapEl, myScrapEnvEl, myScrapWarEl, myStreakEl, statAllocAtkBtn, statAllocDefBtn, statsOpponentsEl, statsOverviewEl, statsStreakEl, streakChip, topEnergyFillEl, topEnergyLabelEl, topGoldValEl, topPerformersBanner, topPointsValEl, topScrapValEl, tpBestName, tpWorstName, viewEquipmentGrid, viewEquipmentModal, viewEquipmentTitle, weeklyLeaderboardInfoEl } from "./dom.js";
 import { BADGES, ensurePersonalDailyEventForToday, getTodaysEvent, randInt } from "./events-badges.js";
 import { LOG_COL, MARKET_LISTINGS_COL, PLAYERS_COL, TRADE_LOGS_COL, collection, db, doc, getDoc, limit, onSnapshot, orderBy, query, updateDoc } from "./firebase-setup.js";
-import { renderCollection, renderInventoryModal } from "./inventory.js";
+import { autoUnequipOverleveledItems, renderCollection, renderInventoryModal } from "./inventory.js";
 import { BOOK_TIER_ICONS, BOOK_TIER_NAMES, RARITY_ORDER, computeStatsFromEquipment, getBooks, xpNeededForLevel } from "./item-systems.js";
 import { SLOTS, itemIconSvg } from "./items-data.js";
 import { dateStr, emptyEquipment, formatRemaining, renderMapTab } from "./map.js";
@@ -53,6 +53,13 @@ export async function startGame() {
   S.activeUnsubscribers.push(onSnapshot(ref, (docSnap) => {
     if (!docSnap.exists()) return;
     S.currentPlayerData = { id: docSnap.id, ...docSnap.data() };
+    // [Kalıcı fix] Seviyeni aşan takılı eşyaları bir kez otomatik sök (girişte).
+    // Yalnızca ilk yüklemede tetiklenir; değişiklik varsa Firestore'a yazar,
+    // onSnapshot tekrar çalışır ama __autoUnequipDone bayrağı ikinci kez engeller.
+    if (!S.__autoUnequipDone) {
+      S.__autoUnequipDone = true;
+      autoUnequipOverleveledItems();
+    }
     currentPlayerNameEl.textContent = S.currentPlayerData.nick;
     renderMyStats();
     renderCharacterLevel();
