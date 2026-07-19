@@ -233,15 +233,15 @@ canvas{
 #joystickZone{
   position:absolute;
   left:calc(20px + env(safe-area-inset-left, 0px));
-  bottom:calc(38px + env(safe-area-inset-bottom, 0px)); /* MOBİL FIX: yukarı alındı (eski: 24px) */
-  width:96px; height:96px; border-radius:50%;           /* MOBİL FIX: küçültüldü (eski: 130px) */
+  bottom:calc(46px + env(safe-area-inset-bottom, 0px)); /* MOBİL FIX: az daha yukarı (eski: 38px) */
+  width:112px; height:112px; border-radius:50%;         /* MOBİL FIX: az daha büyütüldü (eski: 96px) */
   background: rgba(16,17,23,.4);
   border:1px solid var(--etch-dim);
   pointer-events:auto; touch-action:none;
 }
 #joystickStick{
   position:absolute; left:50%; top:50%;
-  width:40px; height:40px; margin:-20px 0 0 -20px;      /* MOBİL FIX: küçültüldü (eski: 56px) */
+  width:46px; height:46px; margin:-23px 0 0 -23px;      /* MOBİL FIX: az daha büyütüldü (eski: 40px) */
   border-radius:50%;
   background: radial-gradient(circle at 35% 30%, #34363f, #191b22 75%);
   border:1px solid var(--etch);
