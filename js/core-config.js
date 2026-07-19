@@ -64,6 +64,14 @@ export function normalizeUsername(u) {
 }
 export const BASE_ATTACK = 10;
 export const BASE_DEFENSE = 10;
+// [V4 Entegrasyon] Kritik ve Saldırı Hızı için başlangıç (varsayılan) statları.
+// Eşyası hiç olmayan HERKES bu değerlerle başlar; eşyalardan gelen critStat/speed
+// bunların ÜSTÜNE eklenir. Böylece hem ana oyunda hem MAP'te (14-hero-stats köprüsü)
+// taban bir kritik/hız garanti olur, eşya topladıkça artar.
+//   BASE_CRIT: MAP'te doğrudan kritik ŞANSI olarak okunur (5 → %5 taban kritik).
+//   BASE_SPEED: Hız statının tabanı; 0 = normal hız (çarpan 1.0), eşya arttırır.
+export const BASE_CRIT = 5;
+export const BASE_SPEED = 0;
 
 // ============================================================
 // [V2 Faz 3] LEVEL / EXP / STAT PUANI SİSTEMİ
