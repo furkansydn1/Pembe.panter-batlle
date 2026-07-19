@@ -7,7 +7,11 @@
   border-radius: 12px;
   padding: 9px 11px;
 }
-.attack-target-row .name{flex:1; font-weight:700; font-size:.88rem;}
+.attack-target-row .name{
+  flex:1; font-weight:700; font-size:.88rem; min-width:0;
+  display:flex; flex-direction:column; align-items:flex-start; gap:5px;
+}
+.attack-target-row .name .nameplate{ margin-top:1px; }
 .attack-target-row .stats{font-size:.72rem; color:var(--text-dim); font-weight:600;}
 .attack-target-row button{
   background: linear-gradient(180deg, #ff8a93, var(--red));
