@@ -1,1 +1,0 @@
-Kullanımda: zemin-full.png (1600x1000 TEK PARÇA organik zemin - yama/karo yok), agac.png, kaya.png. Harita boyutu değişirse zemin-full yeniden üretilmeli.
