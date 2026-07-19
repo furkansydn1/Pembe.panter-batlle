@@ -850,6 +850,28 @@
       </div>
 
       <div class="vs-clash-text" id="vsClashText">ÇARPIŞMA!</div>
+
+      <!-- v4 CANLI DÜELLO EKRANI — giriş animasyonu (kartlar kayması + çarpışma)
+           bittikten sonra, aynı modalın üstüne açılır. gerçek duel-engine.js
+           sonucunu (turn turn) canlı oynatır: can barları düşer, spiker log akar. -->
+      <div class="vs-duel-live hidden" id="vsDuelLive">
+        <div class="vs-duel-cards">
+          <div class="vs-duel-card" id="vsDuelCardA">
+            <div class="vs-duel-name" id="vsDuelNameA">-</div>
+            <div class="vs-duel-hpbar"><div class="vs-duel-hpfill" id="vsDuelHpFillA"></div></div>
+            <div class="vs-duel-hptxt" id="vsDuelHpTxtA">0 / 0</div>
+          </div>
+          <div class="vs-duel-vslabel">VS</div>
+          <div class="vs-duel-card" id="vsDuelCardB">
+            <div class="vs-duel-name" id="vsDuelNameB">-</div>
+            <div class="vs-duel-hpbar"><div class="vs-duel-hpfill vs-duel-hpfill-b" id="vsDuelHpFillB"></div></div>
+            <div class="vs-duel-hptxt" id="vsDuelHpTxtB">0 / 0</div>
+          </div>
+        </div>
+        <div class="vs-duel-logwrap"><div class="vs-duel-log" id="vsDuelLog"></div></div>
+        <div class="vs-duel-result" id="vsDuelResult"></div>
+        <button type="button" class="btn btn-primary vs-duel-continue" id="vsDuelContinueBtn" style="display:none;">Devam</button>
+      </div>
     </div>
   </div>
 </div>
