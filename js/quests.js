@@ -54,8 +54,8 @@ export const TARGET_LOCK_COOLDOWN_ATTACKS = 3;
 // yükseltildi (zorlaştıkça ödül daha dik artıyor).
 export const QUEST_TIER_REWARDS = {
   kolay: { scrapMin: 1, scrapMax: 2, pointsMin: 1, pointsMax: 2, itemChance: 0 },
-  orta: { scrapMin: 3, scrapMax: 5, pointsMin: 3, pointsMax: 6, itemChance: 0.15 },
-  zor: { scrapMin: 6, scrapMax: 9, pointsMin: 7, pointsMax: 12, itemChance: 1, bookChance: 0.08, bookTier: "standart" }
+  orta: { scrapMin: 3, scrapMax: 5, pointsMin: 3, pointsMax: 6, itemChance: 0 },
+  zor: { scrapMin: 6, scrapMax: 9, pointsMin: 7, pointsMax: 12, itemChance: 0 }
 };
 export const QUEST_TIER_LABELS = { kolay: "Kolay", orta: "Orta", zor: "Zor", efsanevi: "Efsanevi" };
 
@@ -75,8 +75,8 @@ export const QUEST_TIER_LABELS = { kolay: "Kolay", orta: "Orta", zor: "Zor", efs
 // bir kaynak sağlıyor. Hurda/puan aralıkları da V2 fiyatlarına (Market'teki
 // Nadir Sandık 3000 Altın, upgrade maliyetleri vb.) göre hafifçe yükseltildi.
 export const WEEKLY_TIER_REWARDS = {
-  orta: { scrapMin: 10, scrapMax: 15, pointsMin: 12, pointsMax: 18, itemChance: 0.30, bookChance: 0.20, bookTier: "nadir" },
-  zor: { scrapMin: 18, scrapMax: 26, pointsMin: 22, pointsMax: 32, itemChance: 0.5, bookChance: 0.4, bookTier: "efsanevi" }
+  orta: { scrapMin: 10, scrapMax: 15, pointsMin: 12, pointsMax: 18, itemChance: 0 },
+  zor: { scrapMin: 18, scrapMax: 26, pointsMin: 22, pointsMax: 32, itemChance: 0 }
 };
 // [V2 Faz 6] Aylık: en zor ("efsanevi" tier, ayın TEK garanti Efsanevi eşya
 // ödülü) artık ayrıca garanti 1 Mitik Kitap da veriyor — Mitik eşya
@@ -84,8 +84,8 @@ export const WEEKLY_TIER_REWARDS = {
 // TEK öngörülebilir/garanti kaynağı bu görev oluyor bilerek; Dünya Boss'u
 // (Faz 6, aynı fazda eklendi) düşük ihtimalli/şansa bağlı ikinci kaynak.
 export const MONTHLY_TIER_REWARDS = {
-  zor: { scrapMin: 34, scrapMax: 48, pointsMin: 40, pointsMax: 58, itemChance: 1, bookChance: 1, bookTier: "efsanevi", bookAmount: 2 },
-  efsanevi: { scrapMin: 42, scrapMax: 62, pointsMin: 48, pointsMax: 68, itemChance: 0, legendary: true, bookChance: 1, bookTier: "mitik", bookAmount: 1 }
+  zor: { scrapMin: 34, scrapMax: 48, pointsMin: 40, pointsMax: 58, itemChance: 0 },
+  efsanevi: { scrapMin: 42, scrapMax: 62, pointsMin: 48, pointsMax: 68, itemChance: 0, rareItem: true }
 };
 
 // Hedefler oyunun gerçek temposuna göre kasıtlı olarak zorlaştırıldı: kutu 4 saatte
@@ -119,7 +119,8 @@ export function rollQuestRewardGeneric(table, tier) {
   return {
     scrap: randInt(r.scrapMin, r.scrapMax),
     points: randInt(r.pointsMin, r.pointsMax),
-    item: !r.legendary && Math.random() < r.itemChance,
+    // rareItem (aylık en zor görev) → garanti nadir eşya; yoksa itemChance'a bak
+    item: r.rareItem ? true : (!r.legendary && Math.random() < r.itemChance),
     legendary: !!r.legendary,
     bookTier: rewardBook ? r.bookTier : null,
     bookAmount: rewardBook ? (r.bookAmount || 1) : 0
@@ -177,8 +178,8 @@ export function shuffleArr(arr) { return [...arr].sort(() => Math.random() - 0.5
 // [V2 Faz 6] Ödül tabloları (WEEKLY_TIER_REWARDS/MONTHLY_TIER_REWARDS, Kitap
 // ödülü eklendi) değiştiği için versiyon "v2" → "v3" yükseltildi; aksi halde
 // mevcut oyuncular eski (kitapsız) ödüllerini korurdu.
-export const WEEKLY_QUEST_VERSION = "v3";
-export const MONTHLY_QUEST_VERSION = "v3";
+export const WEEKLY_QUEST_VERSION = "v4";
+export const MONTHLY_QUEST_VERSION = "v4";
 
 export async function ensureWeeklyQuestsForThisWeek(data) {
   const wk = `${weekIdStr()}#${WEEKLY_QUEST_VERSION}`;
