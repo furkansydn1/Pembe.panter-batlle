@@ -71,10 +71,19 @@ function playSfx(name, { volume = 1, pitch = 1, pitchVar = 0 } = {}) {
 }
 
 // ---------- KRİTİK VURUŞ ----------
-const CRIT_CHANCE = 0.15;
+// ---------- KRİTİK VURUŞ ----------
+// [V4 ENTEGRASYON] Kritik şansı artık SABİT değil — 14-hero-stats.js ana
+// oyundaki critStat'tan (taban %5 + eşyalar) hesaplayıp window.__mapCritChance'e
+// yazıyor. Burada onu okuyoruz; köprü yüklenmemişse (ör. MAP'i tek başına test)
+// güvenli varsayılan %5 taban kullanılır. Çift kritik sistemi çakışması böylece
+// tek merkeze indirildi: olasılık hero-stats'tan gelir, görsel juice buradan.
 const CRIT_MULT = 2;
+function getMapCritChance() {
+  const c = (typeof window !== "undefined") ? window.__mapCritChance : undefined;
+  return (typeof c === "number") ? c : 0.05; // köprü yoksa %5 taban
+}
 function rollPlayerHit(base) {
-  const crit = Math.random() < CRIT_CHANCE;
+  const crit = Math.random() < getMapCritChance();
   return { dmg: crit ? base * CRIT_MULT : base, crit };
 }
 

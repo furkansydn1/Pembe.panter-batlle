@@ -26,6 +26,7 @@
   var DEF_REDUCTION_CAP = 0.8; // gelen hasar en fazla %80 azalır
   var CRIT_CHANCE_CAP = 0.5; // battle.js ile aynı: kritik şansı %50 tavan
   var CRIT_MULTIPLIER = 1.6; // battle.js ile aynı: kritik hasar çarpanı
+  var BASE_CRIT_CHANCE = 0.05; // [V4] TABAN kritik: eşyasız oyuncu bile %5 kritik atar (core-config BASE_CRIT ile eşleşir)
   var SPD_HALF_VALUE = 25;   // battle.js ile aynı: bu kadar Hız, maks bonusun yarısı
   var MAX_ASPD_MULT = 3;     // battle.js ile aynı: hız tavanı
 
@@ -40,7 +41,13 @@
 
   var dmgMult = Math.min(DMG_MULT_CAP, 1 + itemAtk / ATK_SCALE);
   var defReduction = Math.min(DEF_REDUCTION_CAP, itemDef / (itemDef + DEF_K));
-  var critChance = Math.min(CRIT_CHANCE_CAP, Math.max(0, (Number(hero.critStat) || 0) / 100));
+  // Kritik = TABAN (%5) + eşyalardan gelen critStat. Böylece eşyasız oyuncu bile
+  // %5 kritik atar, eşya topladıkça artar (tavan CRIT_CHANCE_CAP = %50).
+  var critChance = Math.min(CRIT_CHANCE_CAP, BASE_CRIT_CHANCE + Math.max(0, (Number(hero.critStat) || 0) / 100));
+  // [V4] Kritik olasılığını KÖPRÜ global'ine yaz — 05-effects.js'teki rollPlayerHit
+  // bunu okuyup kritik zarını atıyor (görsel juice + KRİTİK yazısı orada). Böylece
+  // kritik TEK yerde (rollPlayerHit) atılıyor, buradaki setter artık kritik ATMIYOR.
+  if (typeof window !== "undefined") window.__mapCritChance = critChance;
   var spd = Math.max(0, Number(hero.speed) || 0);
   var aspdMult = 1 + (MAX_ASPD_MULT - 1) * (spd / (spd + SPD_HALF_VALUE));
   var heroMaxHp = Math.max(100, Math.round(Number(hero.maxHp) || 100));
@@ -105,11 +112,11 @@
     });
   })();
 
-  // ---- SALDIRI + KRİTİK: canavar hp'sine gelen düşüşleri büyüt ----
-  // Canavar dosyaları "canavar.hp -= hasar" yazar; her canavara takılan
-  // setter hasarı saldırı çarpanıyla büyütür, kritik zarı tutarsa 1.6x
-  // daha ekler ve "KRİTİK!" yazısı gösterir. Yeni dalgalar için diziler
-  // düzenli taranır (spawnNewWave dizileri sıfırdan kurduğu için).
+  // ---- SALDIRI: canavar hp'sine gelen düşüşleri saldırı çarpanıyla büyüt ----
+  // Canavar dosyaları "canavar.hp -= hasar" yazar; setter hasarı dmgMult ile
+  // büyütür. [V4] KRİTİK BURADAN KALDIRILDI — kritik artık tek yerde,
+  // rollPlayerHit'te (05-effects) atılıyor ve hitJuice görsel efekti + "KRİTİK"
+  // yazısını orada gösteriyor. Burada da kritik atılırsa ÇİFT kritik olurdu.
   function instrumentEnemy(e) {
     if (!e || e.__heroStatsApplied) return;
     e.__heroStatsApplied = true;
@@ -120,12 +127,6 @@
       set: function (v) {
         if (typeof v === "number" && v < hpVal) {
           var dmg = (hpVal - v) * dmgMult;
-          if (Math.random() < critChance) {
-            dmg *= CRIT_MULTIPLIER;
-            if (typeof spawnFloatingText === "function") {
-              spawnFloatingText(e.x, e.y - 34, "KRİTİK!", "#ffcc4d");
-            }
-          }
           hpVal = hpVal - dmg;
         } else {
           hpVal = v;
