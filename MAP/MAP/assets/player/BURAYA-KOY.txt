@@ -1,0 +1,1 @@
+Karakter sprite sheet'ini 'karakter.png', kılıç izini 'kilic-iz.png' adıyla buraya koy.
