@@ -133,11 +133,13 @@ export function simulateBattle3s(attacker, defender) {
 export const STARTING_ELO = 1000;
 export const ELO_K_FACTOR = 24; // normal bir savaşta elo ne kadar hızlı değişir
 export const LEAGUE_TIERS = [
-  { id: "caylak", label: "Çaylak", icon: "🐾", minElo: 0 },
-  { id: "avci", label: "Avcı", icon: "🎯", minElo: 1000 },
-  { id: "sampiyon", label: "Şampiyon", icon: "🏆", minElo: 1200 },
-  { id: "elit", label: "Elit", icon: "💎", minElo: 1400 },
-  { id: "efsane", label: "Efsane", icon: "👑", minElo: 1600 }
+  // color: nameplate'teki --np-c değişkenine gider (bkz. game-core.js renderLeaderboard).
+  // Rarity paletiyle aynı tonlar kullanıldı (item-standart/nadir/mitik/efsanevi ile eşleşiyor).
+  { id: "caylak", label: "Çaylak", icon: "🐾", minElo: 0, color: "#94a3b8" },
+  { id: "avci", label: "Avcı", icon: "🎯", minElo: 1000, color: "#4dd68a" },
+  { id: "sampiyon", label: "Şampiyon", icon: "🏆", minElo: 1200, color: "#4d9bff" },
+  { id: "elit", label: "Elit", icon: "💎", minElo: 1400, color: "#b845ff" },
+  { id: "efsane", label: "Efsane", icon: "👑", minElo: 1600, color: "#ffcc4d" }
 ];
 export function getElo(data) {
   return data?.elo ?? STARTING_ELO;
@@ -742,7 +744,13 @@ export async function runAttack(defenderId) {
         attackPower = dmgA;
         defensePower = dmgD;
         // Düellonun spiker anlatımını log'a ekle (VS ekranı + sonuç için)
-        battleSim = { attackerWins, duel, dmgDealtA: dmgA, dmgDealtD: dmgD, hitsA, hitsD, critHitsA: critA, critHitsD: critD, ko: duel.reason === "turnlimit" ? "timeout" : "ko" };
+        // Tur tur "spiker" anlatımı: buildDuelCommentary daha önce sadece
+        // import edilip hiç çağrılmıyordu, bu yüzden yeni düello motoru
+        // arka planda kazananı doğru belirliyordu ama en gösterişli kısmı
+        // (anlatım) hiçbir yerde görünmüyordu. Artık üretilip battleSim'e
+        // ekleniyor ve aşağıda transaction'ın return'ü ile dışarı taşınıyor.
+        const commentary = buildDuelCommentary(duel, attacker.nick, defender.nick);
+        battleSim = { attackerWins, duel, commentary, dmgDealtA: dmgA, dmgDealtD: dmgD, hitsA, hitsD, critHitsA: critA, critHitsD: critD, ko: duel.reason === "turnlimit" ? "timeout" : "ko" };
         legendaryLog.push(
           duel.reason === "turnlimit"
             ? `${DUEL_MAX_TURNS_LABEL} tur doldu: kalan cana göre ${attackerWins ? attacker.nick : defender.nick} kazandı. (${attacker.nick}: ${hitsA} vuruş/${critA} kritik, ${defender.nick}: ${hitsD} vuruş/${critD} kritik)`
@@ -982,7 +990,7 @@ export async function runAttack(defenderId) {
       return {
         skipped: false,
         attackerWins, attackPower: Math.round(attackPower), defensePower: Math.round(defensePower),
-        message: mainMessage, legendaryLog
+        message: mainMessage, legendaryLog, battleSim
       };
     }).then(result => {
       if (result && !result.skipped) showResultModal(result);
@@ -1013,9 +1021,15 @@ export function showResultModal(result) {
   } else {
     const won = result.attackerWins;
     playSound(won ? "win" : "lose");
+    // Yeni düello motorunun tur tur anlatımı (varsa) — critTriggered gibi
+    // düellosuz özel yollarda battleSim null kalır, o zaman bu blok atlanır.
+    const commentaryHtml = result.battleSim?.commentary?.length
+      ? `<div class="result-passive duel-commentary">${result.battleSim.commentary.map(x => `• ${x}`).join("<br>")}</div>`
+      : "";
     resultContent.innerHTML = `
       <div class="result-title ${won ? "win" : "lose"}">${won ? "🏆 Kazandın!" : "💀 Kaybettin!"}</div>
       <p class="result-line">Senin Gücün: ${result.attackPower} &nbsp;|&nbsp; Rakip Gücü: ${result.defensePower}</p>
+      ${commentaryHtml}
       ${result.legendaryLog.length ? `<div class="result-passive">${result.legendaryLog.map(x => `• ${x}`).join("<br>")}</div>` : ""}
     `;
   }
