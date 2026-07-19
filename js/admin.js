@@ -340,3 +340,38 @@ if (typeof window !== "undefined") {
   window.adminResetAllElo = adminResetAllElo;
 }
 
+// ============================================================
+// ADMIN: TEK BİR OYUNCUNUN ELO'SUNU SIFIRLA (SADECE KONSOL)
+// ------------------------------------------------------------
+// adminResetAllElo TÜM oyuncuları sıfırlar — tek bir oyuncuyu hedeflemek
+// istediğinde bu kullanılır. Nick'e göre players koleksiyonunda arar
+// (case-insensitive tam eşleşme), bulduğu ilk dokümanın elo alanını
+// RESET_ELO_VALUE'ya (battle.js STARTING_ELO ile aynı) çeker.
+// Konsolden:  adminResetPlayerElo("FurkanÖzdede")
+export async function adminResetPlayerElo(nick) {
+  if (!requireAdmin("adminResetPlayerElo")) return { ok: false, reason: "not_admin" };
+  if (!nick || typeof nick !== "string") {
+    console.error("❌ Geçerli bir nick belirtmelisin. Örnek: adminResetPlayerElo(\"FurkanÖzdede\")");
+    return { ok: false, reason: "invalid_nick" };
+  }
+
+  try {
+    const snap = await getDocs(collection(db, PLAYERS_COL));
+    const target = snap.docs.find(d => (d.data().nick || "").toLowerCase() === nick.toLowerCase());
+    if (!target) {
+      console.error(`❌ "${nick}" nick'ine sahip bir oyuncu bulunamadı.`);
+      return { ok: false, reason: "not_found" };
+    }
+    const oldElo = target.data().elo;
+    await updateDoc(target.ref, { elo: RESET_ELO_VALUE });
+    console.warn(`✅ "${target.data().nick}" oyuncusunun Elo'su ${oldElo} → ${RESET_ELO_VALUE} olarak sıfırlandı.`);
+    return { ok: true, nick: target.data().nick, oldElo, newElo: RESET_ELO_VALUE };
+  } catch (e) {
+    console.error("Elo sıfırlama sırasında hata oluştu:", e);
+    return { ok: false, reason: "error", error: e.message };
+  }
+}
+if (typeof window !== "undefined") {
+  window.adminResetPlayerElo = adminResetPlayerElo;
+}
+
