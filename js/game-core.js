@@ -158,21 +158,23 @@ export function renderLeaderboard() {
     const elo = getElo(p);
     const tier = getLeagueTier(elo);
     const level = p.level ?? 1;
-    // NAMEPLATE: kademe rengine göre renkli rozet — seviye + kademe + elo tek şeritte.
+    // NAMEPLATE: tüm görsel stil 03-paneller-gorevler.css'teki .nameplate'te.
+    // Kademe rengi --np-c değişkeniyle geçiyor, 5 kademe tek CSS bloğuyla boyanıyor.
     const nameplate = `
-      <span class="nameplate" style="display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:999px;background:linear-gradient(135deg,${tier.color}22,${tier.color}0d);border:1px solid ${tier.color}66;font-size:0.82em;line-height:1;white-space:nowrap;">
-        <b style="color:#e7e0d0;font-weight:700;">Sv.${level}</b>
-        <span style="width:1px;height:10px;background:${tier.color}55;"></span>
-        <span style="color:${tier.color};font-weight:600;">${tier.icon} ${tier.label}</span>
-        <span style="color:${tier.color}bb;font-variant-numeric:tabular-nums;">${elo}</span>
+      <span class="nameplate" style="--np-c:${tier.color};">
+        <b class="np-lvl">Sv.${level}</b>
+        <span class="np-sep"></span>
+        <span class="np-tier">${tier.icon} ${tier.label}</span>
+        <span class="np-elo">${elo}</span>
       </span>`;
+    const topClass = i === 0 ? "top1" : i === 1 ? "top2" : i === 2 ? "top3" : "";
     return `
-      <div class="lb-row ${isMe ? "me" : ""}" data-id="${p.id}" ${isMe ? "" : 'style="cursor:pointer;"'}>
+      <div class="lb-row ${isMe ? "me" : ""} ${topClass}" data-id="${p.id}" ${isMe ? "" : 'style="cursor:pointer;"'}>
         <div class="lb-rank ${rankClass}">${i + 1}</div>
         <div class="lb-info">
           <div class="lb-name">${isThrone ? '<span class="throne-crown" title="1.lik Avı hedefi">👑</span> ' : ""}${p.nick}${isMe ? " (sen)" : ""}</div>
           <div class="lb-stats">⚔️ ${p.attack ?? BASE_ATTACK} &nbsp; 🛡️ ${p.defense ?? BASE_DEFENSE}</div>
-          <div class="lb-league" style="margin-top:3px;">${nameplate}</div>
+          ${nameplate}
         </div>
         <div class="lb-points">${p.points ?? 0}</div>
       </div>`;
