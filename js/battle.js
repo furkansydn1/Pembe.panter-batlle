@@ -121,26 +121,21 @@ export function simulateBattle3s(attacker, defender) {
 }
 
 // ============================================================
-// ELO / LİG SİSTEMİ (V2 Faz 5 — V4 yeniden dengeleme)
+// ELO / LİG SİSTEMİ (V2 Faz 5)
 // Çaylak'tan Efsane'ye 5 kademeli bir lig. Her oyuncunun `elo` alanı
 // (Firestore'da yeni, eski dokümanlarda yok -> getElo() ile STARTING_ELO
 // varsayılır) standart Elo formülüyle (bkz. computeEloDelta) her savaştan
 // sonra güncellenir. Kademe SAKLANMAZ, her zaman elo'dan CANLI hesaplanır
 // (getLeagueTier) — böylece elo/kademe asla birbirinden kopmaz.
-// [V4] Başlangıç 1000→100'e çekildi: herkes en alt kademe ÇAYLAK'tan başlasın
-// (eskiden 1000 = herkes doğrudan Avcı'ydı, ilk kademe ölüydü). Eşikler de
-// 100 başlangıca göre yeniden ölçeklendi ve kademe isimleri güncellendi
-// (Avcı/Elit → Savaşçı/Usta). Alt kademelere düşme payı olsun diye taban
-// 0 değil 100; kötü giden oyuncu 100'ün altına inip Çaylak'ta kalabilir.
 // ============================================================
-export const STARTING_ELO = 100;
-export const ELO_K_FACTOR = 16; // [V4] 24→16: 100 tabanlı sıkışık skalada elo daha kontrollü ilerlesin (tek maçta 1 kademe zıplamasın)
+export const STARTING_ELO = 1000;
+export const ELO_K_FACTOR = 24; // normal bir savaşta elo ne kadar hızlı değişir
 export const LEAGUE_TIERS = [
-  { id: "caylak", label: "Çaylak", icon: "🐾", minElo: 0, color: "#9ca3af" },
-  { id: "savasci", label: "Savaşçı", icon: "⚔️", minElo: 250, color: "#6ee7a8" },
-  { id: "usta", label: "Usta", icon: "🎯", minElo: 450, color: "#60a5fa" },
-  { id: "sampiyon", label: "Şampiyon", icon: "🏆", minElo: 700, color: "#c084fc" },
-  { id: "efsane", label: "Efsane", icon: "👑", minElo: 1000, color: "#fbbf24" }
+  { id: "caylak", label: "Çaylak", icon: "🐾", minElo: 0 },
+  { id: "avci", label: "Avcı", icon: "🎯", minElo: 1000 },
+  { id: "sampiyon", label: "Şampiyon", icon: "🏆", minElo: 1200 },
+  { id: "elit", label: "Elit", icon: "💎", minElo: 1400 },
+  { id: "efsane", label: "Efsane", icon: "👑", minElo: 1600 }
 ];
 export function getElo(data) {
   return data?.elo ?? STARTING_ELO;
@@ -170,8 +165,8 @@ export function computeEloDelta(myElo, oppElo, actualScore, kFactor) {
 // sürekli hedef alarak kolay puan/Elo çiftliği kurmasını (griefing) önler.
 // İKİ koşuldan HERHANGİ biri yeterlidir (güç farkı VEYA elo farkı).
 // ============================================================
-export const GRIEFING_POWER_RATIO = 2.0;   // saldıranın toplam gücü savunanınkinin bu katından fazlaysa
-export const GRIEFING_ELO_GAP = 300;       // saldıranın Elo'su savunandan bu kadar fazlaysa (yaklaşık 2 kademe)
+export const GRIEFING_POWER_RATIO = 3.5;   // [V4] 2.0→3.5: saldıranın toplam gücü savunanınkinin bu KATINDAN fazlaysa zorbalık sayılır. Ufak eşya farkları artık tetiklemez; sadece gerçekten ezici fark (3.5x+) 1 puana düşer.
+export const GRIEFING_ELO_GAP = 350;       // [V4] 300→350: yeni Elo skalasında ~2 kademe fark (ör. Çaylak↔Usta). Aynı/komşu kademedekiler normal puan alır.
 export const GRIEFING_MIN_WIN_PTS = 1;     // güçsüze/düşük Elo'ya saldırıp kazanınca alınacak puan (neredeyse yok)
 export const GRIEFING_ELO_K_FACTOR = 4;    // griefing durumunda Elo kazancı da neredeyse bastırılır
 
@@ -581,8 +576,20 @@ export async function runAttack(defenderId) {
       // puan/Elo hesaplamasında (sadece attackerWins durumunda) kullanılır.
       const attackerElo = getElo(attacker);
       const defenderElo = getElo(defender);
-      const attackerTotalPower = (attacker.attack || BASE_ATTACK) + (attacker.defense || BASE_DEFENSE);
-      const defenderTotalPower = (defender.attack || BASE_ATTACK) + (defender.defense || BASE_DEFENSE);
+      // [V4] TOPLAM GÜÇ artık sadece atk+def değil, TÜM savaş statlarını içerir
+      // (saldırı, savunma, can, kritik, hız) — oyuncunun beklediği "total güç"
+      // buydu. Her stat kabaca aynı ölçeğe getirilip toplanıyor: can/10 (100 can
+      // ≈ 10 puan), kritik ve hız zaten küçük sayılar olduğu için doğrudan.
+      function totalPower(p) {
+        const atk = p.attack ?? BASE_ATTACK;
+        const def = p.defense ?? BASE_DEFENSE;
+        const hp = (p.maxHp ?? 100) / 10;      // 100 can ≈ 10 güç puanı
+        const crit = p.critStat ?? 0;           // kritik statı (0-50 civarı)
+        const spd = p.speed ?? 0;               // hız statı
+        return atk + def + hp + crit + spd;
+      }
+      const attackerTotalPower = totalPower(attacker);
+      const defenderTotalPower = totalPower(defender);
       const isPowerGriefing = attackerTotalPower >= defenderTotalPower * GRIEFING_POWER_RATIO;
       const isEloGriefing = (attackerElo - defenderElo) >= GRIEFING_ELO_GAP;
       const isGriefing = isPowerGriefing || isEloGriefing;
