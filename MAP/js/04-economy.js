@@ -49,7 +49,7 @@ const mapClearCountdownLabelEl = document.getElementById("mapClearCountdownLabel
 // itemsLabelEl/rareLabelEl/legendaryLabelEl DOM etiketleri yeniden kullanıldı
 // (yeni HTML elementi eklemeden çalışsın diye — ayrı etiketler istersen
 // index.html'e yeni id'ler ekleyip haber ver).
-const DROP_CHANCE_BOOK = 0.08;    // %8      — Sıradan Kitap
+const DROP_CHANCE_BOOK = 0.06;    // %6 (istenen %4-%7 aralığında)  — Sıradan Kitap — tüm canavarlarda ortak (maybeDropItem tek merkez, orc/soldier/goblin hepsi buradan geçiyor)
 const DROP_CHANCE_GOLD = 0.25;    // %25     — Altın (1 adet) — enflasyon önleme: %85'ten indirildi
 const DROP_CHANCE_SCRAP = 0.10;   // %10     — Hurda (1 adet) — enflasyon önleme: %87.5'ten indirildi
 
