@@ -12,29 +12,47 @@ const camera = { x: 0, y: 0 };
 let hitstopT = 0;
 function triggerHitstop(dur) { hitstopT = Math.max(hitstopT, dur); }
 
-// ---------- SES (SFX) ----------
-// Dosyalar assets/sfx/ klasöründe. Aynı ses üst üste çalabilsin diye küçük
-// havuz; pitchVar aynı sesin robotik tekrarını kırar (±%X rastgele tiz/pes).
+// ---------- SES (SFX) — WebAudio sürümü ----------
+// ESKİ SORUN: new Audio() + play() mobilde ana thread'i tıkıyordu; adım sesi
+// her 0.3 sn'de çaldığı için oyuna ritmik KASMA olarak biniyordu.
+// YENİ: sesler ilk dokunuşta BİR KERE belleğe çözülür (decodeAudioData),
+// sonrası neredeyse bedava — pitch/volume dahil hiçbir maliyeti yok.
 const SFX_PATHS = {
   vurus: "assets/sfx/sword_clash.wav",
   adim: "assets/sfx/foley_footstep_gravel_1.wav",
   olum: "assets/sfx/vibraphone_negative.wav",
 };
-const sfxPool = {};
-function playSfx(name, { volume = 1, pitch = 1, pitchVar = 0 } = {}) {
-  const path = SFX_PATHS[name];
-  if (!path) return;
-  if (!sfxPool[name]) sfxPool[name] = [];
-  let a = sfxPool[name].find(x => x.paused || x.ended);
-  if (!a) {
-    if (sfxPool[name].length >= 6) return; // havuz limiti — ses spam'i koruması
-    a = new Audio(path);
-    sfxPool[name].push(a);
+let audioCtx = null;
+const sfxBuffers = {};
+function initAudio() {
+  if (audioCtx) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  audioCtx = new AC();
+  for (const name in SFX_PATHS) {
+    fetch(SFX_PATHS[name])
+      .then(r => r.arrayBuffer())
+      .then(b => audioCtx.decodeAudioData(b))
+      .then(buf => { sfxBuffers[name] = buf; })
+      .catch(() => {}); // dosya yoksa sessiz geç — oyun sessiz ama akıcı devam eder
   }
-  a.volume = volume;
-  a.playbackRate = Math.max(0.5, pitch + (Math.random() - 0.5) * 2 * pitchVar);
-  a.currentTime = 0;
-  a.play().catch(() => {}); // ilk kullanıcı dokunuşundan önce tarayıcı engelleyebilir — sessiz geç
+}
+// Tarayıcı ses iznini ilk kullanıcı jestiyle verir — üç kanaldan da yakala
+window.addEventListener("touchstart", initAudio, { once: true, passive: true });
+window.addEventListener("keydown", initAudio, { once: true });
+window.addEventListener("mousedown", initAudio, { once: true });
+
+function playSfx(name, { volume = 1, pitch = 1, pitchVar = 0 } = {}) {
+  if (!audioCtx || !sfxBuffers[name]) return;
+  if (audioCtx.state === "suspended") audioCtx.resume();
+  const src = audioCtx.createBufferSource();
+  src.buffer = sfxBuffers[name];
+  src.playbackRate.value = Math.max(0.5, pitch + (Math.random() - 0.5) * 2 * pitchVar);
+  const gain = audioCtx.createGain();
+  gain.gain.value = volume;
+  src.connect(gain);
+  gain.connect(audioCtx.destination);
+  src.start();
 }
 
 // ---------- KRİTİK VURUŞ ----------
@@ -142,6 +160,7 @@ function triggerShake(mag, dur) { shakeMag = mag; shakeT = dur; }
 // ---------- PARÇACIKLAR (adım tozu + saldırı efekti) ----------
 const particles = []; // {x,y,vx,vy,life,maxLife,color,size}
 function spawnParticle(x, y, opts = {}) {
+  if (particles.length > 220) particles.shift(); // mobil emniyeti: tavan aşılırsa en eskisi silinir
   particles.push({
     x, y,
     vx: opts.vx ?? (Math.random() - 0.5) * 60,
