@@ -244,13 +244,16 @@ export function buyPermanentChest(rarity) {
 buyNadirChestBtn.onclick = () => buyPermanentChest("nadir");
 buyEfsaneviChestBtn.onclick = () => buyPermanentChest("efsanevi");
 
-// [V2 — henüz uygulanmadı] Kabus/Mitik Özel Kutu: generateLootItemForRarity()
-// bu iki tier için bilerek yazılmadı (isim havuzu yok, bkz. o fonksiyonun
-// altındaki not) — bu yüzden burada gerçek satın alma YOK, sadece bilgi
-// mesajı. İsim havuzları (MITIK_NAMES/KABUS_NAMES) eklenince buyPermanentChest
-// ile aynı desende gerçek bir buySpecialBox(tier) yazılabilir.
+// Kabus/Mitik Özel Kutu: isim havuzları (MITIK_NAMES/KABUS_NAMES) ve
+// generateLootItemForRarity'nin mitik/kabus dalı EKLENDİ — artık gerçek
+// satın alma bağlı. buyPermanentChest ile birebir aynı desen: forcedRarity
+// ile performBoxOpen çağrılır, kutu açma animasyonu/popup'ı mitik/kabus
+// renk ve parçacıklarıyla (bkz. box-open CHEST_RARITY_STYLES) oynar.
 export function buySpecialBox(tier) {
-  alert(`${RARITY_LABELS_TR[tier]} Kutusu yakında! Bu tier'in eşya isim havuzu henüz eklenmedi, satın alma bağlanınca burada aktif olacak.`);
+  if (!S.currentPlayerData) return;
+  const price = MARKET_SPECIAL_BOX_PRICE[tier];
+  if (getGold(S.currentPlayerData) < price) { alert("Yeterli Altının yok."); return; }
+  performBoxOpen({ forcedRarity: tier, costGold: price, isFree: false });
 }
 buyMitikBoxBtn.onclick = () => buySpecialBox("mitik");
 buyKabusBoxBtn.onclick = () => buySpecialBox("kabus");
