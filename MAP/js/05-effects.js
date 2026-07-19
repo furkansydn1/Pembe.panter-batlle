@@ -8,9 +8,24 @@ const camera = { x: 0, y: 0 };
 // ============================================================
 
 // ---------- HITSTOP (donma karesi) ----------
-// Kılıç değdiği an oyun ~50ms komple donar — "temas etti" hissinin bel kemiği.
+// Kılıç değdiği an oyun kısa süre komple donar — "temas etti" hissinin bel kemiği.
 let hitstopT = 0;
 function triggerHitstop(dur) { hitstopT = Math.max(hitstopT, dur); }
+
+// ---------- JUICE AYAR PANELİ ----------
+// Vuruş hissinin TÜM şiddet ayarları tek yerde. Az/çok gelirse buradan oyna;
+// bir efekti komple kapatıp FPS'e etkisini test etmek için değeri 0 yap.
+const JUICE = {
+  hitstop:     0.09,  // normal vuruşta donma (sn)
+  hitstopCrit: 0.15,  // kritik vuruşta donma
+  hitstopKill: 0.12,  // öldürücü darbede donma
+  kb:          310,   // normal vuruş geri tepmesi (px/s)
+  kbCrit:      480,   // kritik geri tepme
+  shake:       5,     // normal vuruş sarsıntısı
+  shakeCrit:   9,     // kritik sarsıntı
+  particles:   true,  // kıvılcım/patlama parçacıkları (FPS testi için false yap)
+  sfx:         true,  // tüm sesler (FPS testi için false yap)
+};
 
 // ---------- SES (SFX) — WebAudio sürümü ----------
 // ESKİ SORUN: new Audio() + play() mobilde ana thread'i tıkıyordu; adım sesi
@@ -72,12 +87,12 @@ function hitJuice(e, hit, color) {
   const kx = dirX / d, ky = dirY / d;
 
   // Canavar geri tepmesi (updateX içinde sönümlenerek uygulanır)
-  e.kbVx = (e.kbVx || 0) + kx * (hit.crit ? 340 : 230);
-  e.kbVy = (e.kbVy || 0) + ky * (hit.crit ? 340 : 230);
+  e.kbVx = (e.kbVx || 0) + kx * (hit.crit ? JUICE.kbCrit : JUICE.kb);
+  e.kbVy = (e.kbVy || 0) + ky * (hit.crit ? JUICE.kbCrit : JUICE.kb);
 
-  triggerHitstop(hit.crit ? 0.09 : 0.05);
-  triggerShake(hit.crit ? 7 : 4, hit.crit ? 0.16 : 0.1);
-  playSfx("vurus", { volume: hit.crit ? 1 : 0.75, pitch: hit.crit ? 0.85 : 1.05, pitchVar: 0.08 });
+  triggerHitstop(hit.crit ? JUICE.hitstopCrit : JUICE.hitstop);
+  triggerShake(hit.crit ? JUICE.shakeCrit : JUICE.shake, hit.crit ? 0.16 : 0.1);
+  if (JUICE.sfx) playSfx("vurus", { volume: hit.crit ? 1 : 0.75, pitch: hit.crit ? 0.85 : 1.05, pitchVar: 0.08 });
 
   spawnFloatingText(
     e.x + kx * 10, e.y - e.r - 6,
@@ -87,31 +102,35 @@ function hitJuice(e, hit, color) {
   );
 
   // Kıvılcımlar her yöne değil, VURUŞ YÖNÜNE saçılır (kesme hissi)
-  const baseAngle = Math.atan2(ky, kx);
-  const n = hit.crit ? 14 : 8;
-  for (let i = 0; i < n; i++) {
-    const a = baseAngle + (Math.random() - 0.5) * 1.6;
-    const sp = 90 + Math.random() * (hit.crit ? 190 : 110);
-    spawnParticle(e.x, e.y, {
-      vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
-      life: 0.32, size: Math.random() * 2.5 + 1.5, color,
-    });
+  if (JUICE.particles) {
+    const baseAngle = Math.atan2(ky, kx);
+    const n = hit.crit ? 14 : 8;
+    for (let i = 0; i < n; i++) {
+      const a = baseAngle + (Math.random() - 0.5) * 1.6;
+      const sp = 90 + Math.random() * (hit.crit ? 190 : 110);
+      spawnParticle(e.x, e.y, {
+        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+        life: 0.32, size: Math.random() * 2.5 + 1.5, color,
+      });
+    }
   }
 }
 
 // ---------- ÖLÜM PAKETİ ----------
 // Canavar ölümü ödül gibi hissettirsin: tok ses + donma + halka patlaması.
 function deathJuice(e, color, count = 20) {
-  triggerHitstop(0.07);
+  triggerHitstop(JUICE.hitstopKill);
   triggerShake(6, 0.14);
-  playSfx("vurus", { volume: 1, pitch: 0.68, pitchVar: 0.05 }); // pes pitch = "son darbe" tınısı
-  for (let i = 0; i < count; i++) {
-    const a = (i / count) * Math.PI * 2 + Math.random() * 0.4; // düzgün halka + hafif rastgelelik
-    const speed = 70 + Math.random() * 130;
-    spawnParticle(e.x, e.y, {
-      vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
-      life: 0.55, size: Math.random() * 3 + 1.5, color,
-    });
+  if (JUICE.sfx) playSfx("vurus", { volume: 1, pitch: 0.68, pitchVar: 0.05 }); // pes pitch = "son darbe" tınısı
+  if (JUICE.particles) {
+    for (let i = 0; i < count; i++) {
+      const a = (i / count) * Math.PI * 2 + Math.random() * 0.4; // düzgün halka + hafif rastgelelik
+      const speed = 70 + Math.random() * 130;
+      spawnParticle(e.x, e.y, {
+        vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
+        life: 0.55, size: Math.random() * 3 + 1.5, color,
+      });
+    }
   }
 }
 
