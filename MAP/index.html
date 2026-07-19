@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Pembe Panterler — Unutulmuş Orman</title>
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css?v=2">
 </head>
 <body>
 
@@ -91,46 +91,67 @@
 <!-- SIRALAMA ÖNEMLİ: dosyalar yukarıdan aşağı bu sırayla yüklenir, sırayı bozma!
      13-account-bridge: kazançları ana oyuna taşır · 14-hero-stats: hesap
      statlarını haritaya uygular · 15-hud: HUD canlandırma (bar, seviye, isim). -->
-<script src="js/00-core.js"></script>
-<script src="js/01-assets.js"></script>
-<script src="js/02-world.js"></script>
-<script src="js/03-player.js"></script>
-<script src="js/04-economy.js"></script>
-<script src="js/05-effects.js"></script>
-<script src="js/06-orc.js"></script>
-<script src="js/07-soldier.js"></script>
-<script src="js/08-goblin.js"></script>
-<script src="js/09-wave.js"></script>
-<script src="js/10-input.js"></script>
-<script src="js/11-render.js"></script>
-<script src="js/13-account-bridge.js"></script>
-<script src="js/14-hero-stats.js"></script>
-<script src="js/12-main.js"></script>
-<script src="js/15-hud.js"></script>
+<script src="js/00-core.js?v=2"></script>
+<script src="js/01-assets.js?v=2"></script>
+<script src="js/02-world.js?v=2"></script>
+<script src="js/03-player.js?v=2"></script>
+<script src="js/04-economy.js?v=2"></script>
+<script src="js/05-effects.js?v=2"></script>
+<script src="js/06-orc.js?v=2"></script>
+<script src="js/07-soldier.js?v=2"></script>
+<script src="js/08-goblin.js?v=2"></script>
+<script src="js/09-wave.js?v=2"></script>
+<script src="js/10-input.js?v=2"></script>
+<script src="js/11-render.js?v=2"></script>
+<script src="js/13-account-bridge.js?v=2"></script>
+<script src="js/14-hero-stats.js?v=2"></script>
+<script src="js/12-main.js?v=2"></script>
+<script src="js/15-hud.js?v=2"></script>
 
-<!-- ============ MOBİL: TAM EKRAN + YATAY KİLİT ============
-Tarayıcılar tam ekranı ancak bir kullanıcı dokunuşundan sonra verir; bu
-yüzden ilk dokunuşta bir kez denenir. Yatay kilit (orientation.lock) sadece
-tam ekran aktifken çalışır ve bazı tarayıcılarda (özellikle iOS Safari)
-desteklenmez — desteklenmiyorsa sessizce geçilir, oyun yine oynanır. -->
+<!-- ============ MOBİL: TAM EKRAN + YATAY KİLİT (v2 — inatçı sürüm) ============
+ESKİ SORUN: { once:true } yüzünden ilk deneme reddedilirse bir daha ASLA
+denenmiyordu (tarayıcı ilk dokunuşu bazen "yeterli jest" saymaz) → oyun hiç
+tam ekrana geçmiyordu. YENİ DAVRANIŞ: tam ekran OLANA KADAR her dokunuşta
+yeniden dener; kullanıcı tam ekrandan çıkarsa bir sonraki dokunuşta tekrar
+girer; tam ekrana girildiği an ve telefon her döndürüldüğünde yatay kilidi
+yeniden dener. NOT: iPhone Safari gerçek tam ekran API'sini hiç desteklemez —
+orada tek yol Paylaş → Ana Ekrana Ekle (oyun kendi penceresinde açılır). -->
 <script>
 (function () {
   const isMobile = "ontouchstart" in window || navigator.maxTouchPoints > 0;
   if (!isMobile) return;
-  let done = false;
-  async function goFullscreenLandscape() {
-    if (done) return;
-    done = true;
+
+  function isFullscreen() {
+    return !!(document.fullscreenElement || document.webkitFullscreenElement);
+  }
+
+  async function lockLandscape() {
+    try {
+      if (screen.orientation && screen.orientation.lock) {
+        await screen.orientation.lock("landscape");
+      }
+    } catch (e) { /* iOS vb. desteklemiyorsa sessiz geç */ }
+  }
+
+  async function tryFullscreen() {
+    if (isFullscreen()) return;
     try {
       const el = document.documentElement;
       if (el.requestFullscreen) await el.requestFullscreen();
       else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
-      if (screen.orientation && screen.orientation.lock) {
-        await screen.orientation.lock("landscape").catch(() => {});
-      }
-    } catch (e) { /* tam ekran opsiyonel konfor katmanı, verilmezse sessiz geç */ }
+      await lockLandscape();
+    } catch (e) { /* reddedilirse sorun değil — bir SONRAKİ dokunuşta yine denenir */ }
   }
-  document.addEventListener("touchstart", goFullscreenLandscape, { once: true, passive: true });
+
+  // Her dokunuşta dene (tam ekrandaysa fonksiyon anında çıkar, maliyeti yok)
+  document.addEventListener("touchstart", tryFullscreen, { passive: true });
+
+  // Tam ekrana girildiğinde yatay kilidi (bir kez daha) dene
+  document.addEventListener("fullscreenchange", () => { if (isFullscreen()) lockLandscape(); });
+  document.addEventListener("webkitfullscreenchange", () => { if (isFullscreen()) lockLandscape(); });
+
+  // Telefon elle döndürüldüğünde: tam ekrandaysak kilidi tazele
+  window.addEventListener("orientationchange", () => { if (isFullscreen()) lockLandscape(); });
 })();
 </script>
 

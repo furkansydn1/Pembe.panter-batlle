@@ -22,12 +22,19 @@ const ACCEL = 1600;     // px/s^2 — hızlanma
 const FRICTION = 1800;  // px/s^2 — durma sürtünmesi
 const ATTACK_DURATION = 0.28; // saniye
 const ATTACK_COOLDOWN = 0.22; // saniye (art arda çok hızlı vuramasın)
+const ATTACK_BUFFER = 0.18;   // saniye — erken basılan saldırı bu kadar süre "hatırlanır" (input buffering)
+const ATTACK_LUNGE = 150;     // saldırıda ileri atılma itişi (px/s, knock kanalından sönümlenir)
+let attackBufferT = 0;        // saldırı tamponu sayacı
+let footstepT = 0;            // adım sesi zamanlayıcısı
 
 
 // ============================================================
 // GÜNCELLEME (UPDATE)
 // ============================================================
 function updatePlayer(dt) {
+  // Ölüm ekranı aktifken oyuncu tamamen donar (12-main geri sayımı işletir)
+  if (deathSeq.active) return;
+
   // Hedef yön vektörü: klavye veya joystick
   let ix = 0, iy = 0;
   if (keys["w"] || keys["arrowup"]) iy -= 1;
@@ -88,7 +95,9 @@ function updatePlayer(dt) {
   if (player.invulnT > 0) player.invulnT -= dt;
 
   if (player.hp <= 0) {
-    handlePlayerDeath();
+    // handlePlayerDeath artık DOĞRUDAN çağrılmıyor — önce 3 sn'lik ölüm
+    // ekranı oynar (05-effects), süre dolunca 12-main cezayı/respawn'ı işletir.
+    startDeathSequence();
   }
   hpLabelEl.textContent = player.hp;
 
@@ -102,6 +111,13 @@ function updatePlayer(dt) {
     player.spriteFrameT += dt * (player.moving ? WALK_FPS : IDLE_FPS);
   }
 
+  // Adım sesi: yürürken ritmik, her adımda pitch hafif değişir (robotik tekrar kırılır)
+  if (footstepT > 0) footstepT -= dt;
+  if (player.moving && footstepT <= 0) {
+    footstepT = 0.3;
+    playSfx("adim", { volume: 0.22, pitchVar: 0.15 });
+  }
+
   // Adım tozu parçacıkları (hafif, seyrek)
   if (player.moving && Math.random() < 0.35) {
     spawnParticle(player.x, player.y + player.r * 0.7, {
@@ -112,16 +128,32 @@ function updatePlayer(dt) {
     });
   }
 
-  // Saldırı tetikleme
+  // Saldırı tetikleme — INPUT BUFFERING ile:
+  // Cooldown/animasyon bitmeden basılan saldırı çöpe gitmez, 0.18 sn boyunca
+  // "tamponda" bekler ve ilk uygun anda otomatik patlar. "Bastım ama olmadı"
+  // hissini öldürür; seri kesmede akıcılığın anahtarı bu.
   if (player.attackCooldown > 0) player.attackCooldown -= dt;
-  if (attackRequested && !player.attacking && player.attackCooldown <= 0) {
+  if (attackRequested) {
+    attackBufferT = ATTACK_BUFFER;
+    attackRequested = false;
+  }
+  if (attackBufferT > 0) attackBufferT -= dt;
+  if (attackBufferT > 0 && !player.attacking && player.attackCooldown <= 0) {
+    attackBufferT = 0;
     player.attacking = true;
     player.attackT = 0;
     player.attackCooldown = ATTACK_COOLDOWN;
+
+    // GERÇEK LUNGE: karakter baktığı yöne fiziksel olarak atılır (sadece
+    // görsel kaydırma değil). Knock kanalını kullanır → çarpışmaya saygılı,
+    // kendiliğinden sönümlenir. Mobilde isabet almayı da gizlice kolaylaştırır.
+    const lungeDir = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[player.facing];
+    player.knockVx += lungeDir[0] * ATTACK_LUNGE;
+    player.knockVy += lungeDir[1] * ATTACK_LUNGE;
+
     triggerShake(3, 0.12);
     spawnSwingParticles();
   }
-  attackRequested = false;
 
   if (player.attacking) {
     player.attackT += dt;

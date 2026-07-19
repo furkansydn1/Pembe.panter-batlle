@@ -73,6 +73,16 @@ function updateOrcs(dt) {
     if (o.hurtT > 0) o.hurtT -= dt;
     o.animT += dt;
 
+    // Vuruş geri tepmesi (hitJuice yazar): hızla sönümlenen itiş — vuruşun
+    // "ağırlığını" canavarın gövdesinde gösterir.
+    if (o.kbVx || o.kbVy) {
+      o.x += o.kbVx * dt; o.y += o.kbVy * dt;
+      o.kbVx *= Math.max(0, 1 - dt * 10);
+      o.kbVy *= Math.max(0, 1 - dt * 10);
+      if (Math.abs(o.kbVx) < 4) o.kbVx = 0;
+      if (Math.abs(o.kbVy) < 4) o.kbVy = 0;
+    }
+
     const dx = player.x - o.x, dy = player.y - o.y;
     const dist = Math.hypot(dx, dy);
 
@@ -153,33 +163,19 @@ function updateOrcs(dt) {
         if (diff > Math.PI) diff = Math.PI * 2 - diff;
         if (diff < (100 * Math.PI / 180) / 2) {
           o.justHit = true;
-          const dmg = 12;
-          o.hp -= dmg;
+          const hit = rollPlayerHit(12); // %15 kritik şansı, kritikte 2x (05-effects)
+          o.hp -= hit.dmg;
           o.hitFlashT = 0.15;
           o.hurtT = 0.28;
-          spawnFloatingText(o.x, o.y - o.r - 4, "-" + dmg, "#fff");
-          triggerShake(4, 0.1);
-          for (let i = 0; i < 8; i++) {
-            const a = Math.random() * Math.PI * 2;
-            spawnParticle(o.x, o.y, {
-              vx: Math.cos(a) * 90, vy: Math.sin(a) * 90,
-              life: 0.3, size: Math.random() * 2 + 1.5, color: "rgba(140,170,90,0.9)"
-            });
-          }
+          // Hitstop + geri tepme + ses + yönlü kıvılcım + hasar yazısı — tek pakette
+          hitJuice(o, hit, "rgba(140,170,90,0.9)");
           if (o.hp <= 0 && !o.dead) {
             o.dead = true;
             o.deathT = 0;
             // Toz kazanımı KALDIRILDI — hesaba işlenmiyordu, harita ekonomisi
             // sadeleştirildi (gerçek damlalar: maybeDropItem içinde).
             maybeDropItem(o.x, o.y);
-            for (let i = 0; i < 16; i++) {
-              const a = Math.random() * Math.PI * 2;
-              const speed = 60 + Math.random() * 100;
-              spawnParticle(o.x, o.y, {
-                vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
-                life: 0.5, size: Math.random() * 3 + 1.5, color: "rgba(140,170,90,0.85)"
-              });
-            }
+            deathJuice(o, "rgba(140,170,90,0.85)", 18); // halka patlaması + tok ses + donma
           }
         }
       }

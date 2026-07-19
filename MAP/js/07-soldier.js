@@ -79,6 +79,15 @@ function updateSoldiers(dt) {
     if (s.hurtT > 0) s.hurtT -= dt;
     s.animT += dt;
 
+    // Vuruş geri tepmesi (hitJuice yazar): hızla sönümlenen itiş
+    if (s.kbVx || s.kbVy) {
+      s.x += s.kbVx * dt; s.y += s.kbVy * dt;
+      s.kbVx *= Math.max(0, 1 - dt * 10);
+      s.kbVy *= Math.max(0, 1 - dt * 10);
+      if (Math.abs(s.kbVx) < 4) s.kbVx = 0;
+      if (Math.abs(s.kbVy) < 4) s.kbVy = 0;
+    }
+
     const dx = player.x - s.x, dy = player.y - s.y;
     const dist = Math.hypot(dx, dy);
     if (dx !== 0) s.facing = dx > 0 ? 1 : -1;
@@ -148,33 +157,18 @@ function updateSoldiers(dt) {
         if (diff > Math.PI) diff = Math.PI * 2 - diff;
         if (diff < (100 * Math.PI / 180) / 2) {
           s.justHit = true;
-          const dmg = 9;
-          s.hp -= dmg;
+          const hit = rollPlayerHit(9); // %15 kritik şansı, kritikte 2x (05-effects)
+          s.hp -= hit.dmg;
           s.hitFlashT = 0.15;
           s.hurtT = 0.3;
-          spawnFloatingText(s.x, s.y - s.r - 4, "-" + dmg, "#fff");
-          triggerShake(4, 0.1);
-          for (let i = 0; i < 6; i++) {
-            const a = Math.random() * Math.PI * 2;
-            spawnParticle(s.x, s.y, {
-              vx: Math.cos(a) * 100, vy: Math.sin(a) * 100,
-              life: 0.25, size: Math.random() * 2 + 1.2, color: "rgba(200,60,60,0.9)"
-            });
-          }
+          hitJuice(s, hit, "rgba(200,60,60,0.9)");
           if (s.hp <= 0 && !s.dead) {
             s.dead = true;
             s.deathT = 0;
             // Toz kazanımı KALDIRILDI — hesaba işlenmiyordu, harita ekonomisi
             // sadeleştirildi (gerçek damlalar: maybeDropItem içinde).
             maybeDropItem(s.x, s.y);
-            for (let i = 0; i < 14; i++) {
-              const a = Math.random() * Math.PI * 2;
-              const speed = 70 + Math.random() * 90;
-              spawnParticle(s.x, s.y, {
-                vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
-                life: 0.45, size: Math.random() * 2.5 + 1.2, color: "rgba(200,60,60,0.85)"
-              });
-            }
+            deathJuice(s, "rgba(200,60,60,0.85)", 16);
           }
         }
       }

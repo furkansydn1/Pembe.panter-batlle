@@ -75,6 +75,16 @@ function updateGoblins(dt) {
     g.squish = Math.max(0, g.squish - dt * 4);
     g.animT += dt;
 
+    // Vuruş geri tepmesi (hitJuice yazar): hızla sönümlenen itiş.
+    // Şarj sırasında da uygulanır — iyi zamanlanmış vuruş goblini yolundan saptırır.
+    if (g.kbVx || g.kbVy) {
+      g.x += g.kbVx * dt; g.y += g.kbVy * dt;
+      g.kbVx *= Math.max(0, 1 - dt * 10);
+      g.kbVy *= Math.max(0, 1 - dt * 10);
+      if (Math.abs(g.kbVx) < 4) g.kbVx = 0;
+      if (Math.abs(g.kbVy) < 4) g.kbVy = 0;
+    }
+
     const dx = player.x - g.x, dy = player.y - g.y;
     const dist = Math.hypot(dx, dy);
 
@@ -163,33 +173,18 @@ function updateGoblins(dt) {
         if (diff > Math.PI) diff = Math.PI * 2 - diff;
         if (diff < (100 * Math.PI / 180) / 2) {
           g.justHit = true;
-          const dmg = 14;
-          g.hp -= dmg;
+          const hit = rollPlayerHit(14); // %15 kritik şansı, kritikte 2x (05-effects)
+          g.hp -= hit.dmg;
           g.hitFlashT = 0.15;
           g.squish = 1;
-          spawnFloatingText(g.x, g.y - g.r - 4, "-" + dmg, "#fff");
-          triggerShake(4, 0.1);
-          for (let i = 0; i < 8; i++) {
-            const a = Math.random() * Math.PI * 2;
-            spawnParticle(g.x, g.y, {
-              vx: Math.cos(a) * 90, vy: Math.sin(a) * 90,
-              life: 0.3, size: Math.random() * 2 + 1.5, color: "rgba(200,160,90,0.9)"
-            });
-          }
+          hitJuice(g, hit, "rgba(200,160,90,0.9)");
           if (g.hp <= 0 && !g.dead) {
             g.dead = true;
             g.deathT = 0;
             // Toz kazanımı KALDIRILDI — hesaba işlenmiyordu, harita ekonomisi
             // sadeleştirildi (gerçek damlalar: maybeDropItem içinde).
             maybeDropItem(g.x, g.y);
-            for (let i = 0; i < 18; i++) {
-              const a = Math.random() * Math.PI * 2;
-              const speed = 60 + Math.random() * 100;
-              spawnParticle(g.x, g.y, {
-                vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
-                life: 0.5, size: Math.random() * 3 + 1.5, color: "rgba(200,160,90,0.85)"
-              });
-            }
+            deathJuice(g, "rgba(200,160,90,0.85)", 20); // en iri düşman → en büyük patlama
           }
         }
       }
