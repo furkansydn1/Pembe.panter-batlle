@@ -222,6 +222,11 @@
   margin-top:10px; padding:10px; border-radius:12px;
   background: var(--gold-dim); color: var(--gold); font-size:.8rem; font-weight:700;
 }
+/* Düello motoru (duel-engine.js) tur tur anlatımı — 15 tura kadar çıkabildiği
+   için sabit yükseklik + kaydırma: modal büyümesin. Sıralı bir anlatım
+   olduğundan (giriş → turlar → bitiriş) en üstten okunacak şekilde normal
+   akışta bırakıldı; okuyan bitiriş darbesini görmek için aşağı kaydırır. */
+.duel-commentary{ text-align:left; max-height:180px; overflow-y:auto; line-height:1.5; }
 
 /* ---------- UPDATES / YOL HARİTASI ---------- */
 .icon-btn{ position: relative; }
