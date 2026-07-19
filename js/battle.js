@@ -121,21 +121,26 @@ export function simulateBattle3s(attacker, defender) {
 }
 
 // ============================================================
-// ELO / LİG SİSTEMİ (V2 Faz 5)
+// ELO / LİG SİSTEMİ (V2 Faz 5 — V4 yeniden dengeleme)
 // Çaylak'tan Efsane'ye 5 kademeli bir lig. Her oyuncunun `elo` alanı
 // (Firestore'da yeni, eski dokümanlarda yok -> getElo() ile STARTING_ELO
 // varsayılır) standart Elo formülüyle (bkz. computeEloDelta) her savaştan
 // sonra güncellenir. Kademe SAKLANMAZ, her zaman elo'dan CANLI hesaplanır
 // (getLeagueTier) — böylece elo/kademe asla birbirinden kopmaz.
+// [V4] Başlangıç 1000→100'e çekildi: herkes en alt kademe ÇAYLAK'tan başlasın
+// (eskiden 1000 = herkes doğrudan Avcı'ydı, ilk kademe ölüydü). Eşikler de
+// 100 başlangıca göre yeniden ölçeklendi ve kademe isimleri güncellendi
+// (Avcı/Elit → Savaşçı/Usta). Alt kademelere düşme payı olsun diye taban
+// 0 değil 100; kötü giden oyuncu 100'ün altına inip Çaylak'ta kalabilir.
 // ============================================================
-export const STARTING_ELO = 1000;
-export const ELO_K_FACTOR = 24; // normal bir savaşta elo ne kadar hızlı değişir
+export const STARTING_ELO = 100;
+export const ELO_K_FACTOR = 16; // [V4] 24→16: 100 tabanlı sıkışık skalada elo daha kontrollü ilerlesin (tek maçta 1 kademe zıplamasın)
 export const LEAGUE_TIERS = [
-  { id: "caylak", label: "Çaylak", icon: "🐾", minElo: 0 },
-  { id: "avci", label: "Avcı", icon: "🎯", minElo: 1000 },
-  { id: "sampiyon", label: "Şampiyon", icon: "🏆", minElo: 1200 },
-  { id: "elit", label: "Elit", icon: "💎", minElo: 1400 },
-  { id: "efsane", label: "Efsane", icon: "👑", minElo: 1600 }
+  { id: "caylak", label: "Çaylak", icon: "🐾", minElo: 0, color: "#9ca3af" },
+  { id: "savasci", label: "Savaşçı", icon: "⚔️", minElo: 250, color: "#6ee7a8" },
+  { id: "usta", label: "Usta", icon: "🎯", minElo: 450, color: "#60a5fa" },
+  { id: "sampiyon", label: "Şampiyon", icon: "🏆", minElo: 700, color: "#c084fc" },
+  { id: "efsane", label: "Efsane", icon: "👑", minElo: 1000, color: "#fbbf24" }
 ];
 export function getElo(data) {
   return data?.elo ?? STARTING_ELO;
