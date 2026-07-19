@@ -46,13 +46,22 @@ closeCollectionBtn.onclick = () => collectionModal.classList.add("hidden");
 // ============================================================
 export function getSlotInventory(slot) {
   const invRaw = (S.currentPlayerData?.inventory && S.currentPlayerData.inventory[slot]) || [];
-  // BUG FIX: Eski (id'siz) eşyalara TEK bir "legacy-slot" id'si veriliyordu —
-  // aynı slotta 2+ id'siz eşya varsa HEPSİ aynı id'yi alıyor, karta basınca
-  // ikisi birden yakalanıyor ve sat/hurda/+bas çalışmıyordu. Artık her eşyaya
-  // slot+index bazlı BENZERSİZ bir id veriliyor (id'si olan zaten korunur).
-  const inv = invRaw.map((it, idx) =>
-    it.id ? it : { ...it, id: `legacy-${slot}-${idx}` }
-  );
+  // BUG FIX: İki farklı sorun tek yerde çözülüyor:
+  //  (1) Eski eşyaların id'si HİÇ yok → karta basınca ayırt edilemiyordu.
+  //  (2) id üreteci geçmişte AYNI id'yi iki esyaya vermiş (çakışma) → iki kart
+  //      aynı data-id'yi taşıyor, birine basınca ikisi birden tepki veriyor,
+  //      sat/hurda/kuşan yanlış/çift eşyaya gidiyordu (yaşanan kask/kalkan bug'ı).
+  // Çözüm: id yoksa VEYA daha önce görülmüş (çakışan) bir id ise, o eşyaya
+  // slot+index bazlı benzersiz bir id ver. Zaten benzersiz olan id korunur.
+  const seen = new Set();
+  const inv = invRaw.map((it, idx) => {
+    if (it.id && !seen.has(it.id)) { seen.add(it.id); return it; }
+    // id yok ya da çakışıyor → benzersizleştir
+    let newId = it.id ? `${it.id}-dup${idx}` : `legacy-${slot}-${idx}`;
+    while (seen.has(newId)) newId += "x";
+    seen.add(newId);
+    return { ...it, id: newId };
+  });
   const equipped = S.currentPlayerData?.equipment && S.currentPlayerData.equipment[slot];
   // Bu güncellemeden önce kuşanılmış (id'siz) eşyalar için geriye dönük uyumluluk
   if (equipped && !inv.some(it => it.id && equipped.id && it.id === equipped.id)) {
