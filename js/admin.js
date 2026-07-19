@@ -1,6 +1,6 @@
 import { getGold } from "./core-config.js";
 import { LOG_COL, PLAYERS_COL, collection, db, doc, getDocs, updateDoc, writeBatch } from "./firebase-setup.js";
-import { BOOK_TIER_NAMES, getBooks } from "./item-systems.js";
+import { BOOK_TIER_NAMES, computeStatsFromEquipment, getBooks } from "./item-systems.js";
 import { S } from "./state.js";
 import { META_COL } from "./wheel-bounty-oracle.js";
 
@@ -286,7 +286,22 @@ export async function adminUnequipOverleveledItems() {
       }
 
       if (changed) {
-        batch.update(d.ref, { equipment: newEquipment, inventory: newInventory });
+        // KRİTİK DÜZELTME: equipment/inventory değişse bile attack/defense/
+        // speed/critStat/maxHp Firestore'da AYRI, cache'lenmiş alanlar —
+        // login'de otomatik yeniden hesaplanmıyor (diğer tüm ekipman değişimi
+        // yollarında — equipItem/box-open/market/quests — olduğu gibi burada
+        // da elle computeStatsFromEquipment çağrılıp yazılmalı, yoksa sökülen
+        // itemin statları oyuncu üstünde "takılıymış gibi" donmuş kalır).
+        const stats = computeStatsFromEquipment(newEquipment, data.statAllocated);
+        batch.update(d.ref, {
+          equipment: newEquipment,
+          inventory: newInventory,
+          attack: stats.attack,
+          defense: stats.defense,
+          speed: stats.speed,
+          critStat: stats.critStat,
+          maxHp: stats.maxHp,
+        });
         fixedPlayers++;
         pending++;
         if (pending >= BATCH_LIMIT) { await batch.commit(); batch = writeBatch(db); pending = 0; }
@@ -294,8 +309,7 @@ export async function adminUnequipOverleveledItems() {
     }
     if (pending > 0) await batch.commit();
 
-    console.warn(`✅ ${fixedPlayers} oyuncuda toplam ${unequippedItems} seviye-dışı eşya söküldü ve envantere iade edildi.`);
-    console.warn("NOT: Statlar oyuncular bir sonraki girişte ekipmandan yeniden hesaplanır; sende hemen görmek için sayfayı yenile.");
+    console.warn(`✅ ${fixedPlayers} oyuncuda toplam ${unequippedItems} seviye-dışı eşya söküldü, envantere iade edildi ve statlar yeniden hesaplandı.`);
     return { ok: true, fixedPlayers, unequippedItems };
   } catch (e) {
     console.error("Eşya sökme sırasında hata oluştu:", e);
@@ -304,6 +318,58 @@ export async function adminUnequipOverleveledItems() {
 }
 if (typeof window !== "undefined") {
   window.adminUnequipOverleveledItems = adminUnequipOverleveledItems;
+}
+
+// ============================================================
+// ADMIN: TEK OYUNCUNUN STATLARINI EKİPMANDAN YENİDEN SENKRONLA (SADECE KONSOL)
+// ------------------------------------------------------------
+// Sebep: adminUnequipOverleveledItems SADECE o an eşyayı SÖKTÜĞÜ oyuncularda
+// statı yeniden hesaplıyor. Eğer bir eşya zaten (örn. elle/başka bir yoldan)
+// equipment'tan çıkarılmış ama attack/defense/speed/critStat/maxHp alanları
+// hâlâ eski (eşya takılıymış gibi yüksek) değerdeyse, bu durum
+// adminUnequipOverleveledItems tarafından bir daha yakalanmaz (equipment'ta
+// zaten "fazlalık" yok, changed=false). Bu fonksiyon tek bir oyuncunun
+// MEVCUT equipment + statAllocated durumuna göre statları sıfırdan
+// hesaplayıp Firestore'a yazar — hangi sebeple bozulmuş olursa olsun statı
+// "gerçek" duruma senkronlar. Konsolden:
+//     adminRecalcPlayerStats("OyuncuNicki")
+export async function adminRecalcPlayerStats(nick) {
+  if (!requireAdmin("adminRecalcPlayerStats")) return { ok: false, reason: "not_admin" };
+  if (!nick || typeof nick !== "string") {
+    console.error("❌ Geçerli bir nick belirtmelisin. Örnek: adminRecalcPlayerStats(\"OyuncuNicki\")");
+    return { ok: false, reason: "invalid_nick" };
+  }
+
+  try {
+    const snap = await getDocs(collection(db, PLAYERS_COL));
+    const target = snap.docs.find(d => (d.data().nick || "").toLowerCase() === nick.toLowerCase());
+    if (!target) {
+      console.error(`❌ "${nick}" nick'ine sahip bir oyuncu bulunamadı.`);
+      return { ok: false, reason: "not_found" };
+    }
+    const data = target.data();
+    const oldStats = {
+      attack: data.attack, defense: data.defense, speed: data.speed,
+      critStat: data.critStat, maxHp: data.maxHp
+    };
+    const stats = computeStatsFromEquipment(data.equipment || {}, data.statAllocated);
+    await updateDoc(target.ref, {
+      attack: stats.attack,
+      defense: stats.defense,
+      speed: stats.speed,
+      critStat: stats.critStat,
+      maxHp: stats.maxHp,
+    });
+    console.warn(`✅ "${data.nick}" statları güncel ekipmana göre yeniden senkronlandı.`);
+    console.warn("Eski:", oldStats, "Yeni:", stats);
+    return { ok: true, nick: data.nick, oldStats, newStats: stats };
+  } catch (e) {
+    console.error("Stat senkronu sırasında hata oluştu:", e);
+    return { ok: false, reason: "error", error: e.message };
+  }
+}
+if (typeof window !== "undefined") {
+  window.adminRecalcPlayerStats = adminRecalcPlayerStats;
 }
 
 // ============================================================
