@@ -141,23 +141,27 @@ function updateGoblins(dt) {
     g.x = Math.max(g.r, Math.min(WORLD_W - g.r, g.x));
     g.y = Math.max(g.r, Math.min(WORLD_H - g.r, g.y));
 
-    // ---- Oyuncuya temas hasarı (şarj sırasında daha güçlü) ----
-    const cdx = player.x - g.x, cdy = player.y - g.y;
-    const cdist = Math.hypot(cdx, cdy);
-    if (cdist < g.r + player.r && g.contactCooldown <= 0 && player.invulnT <= 0) {
-      const dmg = g.state === "charge" ? 14 : 9; // dengeleme: vuruş gücü bir tık daha düşürüldü (18 → 16 → 14 / 10 → 9)
-      player.hp = Math.max(0, player.hp - dmg);
-      player.invulnT = 0.6;
-      g.contactCooldown = GOBLIN_CONTACT_COOLDOWN;
-      triggerShake(g.state === "charge" ? 9 : 5, g.state === "charge" ? 0.25 : 0.18);
-      spawnFloatingText(player.x, player.y - player.r - 6, "-" + dmg, "#ff5c6c");
-      const kx = cdx / (cdist || 1), ky = cdy / (cdist || 1);
-      const kb = g.state === "charge" ? 420 : 260;
-      player.knockVx = -kx * kb; player.knockVy = -ky * kb;
-      hpLabelEl.textContent = player.hp;
-      // Şarj sırasında oyuncuya çarparsa, bir duvara çarpmış gibi hemen
-      // toparlanma evresine geçer (yoksa şarjı bitirene kadar üstüne binebilir).
-      if (g.state === "charge") { g.state = "recover"; g.stateT = 0; }
+    // ---- Şarj (gerçek saldırı) hasarı — SADECE g.state === "charge" iken.
+    // Önceden bu blok her state'te (walk/telegraph/recover) çalışıyordu, yani
+    // goblin sana yürürken bile değse hasar veriyordu. Artık sadece ateşle
+    // üstüne geldiği o kısa şarj anında temas edersen hasar alıyorsun.
+    if (g.state === "charge") {
+      const cdx = player.x - g.x, cdy = player.y - g.y;
+      const cdist = Math.hypot(cdx, cdy);
+      if (cdist < g.r + player.r && g.contactCooldown <= 0 && player.invulnT <= 0) {
+        const dmg = 14;
+        player.hp = Math.max(0, player.hp - dmg);
+        player.invulnT = 0.6;
+        g.contactCooldown = GOBLIN_CONTACT_COOLDOWN;
+        triggerShake(9, 0.25);
+        spawnFloatingText(player.x, player.y - player.r - 6, "-" + dmg, "#ff5c6c");
+        const kx = cdx / (cdist || 1), ky = cdy / (cdist || 1);
+        player.knockVx = -kx * 420; player.knockVy = -ky * 420;
+        hpLabelEl.textContent = player.hp;
+        // Oyuncuya çarparsa bir duvara çarpmış gibi hemen toparlanma
+        // evresine geçer (yoksa şarjı bitirene kadar üstüne binebilir).
+        g.state = "recover"; g.stateT = 0;
+      }
     }
 
     // ---- Oyuncunun saldırısına yakalanma (aynı isabet testi) ----
