@@ -63,6 +63,18 @@ tutNextBtn.onclick = () => goToTutorialSlide(currentTutorialIndex() + 1);
 // ama bu sürümü henüz görmemiş herkese otomatik gösterilir.
 // ============================================================
 export const NEW_FEATURE_SLIDES = {
+  "2.1": [
+    { icon: "⚔️", title: "SAVAŞ ARTIK GERÇEK BİR DÜELLO", text: "Saldırı ekranı baştan yazıldı. Artık savaşlar bir 'güç karşılaştırması' değil, sıralı bir düello: iki savaşçı tur tur birbirine vuruyor, biri düşene kadar. İlk saldıran ilk kanı alır, ama gerisini beş statın belirler. Kimin kazanacağı artık şansa değil, kurduğun karaktere bağlı — ve her vuruş ekranda canlı canlı işleniyor." },
+    { icon: "🎙️", title: "CANLI SPİKER ANLATIMI", text: "Düellonun her anı, bir arena spikerinin ağzından anlatılıyor. Kritik vuruşlar, hız serileri, öldürücü darbeler — hepsi yüzlerce farklı, coşkulu cümleyle betimleniyor. Aynı anlatıma iki kez denk gelmek neredeyse imkansız. Savaşını sadece izlemeyeceksin; dinleyeceksin." },
+    { icon: "🎯", title: "STATLARIN GERÇEK ETKİSİ", text: "Beş savaş statı — Saldırı, Savunma, Can, Hız, Kritik — binlerce maçlık simülasyonla dengeye oturtuldu. Artık her biri kazanmaya somut katkı yapıyor: Kritik güçlendirildi (1.6x → 2.5x), Savunma'nın aşırı üstünlüğü kırıldı, Hız ise artık kimin önce vuracağını da belirliyor. Hangi stata yatırırsan yatır, seçimin bir karşılık buluyor." },
+    { icon: "🔗", title: "TEK KARAKTER, İKİ DÜNYA", text: "Ormanda topladığın güç artık arenada da senin. Eşyalarından gelen Kritik ve Saldırı Hızı, canavar keserken de gerçek etki yaratıyor; kuşandığın her parça hem PvP savaşına hem gerçek zamanlı ormana birebir yansıyor. Herkes taban %5 kritikle başlıyor, eşya topladıkça yükseliyor. Artık iki ayrı oyun değil — tek bir kahramanın iki yüzü." },
+    { icon: "🏅", title: "KADEMELER YENİLENDİ", text: "Elo kademeleri baştan düzenlendi: Çaylak, Savaşçı, Usta, Şampiyon ve en tepede Efsane. Herkes sıfırdan, 100 puanla Çaylak'tan başlıyor; kazandıkça tırmanıyor, kaybettikçe düşüyor. Ve artık liderlik tablosunda ve saldırı ekranında her oyuncunun seviyesi, kademesi ve son 5 maçının sonucu şık bir plakada görünüyor — rakibini tanımadan saldırmıyorsun." },
+    { icon: "⚖️", title: "ADİL SAVAŞ, ADİL ÖDÜL", text: "Zorbalık önleme sistemi yeniden ayarlandı. Artık sadece gerçekten ezici bir güç farkı (senin 3,5 katın) ya da iki kademe Elo farkı 'zorbalık' sayılıyor. Kendine yakın rakiplerle yaptığın dürüst savaşlar artık hak ettiğin tam puanı veriyor. Total güç hesabı da beş statı birden içeriyor — sadece kağıt üstünde güçlü görünen değil, gerçekten güçlü olan kazanıyor." },
+    { icon: "🎒", title: "ENVANTER SORUNLARI GİDERİLDİ", text: "Eşyalarla ilgili sinir bozucu hatalar kökünden çözüldü: aynı slottaki iki eşya artık birbirine karışmıyor, hepsi ayrı ayrı satılabiliyor ve kuşanılabiliyor. Ve en önemlisi — seviyenin üstünde bir eşya bir şekilde üstünde kaldıysa, oyuna girdiğinde otomatik olarak çantana geri konuyor. Artık hak etmediğin bir güçle dolaşmıyorsun; sistem kendini temizliyor." },
+    { icon: "🌿", title: "ORMAN GÜZELLEŞTİ", text: "Unutulmuş Orman'ın zemini elden geçildi: kalitesiz, karolu görünüm gitti; yerine dikişsiz, doğal, elle işlenmiş bir çim dokusu geldi. Vuruş hissi de derinleşti — kılıç değdiği an temas noktasında bir kıvılcım patlaması, vuruş yönünde parlayan bir kesme izi ve fırlayıp zıplayan hasar sayıları eklendi. Kesmek artık çok daha tatmin edici." },
+    { icon: "🛠️", title: "SESSİZ AMA ÖNEMLİ İYİLEŞTİRMELER", text: "Perde arkasında onlarca düzeltme yapıldı: mobil kontroller yeniden boyutlandırıldı, performansı düşüren efektler optimize edildi (FPS'i eriten cam-bulanıklık katmanı kaldırıldı), görev ödülleri denge için yeniden düzenlendi ve Kabus/Mitik özel kutuları artık gerçekten açılıyor. Küçük görünen ama oynanışı akıcılaştıran bir sürü dokunuş." },
+    { icon: "🔥", title: "OYUN BÜYÜMEYE DEVAM EDİYOR", text: "Fadeless durmuyor. Her güncellemeyle savaş daha derin, ekonomi daha dengeli, dünya daha canlı oluyor. Bu sürüm, özellikle savaşın kalbini — düelloyu, statları ve adaleti — yeniden inşa etti. Geri bildirimlerin bu yolculuğun bir parçası; oynadıkça şekilleniyor. Şimdi kılıcını al ve yeni arenada yerini kanıtla." }
+  ],
   "2.0": [
     { icon: "🕯️", title: "FADELESS DOĞDU", text: "Pembe Panterler Battle'ı tanıyordun. Onu unut. Oyun küllerinden yeni bir isimle doğdu: FADELESS — sönmeyen mumun oyunu. İsimle birlikte teni de değişti: pembe neonlar gitti, yerine karanlık taş, is ve gravür altınından örülmüş yepyeni bir tasarım geldi. Ekranlar, barlar, ikonlar, harita — hepsi bu yeni dünyanın diliyle konuşuyor. Mumu al, gerisini bu sayfalarda anlatacağız." },
     { icon: "📈", title: "SEVİYE ÇAĞI BAŞLADI", text: "Fadeless artık bir gelişim oyunu: kazandığın her EXP seni gerçek bir seviye merdiveninde yukarı taşıyor. Ve her seviye boş bir rakam değil — her atladığın seviye sana 1 Stat Puanı verir. O puanı Saldırı'ya mı basarsın, Savunma'ya mı, karar senin. İki oyuncu aynı seviyede olabilir; aynı güçte olması gerekmez. Karakterini sen yontacaksın." },
@@ -327,9 +339,24 @@ export function maybeShowTutorialV2() {
 // Her yeni özellik bittiğinde status'u "soon" -> "done" yapıp
 // LATEST_UPDATE_VERSION'ı artırman yeterli, rozet otomatik güncellenir.
 // ============================================================
-export const LATEST_UPDATE_VERSION = "2.0";
+export const LATEST_UPDATE_VERSION = "2.1";
 
 export const RELEASES = [
+  {
+    version: "2.1",
+    date: "19 Temmuz 2026",
+    items: [
+      "⚔️ Savaş sistemi baştan yazıldı — sıralı düello: Saldırı artık tek seferlik bir güç karşılaştırması değil, tur tur işleyen gerçek bir düello. İlk saldıran başlar, iki taraf sırayla vurur, biri düşene kadar (en fazla 15 tur; süre dolarsa canı fazla olan kazanır). Kim kazanacağını tamamen beş statın belirliyor.",
+      "🎙️ Canlı spiker anlatımı eklendi: düellonun her turu, arena spikeri edasıyla ve 140'tan fazla farklı cümleden oluşan bir havuzdan anlatılıyor. Normal vuruş, kritik, hız serisi ve öldürücü darbe için ayrı ayrı, coşkulu betimlemeler — aynı anlatıma denk gelmek neredeyse imkânsız.",
+      "🎯 Statlar dengeye alındı: beş savaş statı (Saldırı, Savunma, Can, Hız, Kritik) binlerce maçlık simülasyonla ölçülüp yeniden ayarlandı. Kritik çarpanı 1.6x'ten 2.5x'e çıkarıldı, Savunma'nın aşırı baskınlığı kırıldı, Hız artık kimin önce vuracağını da belirliyor. Her stat artık kazanmaya somut katkı yapıyor.",
+      "🔗 Orman ile arena tam entegre edildi: ana oyundaki tüm statlar (Kritik ve Saldırı Hızı dahil) gerçek zamanlı ormanda birebir geçerli. Herkes taban %5 kritikle başlıyor, eşyalardan gelen bonuslar bunun üstüne ekleniyor. Kuşandığın her parça artık hem PvP'de hem canavar keserken aynı etkiyi gösteriyor.",
+      "🏅 Elo kademeleri yenilendi: kademeler Çaylak, Savaşçı, Usta, Şampiyon ve Efsane olarak düzenlendi. Başlangıç Elo'su 100'e çekildi; herkes Çaylak'tan başlıyor. Liderlik tablosunda ve saldırı ekranında her oyuncunun seviyesi, kademesi ve son 5 maç sonucu artık renkli bir plakada gösteriliyor.",
+      "⚖️ Zorbalık önleme dengelendi: 'griefing' eşiği gevşetildi — artık yalnızca gerçekten ezici güç farkı (3,5 kat) ya da 2 kademe Elo farkı ceza tetikliyor. Kendine yakın rakiplerle yapılan dürüst savaşlar tam puan veriyor. Total güç hesabı da artık beş statı birden içeriyor.",
+      "🎒 Envanter hataları giderildi: aynı slotta birden fazla eşya olduğunda kartların birbirine karışması ve satılamama sorunu kökünden çözüldü (her eşyaya benzersiz kimlik verildi). Ayrıca seviyesinin üstünde eşya kuşanmış oyuncuların bu eşyaları, oyuna girişte otomatik olarak envantere geri alınıyor.",
+      "🌿 Orman zemini yenilendi: eski karolu, kalitesiz çim dokusu kaldırıldı; yerine dikişsiz, doğal görünen elle işlenmiş bir çim geldi. Ayrıca vuruş hissi derinleştirildi — temas anında kıvılcım patlaması, vuruş yönünde parlayan kesme izi ve fırlayıp zıplayan hasar sayıları eklendi.",
+      "🛠️ Performans ve arayüz iyileştirmeleri: FPS düşüren cam-bulanıklık (backdrop-filter) katmanı kaldırıldı, ses sistemi optimize edildi, mobil dokunmatik kontroller yeniden boyutlandırıldı, Kabus ve Mitik özel kutuları artık gerçekten açılabiliyor ve görev ödülleri denge için yeniden düzenlendi (günlük görevler artık nadir eşya vermiyor, aylık en zor görev tek bir nadir eşya veriyor)."
+    ]
+  },
   {
     version: "2.0",
     date: "19 Temmuz 2026",
