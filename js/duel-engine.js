@@ -15,18 +15,18 @@
 // sadece dışa fonksiyon verir. VS ekranı bir sonraki adımda buna bağlanır.
 // ============================================================
 
-export const DUEL_CRIT_MULT = 1.6;      // kritik hasar çarpanı (battle.js ile aynı)
-export const DUEL_DEF_MITIGATION = 0.6; // savunmanın her puanı bu kadar hasar keser
-export const DUEL_MAX_TURNS = 18;       // üst sınır; dolarsa canı az olan kaybeder
+export const DUEL_CRIT_MULT = 2.5;      // [V4 DENGE] kritik çarpanı güçlendirildi (1.6→2.5) — kritik statı artık gerçekten değerli
+export const DUEL_DEF_MITIGATION = 0.42;// [V4 DENGE] savunmanın hasar kesmesi düşürüldü (0.6→0.42) — savunma artık aşırı baskın değil
+export const DUEL_MAX_TURNS = 15;       // üst sınır; dolarsa canı az olan kaybeder
 export const DUEL_BASE_CRIT = 0.05;     // taban %5 kritik (herkeste var)
-export const DUEL_SPEED_HALF = 25;      // bu kadar Hız = ekstra vuruş şansının yarısı
-export const DUEL_SPEED_MAX_EXTRA = 0.6;// hızdan gelen maks ekstra-vuruş şansı
-// [V4 DENGE] İnce ayarlı sabitler (binlerce maç simülasyonuyla):
-//   DMG_DIVISOR: hasarı ölçekler → savaşlar birkaç tur sürer, ilk-vuran ve
-//     minik farklar yumuşar ama üstünlük net kazandırır.
-//   DMG_VARIANCE: her vuruşa ±%35 rastgelelik → aynı statlar hep aynı sonucu
-//     vermez, küçük farklar OLASILIKSAL olur (kesin değil), savaş heyecanı artar.
-export const DUEL_DMG_DIVISOR = 1.25;
+export const DUEL_SPEED_HALF = 8;       // [V4 DENGE] düşürüldü (25→8) — hız daha erken etki eder, ekstra vuruş değerlenir
+export const DUEL_SPEED_MAX_EXTRA = 1.15;// [V4 DENGE] artırıldı (0.6→1.15) — hızlı savaşçı sık sık ikinci vuruş yapar
+export const DUEL_CRIT_PER_POINT = 40;  // [V4 DENGE] her 40 kritik statı = +%100 kritik şansı (eskiden /100'dü, güçlendirildi)
+// İnce ayarlı hasar sabitleri (binlerce maç simülasyonu; 5 statın da kabaca
+// eşit değerde olması hedeflendi — denge sapması ~8.7):
+//   DMG_DIVISOR: savaş uzunluğu. DMG_VARIANCE: ±rastgelelik (küçük farklar
+//   olasılıksal olsun, savaş hep aynı bitmesin).
+export const DUEL_DMG_DIVISOR = 0.95;
 export const DUEL_DMG_VARIANCE = 0.35;
 
 // Bir savaşçının ham verisinden düello statlarını çıkarır.
@@ -36,8 +36,8 @@ export function toDuelFighter(p, opts = {}) {
   const def = Number(p.defense) || 0;
   const spd = Math.max(0, Number(p.speed) || 0);
   const hp = Math.max(1, Math.round(Number(p.maxHp) || 100));
-  // kritik şansı: taban %5 + stat (critStat/100), %50 tavan
-  const crit = Math.min(0.5, DUEL_BASE_CRIT + Math.max(0, (Number(p.critStat) || 0) / 100));
+  // kritik şansı: taban %5 + stat (critStat/CRIT_PER_POINT), %60 tavan
+  const crit = Math.min(0.6, DUEL_BASE_CRIT + Math.max(0, (Number(p.critStat) || 0) / DUEL_CRIT_PER_POINT));
   // hızdan gelen ekstra-vuruş şansı (azalan getiri)
   const extraHitChance = DUEL_SPEED_MAX_EXTRA * (spd / (spd + DUEL_SPEED_HALF));
   return {
@@ -103,12 +103,21 @@ export function simulateDuel(attackerRaw, defenderRaw, opts = {}) {
 
   let turnNo = 1;
   const HARD_CAP = 200; // sonsuz döngü emniyeti (beraberlik uzarsa bile)
+  // İNİSİYATİF: her tur, HIZI YÜKSEK olan önce vurur. Eşit hızda "Saldır"a
+  // basan (attacker) önce vurur — böylece hem hız statı gerçek avantaj sağlar
+  // (önce vuran ilk kanı alır, rakibi öldürürse karşılık bile alamaz) hem de
+  // ilk-saldıran kuralı eşitlikte korunur.
+  const attackerFirst = A.spd >= D.spd;
   while (!ko && turnNo <= HARD_CAP) {
-    // attacker önce vurur
-    attackPhase(turnNo, "attacker", A, D, "defender");
-    if (ko) break;
-    // sonra defender karşılık verir
-    attackPhase(turnNo, "defender", D, A, "attacker");
+    if (attackerFirst) {
+      attackPhase(turnNo, "attacker", A, D, "defender");
+      if (ko) break;
+      attackPhase(turnNo, "defender", D, A, "attacker");
+    } else {
+      attackPhase(turnNo, "defender", D, A, "attacker");
+      if (ko) break;
+      attackPhase(turnNo, "attacker", A, D, "defender");
+    }
     if (ko) break;
 
     // Üst sınır: MAX_TURNS dolduysa canı az olan kaybeder; beraberlikte devam
