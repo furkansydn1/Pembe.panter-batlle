@@ -23,7 +23,7 @@ const joystickStick = document.getElementById("joystickStick");
 let joyActive = false;
 let joyVec = { x: 0, y: 0 }; // -1..1 aralığında normalize yön vektörü
 let joyTouchId = null;
-const JOY_MAX_DIST = 32; // MOBİL FIX: topuzun menzili küçülen halkaya (96px) uyarlandı (eski: 46)
+const JOY_MAX_DIST = 37; // MOBİL FIX: topuzun menzili büyüyen halkaya (112px) uyarlandı (eski: 32, halka 96px'ken)
 
 function joyStart(clientX, clientY, id) {
   joyActive = true;
