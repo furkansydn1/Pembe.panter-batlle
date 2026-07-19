@@ -42,14 +42,17 @@ swordSwipeImg.onload = () => { swordSwipeReady = true; };
 swordSwipeImg.src = "assets/player/kilic-iz.png";
 
 // ---- HARİTA ASSETLERİ: ZEMİN + AĞAÇ + KAYA ----
-// zemin-full.png: 1600x1000, HARİTANIN TAMAMINI kaplayan TEK PARÇA zemin
-// (WORLD_W x WORLD_H ile aynı boyut — harita büyürse bu görsel de yenilenmeli).
+// cim-tile.png: 256x256 DİKİŞSİZ (seamless) çim karosu — harita boyutundan
+// bağımsız, 11-render.js tarafından tüm haritaya boşluksuz döşenir (harita
+// büyürse görsel değişmez, sadece daha çok kez döşenir). Karo dama-tahtası
+// gibi dönüşümlü çevrilerek tekrar deseni gizlenir.
 // agac.png: 119x190 tek çam ağacı.
 // kaya.png: tek kaya sprite'ı (Rock4.png'den kırpıldı).
 const groundImg = new Image();
 let groundImgReady = false;
 groundImg.onload = () => { groundImgReady = true; };
-groundImg.src = "assets/map/zemin-full.png";
+groundImg.src = "assets/map/cim-tile.png";
+const GROUND_TILE = 256; // çim karosunun px boyutu (döşeme için)
 
 const treeImg = new Image();
 let treeImgReady = false;

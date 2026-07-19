@@ -3,9 +3,31 @@
 // ============================================================
 function drawGround() {
   if (groundImgReady) {
-    // TEK PARÇA zemin görseli: harita boyutunda (1600x1000), kamera kadar
-    // kaydırılarak tek çağrıda çizilir — karo/döşeme yok, ek/dikiş yok.
-    ctx.drawImage(groundImg, -camera.x, -camera.y, WORLD_W, WORLD_H);
+    // DİKİŞSİZ ÇİM DÖŞEME: 256'lık karo, sadece görünen alana döşenir (performans).
+    // Tekrar desenini gizlemek için karolar dama-tahtası gibi yatay/dikey
+    // çevrilir (flip) — aynı karo 4 farklı yönde göründüğü için göz tekrarı
+    // zor fark eder. Kamera kesirli olsa da karo hizası dünyaya sabit kalır.
+    const T = GROUND_TILE;
+    // Görünen alanın dünya koordinatındaki sınırları
+    const startX = Math.floor(camera.x / T) * T;
+    const startY = Math.floor(camera.y / T) * T;
+    const endX = camera.x + canvas.width;
+    const endY = camera.y + canvas.height;
+
+    for (let wx = startX; wx < endX; wx += T) {
+      for (let wy = startY; wy < endY; wy += T) {
+        const sx = wx - camera.x, sy = wy - camera.y;
+        // Karo indeksine göre flip yönü (dama tahtası varyasyonu)
+        const ix = Math.round(wx / T), iy = Math.round(wy / T);
+        const flipX = (ix % 2 === 0) ? 1 : -1;
+        const flipY = (iy % 2 === 0) ? 1 : -1;
+        ctx.save();
+        ctx.translate(sx + (flipX < 0 ? T : 0), sy + (flipY < 0 ? T : 0));
+        ctx.scale(flipX, flipY);
+        ctx.drawImage(groundImg, 0, 0, T, T);
+        ctx.restore();
+      }
+    }
   } else {
     // YEDEK: görsel yüklenmediyse eski düz zemin + nokta grid
     ctx.fillStyle = "#2a3d1f";
