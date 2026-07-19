@@ -619,6 +619,7 @@ export async function runAttack(defenderId) {
         });
         logDetails.push(`${attacker.nick}, ${chillItem.name}'in keyfine daldı ve saldıramadan bu seferki hakkını harcadı.`);
         tx.set(doc(collection(db, LOG_COL)), {
+          attackerId: S.currentPlayerId, defenderId: defenderId,
           attacker: attacker.nick, defender: defender.nick,
           message: logDetails.join(" "),
           effects: [],
@@ -941,6 +942,8 @@ export async function runAttack(defenderId) {
       // Artık ikisi ayrı tutulup ayrı gösteriliyor (bkz. renderBattleLog / showResultModal).
       const mainMessage = logDetails.join(" ");
       tx.set(doc(collection(db, LOG_COL)), {
+        attackerId: S.currentPlayerId,
+        defenderId: defenderId,
         attacker: attacker.nick,
         defender: defender.nick,
         message: mainMessage,
