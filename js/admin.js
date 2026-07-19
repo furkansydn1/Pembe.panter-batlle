@@ -306,3 +306,37 @@ if (typeof window !== "undefined") {
   window.adminUnequipOverleveledItems = adminUnequipOverleveledItems;
 }
 
+// ============================================================
+// ADMIN: TÜM OYUNCULARIN ELO'SUNU SIFIRLA (SADECE KONSOL)
+// ------------------------------------------------------------
+// Sebep: STARTING_ELO 1000→100'e çekildi ve kademe isimleri/eşikleri
+// değişti. Mevcut oyuncuların Firestore'daki elo alanı hâlâ eski (1000
+// veya savaşlarla oynamış) değerde — bu fonksiyon HERKESİ yeni başlangıç
+// elosuna (100) çeker, yani herkes en alt kademe Çaylak'tan başlar.
+// Kademe elo'dan canlı hesaplandığı (getLeagueTier) için ayrıca kademe
+// yazmaya gerek yok. Konsolden:  adminResetAllElo()
+const RESET_ELO_VALUE = 100; // battle.js STARTING_ELO ile aynı tutulmalı
+export async function adminResetAllElo() {
+  if (!requireAdmin("adminResetAllElo")) return { ok: false, reason: "not_admin" };
+
+  console.warn(`⚠️ TÜM oyuncuların Elo'su ${RESET_ELO_VALUE}'e (Çaylak) sıfırlanıyor...`);
+  try {
+    const snap = await getDocs(collection(db, PLAYERS_COL));
+    const refs = snap.docs.map(d => d.ref);
+    const BATCH_LIMIT = 400;
+    for (let i = 0; i < refs.length; i += BATCH_LIMIT) {
+      const batch = writeBatch(db);
+      refs.slice(i, i + BATCH_LIMIT).forEach(ref => batch.update(ref, { elo: RESET_ELO_VALUE }));
+      await batch.commit();
+    }
+    console.warn(`✅ ${refs.length} oyuncunun Elo'su ${RESET_ELO_VALUE}'e sıfırlandı. Herkes Çaylak kademesinden başlıyor.`);
+    return { ok: true, playersReset: refs.length };
+  } catch (e) {
+    console.error("Elo sıfırlama sırasında hata oluştu:", e);
+    return { ok: false, reason: "error", error: e.message };
+  }
+}
+if (typeof window !== "undefined") {
+  window.adminResetAllElo = adminResetAllElo;
+}
+
