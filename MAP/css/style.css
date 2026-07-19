@@ -44,14 +44,14 @@ canvas{
    ORTAK PLAKA — koyu cam + gravür köşe çentikleri
    ============================================================ */
 .char-frame, .resource-panel, .fps-badge, .clear-panel{
-  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  background: linear-gradient(180deg, rgba(26,27,34,.95), rgba(18,19,25,.95)); /* FPS FIX: blur kaldırıldı, opaklık artırıldı (cam his korundu) */
   border: 1px solid var(--etch);
   border-radius: 7px;
   box-shadow:
     0 3px 14px rgba(0,0,0,.5),
     inset 0 1px 0 rgba(255,255,255,.05);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  /* FPS FIX: backdrop-filter blur(6px) SİLİNDİ — her kare değişen canvas'ın
+     üstünde saniyede 60 kez blur hesabı mobilde ana FPS katiliydi. */
   position:relative;
 }
 .char-frame::before, .resource-panel::before{
