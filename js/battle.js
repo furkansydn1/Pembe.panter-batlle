@@ -9,6 +9,8 @@ import { MAX_CONSECUTIVE_ATTACKS_ON_TARGET, TARGET_LOCK_COOLDOWN_ATTACKS, THRONE
 import { S } from "./state.js";
 import { playSound, tone } from "./ui-misc.js";
 import { BOUNTY_DOC_ID, META_COL } from "./wheel-bounty-oracle.js";
+import { simulateDuel, buildDuelCommentary, DUEL_MAX_TURNS } from "./duel-engine.js";
+const DUEL_MAX_TURNS_LABEL = DUEL_MAX_TURNS;
 
 // ============================================================
 // SAVAŞ SİMÜLASYONU (V2 Faz 5) — 3 saniyelik gerçek çarpışma
@@ -722,17 +724,29 @@ export async function runAttack(defenderId) {
         attackerWins = true;
         legendaryLog.push(`${attacker.nick}'in ${critItem.name} aniden ısırdı, hesaplama boşa gitti ve anında kazandı!`);
       } else {
-        battleSim = simulateBattle3s(
-          { atk: baseAttack, def: attacker.defense || BASE_DEFENSE, spd: attacker.speed || 0, crit: attacker.critStat || 0, hp: attacker.maxHp || BASE_HP },
-          { atk: defender.attack || BASE_ATTACK, def: effectiveDefense, spd: defender.speed || 0, crit: defender.critStat || 0, hp: defender.maxHp || BASE_HP }
+        // [V4 SIRALI DÜELLO] Eski 3sn gauge-sim yerine tur-tabanlı sıralı düello.
+        // İlk saldıran (attacker) başlar; statlar (atk/def/hız/kritik/can) doğrudan
+        // sonucu belirler. attackerWins + toplam hasarlar aynı formatta üretilir,
+        // böylece aşağıdaki Elo/puan/griefing/log akışı HİÇ değişmeden çalışır.
+        const duel = simulateDuel(
+          { nick: attacker.nick, attack: baseAttack, defense: attacker.defense || BASE_DEFENSE, speed: attacker.speed || 0, critStat: attacker.critStat || 0, maxHp: attacker.maxHp || BASE_HP },
+          { nick: defender.nick, attack: defender.attack || BASE_ATTACK, defense: effectiveDefense, speed: defender.speed || 0, critStat: defender.critStat || 0, maxHp: defender.maxHp || BASE_HP }
         );
-        attackerWins = battleSim.attackerWins;
-        attackPower = battleSim.dmgDealtA;
-        defensePower = battleSim.dmgDealtD;
+        attackerWins = duel.winner === "attacker";
+        // Toplam verilen hasarları taraf bazında topla (puan farkı hesabı için)
+        let dmgA = 0, dmgD = 0, hitsA = 0, hitsD = 0, critA = 0, critD = 0;
+        for (const ev of duel.turns) {
+          if (ev.actor === "attacker") { dmgA += ev.dmg; hitsA++; if (ev.isCrit) critA++; }
+          else { dmgD += ev.dmg; hitsD++; if (ev.isCrit) critD++; }
+        }
+        attackPower = dmgA;
+        defensePower = dmgD;
+        // Düellonun spiker anlatımını log'a ekle (VS ekranı + sonuç için)
+        battleSim = { attackerWins, duel, dmgDealtA: dmgA, dmgDealtD: dmgD, hitsA, hitsD, critHitsA: critA, critHitsD: critD, ko: duel.reason === "turnlimit" ? "timeout" : "ko" };
         legendaryLog.push(
-          battleSim.ko === "timeout"
-            ? `3 saniye doldu: ${attacker.nick} ${battleSim.hitsA} vuruş (${battleSim.critHitsA} kritik), ${defender.nick} ${battleSim.hitsD} vuruş (${battleSim.critHitsD} kritik) yaptı — kalan Can yüzdesine göre ${attackerWins ? attacker.nick : defender.nick} kazandı.`
-            : `${attackerWins ? defender.nick : attacker.nick} nakavt oldu! (${attacker.nick}: ${battleSim.hitsA} vuruş/${battleSim.critHitsA} kritik, ${defender.nick}: ${battleSim.hitsD} vuruş/${battleSim.critHitsD} kritik)`
+          duel.reason === "turnlimit"
+            ? `${DUEL_MAX_TURNS_LABEL} tur doldu: kalan cana göre ${attackerWins ? attacker.nick : defender.nick} kazandı. (${attacker.nick}: ${hitsA} vuruş/${critA} kritik, ${defender.nick}: ${hitsD} vuruş/${critD} kritik)`
+            : `${attackerWins ? defender.nick : attacker.nick} düştü! (${attacker.nick}: ${hitsA} vuruş/${critA} kritik, ${defender.nick}: ${hitsD} vuruş/${critD} kritik)`
         );
       }
 
