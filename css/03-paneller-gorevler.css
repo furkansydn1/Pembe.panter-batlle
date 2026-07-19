@@ -1,13 +1,19 @@
 /* ---------- LEADERBOARD ---------- */
 .leaderboard-list{display:flex; flex-direction:column; gap:8px;}
 .lb-row{
-  display:flex; align-items:center; gap:10px;
-  padding: 10px;
+  display:flex; align-items:center; gap:11px;
+  padding: 11px 12px;
   background: linear-gradient(180deg, rgba(255,255,255,.04), transparent), var(--bg-panel-alt);
-  border-radius: 12px;
+  border-radius: 13px;
   border: 1px solid rgba(255,255,255,.06);
+  transition: transform .1s ease, border-color .15s ease;
 }
+.lb-row:not(.me):active{ transform: scale(.985); }
 .lb-row.me{border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset;}
+/* İlk 3 sıraya hafif kademe vurgusu */
+.lb-row.top1{ border-color:#ffcc4d55; background: linear-gradient(180deg,#ffcc4d12, transparent), var(--bg-panel-alt); }
+.lb-row.top2{ border-color:#cfd8e355; }
+.lb-row.top3{ border-color:#e8a06b55; }
 .lb-rank{
   width: 28px; height:28px; border-radius:50%;
   background: var(--panel-edge); display:flex; align-items:center; justify-content:center;
@@ -15,10 +21,37 @@
   border: 1px solid rgba(255,255,255,.08);
 }
 .lb-rank.gold{background: linear-gradient(180deg,#fff0a8,var(--gold)); color:var(--ink); border-color:var(--gold-dark); box-shadow:0 2px 0 var(--gold-dark);}
-.lb-info{flex:1; min-width:0;}
+.lb-info{flex:1; min-width:0; display:flex; flex-direction:column; gap:3px;}
 .lb-name{font-weight:800; font-size:.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 .lb-stats{font-size:.72rem; color:var(--text-dim); font-weight:600;}
 .lb-points{font-weight:900; color: var(--gold); font-size:.95rem;}
+
+/* ---------- NAMEPLATE (oyuncu kademe/seviye rozeti) ----------
+   Oyuncunun Sv + kademe + elo bilgisini tek şeritte gösteren rozet.
+   Kademe rengi --np-c değişkeniyle inline geliyor (game-core.js
+   getLeagueTier().color'dan), böylece 5 kademe tek CSS bloğuyla
+   kendi rengine boyanıyor. */
+.nameplate{
+  display:inline-flex; align-items:center; gap:7px;
+  padding: 3px 9px; border-radius: 999px;
+  font-size: .74rem; line-height:1; white-space:nowrap;
+  width: fit-content;
+  color: var(--np-c); /* alt öğeler currentColor/opacity ile bundan türer — color-mix'siz, eski tarayıcı uyumlu */
+  background: linear-gradient(135deg, var(--np-c), transparent 80%);
+  /* Arka planı fazla parlak olmasın diye üstüne koyu bir kaplama: iki katmanlı gradient */
+  background:
+    linear-gradient(135deg, rgba(0,0,0,.72), rgba(0,0,0,.86)),
+    linear-gradient(135deg, var(--np-c), var(--np-c));
+  border: 1px solid var(--np-c);
+  box-shadow: 0 0 9px -2px var(--np-c);
+}
+.nameplate .np-lvl{ color: var(--text); font-weight:800; }
+.nameplate .np-sep{ width:1px; height:11px; background: var(--np-c); opacity:.5; }
+.nameplate .np-tier{ color: var(--np-c); font-weight:700; }
+.nameplate .np-elo{ color: var(--np-c); opacity:.85; font-weight:700; font-variant-numeric: tabular-nums; }
+
+
+
 
 /* ---------- KUTU / KUŞANIM / SALDIRI İÇ ALANLAR ---------- */
 .box-area-top{display:flex; align-items:center; justify-content:space-between; gap:8px;}
