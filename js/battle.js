@@ -1,5 +1,5 @@
 import { ATTACK_COOLDOWN_MS, BASE_ATTACK, BASE_DEFENSE, XP_PER_BATTLE_LOSS, XP_PER_BATTLE_WIN, getAttackWindowIndex, getScrap } from "./core-config.js";
-import { IS_LOW_POWER, attackStatus, attackTargetsEl, closeResultBtn, resultContent, resultModal, vsAttackerAtk, vsAttackerDef, vsAttackerName, vsBgFlash, vsBurst, vsClashText, vsCountdownEl, vsDefenderAtk, vsDefenderDef, vsDefenderName, vsFighterLeft, vsFighterRight, vsFrame, vsHypeLabel, vsLightning, vsModal, vsSparksLayer, vsTensionFill } from "./dom.js";
+import { IS_LOW_POWER, attackStatus, attackTargetsEl, closeResultBtn, resultContent, resultModal, vsAttackerAtk, vsAttackerDef, vsAttackerName, vsBgFlash, vsBurst, vsClashText, vsCountdownEl, vsDefenderAtk, vsDefenderDef, vsDefenderName, vsFighterLeft, vsFighterRight, vsFrame, vsHypeLabel, vsLightning, vsModal, vsSparksLayer, vsTensionFill, vsDuelLive, vsDuelCardA, vsDuelCardB, vsDuelNameA, vsDuelNameB, vsDuelHpFillA, vsDuelHpFillB, vsDuelHpTxtA, vsDuelHpTxtB, vsDuelLog, vsDuelResult, vsDuelContinueBtn } from "./dom.js";
 import { getTodaysEvent, pick } from "./events-badges.js";
 import { LOG_COL, PLAYERS_COL, collection, db, doc, runTransaction } from "./firebase-setup.js";
 import { applyXpGain, getMinorTraitBonusPct } from "./item-systems.js";
@@ -523,12 +523,108 @@ export function playVsSequence({ attackerName, attackerAtk, attackerDef, defende
         vsClashText.classList.add("go");
         explodeVsSparks(["#fff", "#ffcc4d", "#ff5c6c"], IS_LOW_POWER ? 14 : 30);
         sfxVsClash();
-        setTimeout(() => {
-          vsModal.classList.add("hidden");
-          resolve();
-        }, 900);
+        // NOT: burada artık vsModal KAPATILMIYOR — v4 canlı düello ekranı
+        // (playDuelLive) aynı modalın üstünde açılacak. Modalı kapatmak
+        // runAttack() tarafında, düello TAMAMEN bittikten sonra yapılıyor.
+        setTimeout(resolve, 900);
       }
     }, 1000);
+  });
+}
+
+// ============================================================
+// v4 CANLI DÜELLO EKRANI — kullanıcının sağladığı prototipin ("VS Düello")
+// birebir kart/can barı/spiker log görselini, GERÇEK duel-engine.js
+// sonucunu (result.battleSim.duel.turns + .commentary) tur tur oynatarak
+// gösterir. Prototipteki gibi kendi rastgele hasabını YAPMAZ — sadece
+// runAttack() transaction'ının içinde zaten hesaplanmış, otoriter/gerçek
+// sonucu görselleştirir. Promise, kullanıcı "Devam"a basınca resolve olur.
+// ============================================================
+export function playDuelLive(result, attackerName, defenderName) {
+  return new Promise((resolve) => {
+    const { duel, commentary } = result.battleSim;
+    const A = duel.fighters.attacker, D = duel.fighters.defender;
+
+    vsDuelNameA.textContent = attackerName;
+    vsDuelNameB.textContent = defenderName;
+    vsDuelHpFillA.style.width = "100%";
+    vsDuelHpFillB.style.width = "100%";
+    vsDuelHpTxtA.textContent = `${A.maxHp} / ${A.maxHp}`;
+    vsDuelHpTxtB.textContent = `${D.maxHp} / ${D.maxHp}`;
+    vsDuelLog.innerHTML = "";
+    vsDuelResult.innerHTML = "";
+    vsDuelContinueBtn.style.display = "none";
+    vsDuelCardA.classList.remove("hit-crit", "hit-normal");
+    vsDuelCardB.classList.remove("hit-crit", "hit-normal");
+    vsDuelLive.classList.remove("hidden");
+
+    function addLine(text, cls) {
+      if (!text) return;
+      const d = document.createElement("div");
+      d.className = "vs-duel-logline" + (cls ? " " + cls : "");
+      d.textContent = text;
+      vsDuelLog.appendChild(d);
+      requestAnimationFrame(() => d.classList.add("show"));
+      vsDuelLog.scrollTop = vsDuelLog.scrollHeight;
+    }
+
+    // commentary[0] = giriş cümlesi (intro), commentary[1..turns.length] =
+    // her turns[] olayı için 1'e 1 (buildDuelCommentary'nin sırası budur).
+    // Tur limiti dolduysa en sonda BİR "timeout" cümlesi daha var.
+    addLine(commentary[0], "intro");
+
+    let i = 0;
+    function step() {
+      if (i >= duel.turns.length) {
+        if (duel.reason === "turnlimit") addLine(commentary[commentary.length - 1], "timeout");
+        setTimeout(() => {
+          const won = result.attackerWins;
+          vsDuelResult.innerHTML = `<div class="vs-duel-winbanner ${won ? "win" : "lose"}">${won ? "🏆 KAZANDIN" : "💀 KAYBETTİN"}</div>`;
+          vsDuelContinueBtn.style.display = "inline-block";
+          vsDuelContinueBtn.onclick = () => { vsDuelLive.classList.add("hidden"); resolve(); };
+        }, 350);
+        return;
+      }
+      const ev = duel.turns[i];
+      const cls = ev.ko ? "finish" : ev.extra ? "extra" : ev.isCrit ? "crit" : "normal";
+      addLine(commentary[i + 1], cls);
+
+      const side = ev.target; // "attacker" | "defender"
+      const fillEl = side === "attacker" ? vsDuelHpFillA : vsDuelHpFillB;
+      const txtEl = side === "attacker" ? vsDuelHpTxtA : vsDuelHpTxtB;
+      const cardEl = side === "attacker" ? vsDuelCardA : vsDuelCardB;
+      const maxHp = side === "attacker" ? A.maxHp : D.maxHp;
+      const pct = Math.max(0, ev.targetHpAfter / maxHp * 100);
+      fillEl.style.width = pct + "%";
+      txtEl.textContent = `${Math.round(ev.targetHpAfter)} / ${maxHp}`;
+      cardEl.classList.add(ev.isCrit ? "hit-crit" : "hit-normal");
+      setTimeout(() => cardEl.classList.remove("hit-crit", "hit-normal"), 220);
+      if (ev.isCrit) sfxVsImpact();
+
+      i++;
+      setTimeout(step, ev.ko ? 750 : ev.isCrit ? 780 : 560);
+    }
+    setTimeout(step, 500);
+  });
+}
+
+// ============================================================
+// Anlık zafer efekti (crit_instant_win eşyası tetiklenirse): gerçek düello
+// hiç oynanmadı (battleSim=null), o yüzden canlı ekran yerine kısa bir
+// "ani zafer" yanıp sönmesi gösterilip devam edilir.
+// ============================================================
+export function playInstantWinFlash(attackerName) {
+  return new Promise((resolve) => {
+    vsClashText.textContent = `⚡ ${attackerName} ANİDEN KAZANDI!`;
+    vsClashText.classList.remove("go");
+    void vsClashText.offsetWidth;
+    vsClashText.classList.add("go");
+    explodeVsSparks(["#ffcc4d", "#fff"], IS_LOW_POWER ? 10 : 22);
+    sfxVsClash();
+    setTimeout(() => {
+      vsClashText.textContent = "ÇARPIŞMA!"; // etiketi eski haline döndür
+      resolve();
+    }, 1100);
   });
 }
 
@@ -540,11 +636,19 @@ export async function runAttack(defenderId) {
   // VS ekranı gerçek verilerle: saldıranın (kendi) ve savunanın o anki
   // isim + saldırı/savunma statları S.allPlayers/S.currentPlayerData'dan alınır.
   const defenderPreview = S.allPlayers.find(p => p.id === defenderId);
-  await playVsSequence({
-    attackerName: S.currentPlayerData?.nick || "Sen",
+  const attackerName = S.currentPlayerData?.nick || "Sen";
+  const defenderName = defenderPreview?.nick || "Rakip";
+
+  // [V4] Giriş animasyonu (kartlar kayar, şimşek, çarpışma) ile GERÇEK savaş
+  // hesaplaması (Firestore transaction, aşağıda) artık PARALEL çalışıyor —
+  // kullanıcı girişi izlerken arka planda otoriter düello sonucu zaten
+  // hesaplanmış oluyor, ekstra bekleme olmuyor. vsModal, intro bitince de
+  // KAPANMIYOR (bkz. playVsSequence) — playDuelLive tam onun üstüne açılıyor.
+  const introPromise = playVsSequence({
+    attackerName,
     attackerAtk: S.currentPlayerData?.attack ?? BASE_ATTACK,
     attackerDef: S.currentPlayerData?.defense ?? BASE_DEFENSE,
-    defenderName: defenderPreview?.nick || "Rakip",
+    defenderName,
     defenderAtk: defenderPreview?.attack ?? BASE_ATTACK,
     defenderDef: defenderPreview?.defense ?? BASE_DEFENSE
   });
@@ -553,8 +657,9 @@ export async function runAttack(defenderId) {
   // zirvesindeki oyuncu bu hedef mi, önceden belirlenir.
   const isThroneTarget = S.allPlayers.length > 0 && S.allPlayers[0].id === defenderId && (S.allPlayers[0].points || 0) > 0;
 
+  let result = null;
   try {
-    await runTransaction(db, async (tx) => {
+    result = await runTransaction(db, async (tx) => {
       const attackerRef = doc(db, PLAYERS_COL, S.currentPlayerId);
       const defenderRef = doc(db, PLAYERS_COL, defenderId);
       const bountyRef = doc(db, META_COL, BOUNTY_DOC_ID);
@@ -992,16 +1097,37 @@ export async function runAttack(defenderId) {
         attackerWins, attackPower: Math.round(attackPower), defensePower: Math.round(defensePower),
         message: mainMessage, legendaryLog, battleSim
       };
-    }).then(result => {
-      if (result && !result.skipped) showResultModal(result);
-      else if (result && result.skipped) showResultModal({ skipped: true });
     });
   } catch (e) {
+    // Transaction patladıysa giriş animasyonu ekranda kalmış olabilir, kapat.
+    vsModal.classList.add("hidden");
+    stopVsHypeRotation();
     alert("Saldırı gönderilemedi: " + e.message);
-  } finally {
     S.attackInProgress = false;
     renderAttackTargets();
+    return;
   }
+
+  // Giriş animasyonu henüz bitmediyse (transaction çok hızlı döndüyse) burada tamamlanmasını bekle.
+  await introPromise;
+
+  if (result.skipped) {
+    vsModal.classList.add("hidden");
+    showResultModal({ skipped: true });
+  } else if (result.battleSim) {
+    // [V4] Gerçek düello motorunun sonucunu (turns + spiker anlatımı) canlı oynat.
+    await playDuelLive(result, attackerName, defenderName);
+    vsModal.classList.add("hidden");
+    showResultModal(result);
+  } else {
+    // critTriggered (anlık zafer eşyası) yolu: gerçek düello hiç oynanmadı.
+    await playInstantWinFlash(attackerName);
+    vsModal.classList.add("hidden");
+    showResultModal(result);
+  }
+
+  S.attackInProgress = false;
+  renderAttackTargets();
 }
 
 export function showResultModal(result) {
@@ -1021,15 +1147,12 @@ export function showResultModal(result) {
   } else {
     const won = result.attackerWins;
     playSound(won ? "win" : "lose");
-    // Yeni düello motorunun tur tur anlatımı (varsa) — critTriggered gibi
-    // düellosuz özel yollarda battleSim null kalır, o zaman bu blok atlanır.
-    const commentaryHtml = result.battleSim?.commentary?.length
-      ? `<div class="result-passive duel-commentary">${result.battleSim.commentary.map(x => `• ${x}`).join("<br>")}</div>`
-      : "";
+    // NOT: düellonun tur tur spiker anlatımı artık playDuelLive() ile CANLI
+    // gösterildi (bu modal açılmadan önce) — burada tekrar basmıyoruz, sadece
+    // özet + eşya efektleri (legendaryLog) kalıyor.
     resultContent.innerHTML = `
       <div class="result-title ${won ? "win" : "lose"}">${won ? "🏆 Kazandın!" : "💀 Kaybettin!"}</div>
       <p class="result-line">Senin Gücün: ${result.attackPower} &nbsp;|&nbsp; Rakip Gücü: ${result.defensePower}</p>
-      ${commentaryHtml}
       ${result.legendaryLog.length ? `<div class="result-passive">${result.legendaryLog.map(x => `• ${x}`).join("<br>")}</div>` : ""}
     `;
   }

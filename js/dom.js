@@ -232,3 +232,20 @@ export const closeResultBtn = document.getElementById("closeResultBtn");
 
 export const battleLogEl = document.getElementById("battleLog");
 
+// ============================================================
+// v4 CANLI DÜELLO EKRANI — DOM referansları (duel-engine.js sonucunu
+// tur tur oynatan kart + can barı + spiker log ekranı)
+// ============================================================
+export const vsDuelLive = document.getElementById("vsDuelLive");
+export const vsDuelCardA = document.getElementById("vsDuelCardA");
+export const vsDuelCardB = document.getElementById("vsDuelCardB");
+export const vsDuelNameA = document.getElementById("vsDuelNameA");
+export const vsDuelNameB = document.getElementById("vsDuelNameB");
+export const vsDuelHpFillA = document.getElementById("vsDuelHpFillA");
+export const vsDuelHpFillB = document.getElementById("vsDuelHpFillB");
+export const vsDuelHpTxtA = document.getElementById("vsDuelHpTxtA");
+export const vsDuelHpTxtB = document.getElementById("vsDuelHpTxtB");
+export const vsDuelLog = document.getElementById("vsDuelLog");
+export const vsDuelResult = document.getElementById("vsDuelResult");
+export const vsDuelContinueBtn = document.getElementById("vsDuelContinueBtn");
+
