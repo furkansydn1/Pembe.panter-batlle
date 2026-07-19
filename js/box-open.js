@@ -3,7 +3,7 @@ import { IS_LOW_POWER, boxStatus, boxWrapper, buyEfsaneviChestBtn, buyNadirChest
 import { getEffectiveBoxCooldown, getTodaysEvent, pickSlotWeighted, randInt, rollRarity } from "./events-badges.js";
 import { PLAYERS_COL, db, doc, updateDoc } from "./firebase-setup.js";
 import { computeScrapGainForItem, disenchantItem, equipItem, getSlotInventory, openInventoryModal } from "./inventory.js";
-import { RARITY_CHANCE_LABELS, applyXpGain, computeStatsFromEquipment, generateLootItemForRarity } from "./item-systems.js";
+import { RARITY_CHANCE_LABELS, applyXpGain, canEquipItem, computeStatsFromEquipment, generateLootItemForRarity } from "./item-systems.js";
 import { SLOTS, SLOT_MAP, getLiveEffectDesc, itemIconSvg } from "./items-data.js";
 import { dateStr, emptyEquipment, formatRemaining, isConsecutiveDay } from "./map.js";
 import { incrementQuestProgress } from "./quests.js";
@@ -291,8 +291,10 @@ export async function performBoxOpen({ forcedRarity = null, costScrap = 0, costG
 
       await playChestOpenAnimation(item.rarity);
 
-      const wasEmpty = !(data.equipment && data.equipment[slot]);
-      const newInvArr = [...getSlotInventory(slot), item];
+      // LEVEL FIX: otomatik kuşanma sadece slot boşsa VE seviye yetiyorsa
+      // (market.js ile aynı desen). Eskiden seviyeye bakılmıyordu — düşük
+      // seviyeli oyuncu yüksek tier eşyayı kutudan çıkınca otomatik takıyordu.
+      const wasEmpty = !(data.equipment && data.equipment[slot]) && canEquipItem(item, data).ok;
       const newEquipment = wasEmpty
         ? { ...(data.equipment || emptyEquipment()), [slot]: item }
         : (data.equipment || emptyEquipment());
@@ -329,7 +331,8 @@ export async function performBoxOpen({ forcedRarity = null, costScrap = 0, costG
         ${item.minorTrait ? `<div class="item-popup-passive minor-passive">${item.minorTrait.icon} ${item.minorTrait.name}: ${item.minorTrait.desc}</div>` : ""}
         ${wasEmpty
           ? `<div class="item-popup-passive" style="color:var(--green)">✅ Boş slota otomatik kuşanıldı!</div>`
-          : `<div class="popup-quick-actions">
+          : `${!canEquipItem(item, data).ok ? `<div class="item-popup-passive" style="color:var(--gold)">🔒 Seviyen yetmiyor — envantere eklendi. ${canEquipItem(item, data).reason}</div>` : ""}
+             <div class="popup-quick-actions">
               <button id="popupEquipBtn" class="btn-mini nadir-mini">✅ Şimdi Kuşan</button>
               <button id="popupScrapBtn" class="btn-mini">✨ Hurdaya Çevir<span>+${computeScrapGainForItem(item)} Hurda</span></button>
             </div>`}
@@ -382,7 +385,8 @@ export async function performBoxOpen({ forcedRarity = null, costScrap = 0, costG
   let newPityLegendary = rarity === "efsanevi" ? 0 : pityLegendary + (event.pityMult || 1);
 
   // Slot boşsa otomatik kuşanılır, doluysa envantere eklenir (oyuncu kendi seçer)
-  const wasEmpty = !(data.equipment && data.equipment[slot]);
+  // LEVEL FIX: seviye yetmiyorsa otomatik kuşanmaz, envantere düşer (market.js deseni).
+  const wasEmpty = !(data.equipment && data.equipment[slot]) && canEquipItem(item, data).ok;
   const newInvArr = [...getSlotInventory(slot), item];
   const newEquipment = wasEmpty
     ? { ...(data.equipment || emptyEquipment()), [slot]: item }
@@ -423,7 +427,8 @@ export async function performBoxOpen({ forcedRarity = null, costScrap = 0, costG
     ${item.minorTrait ? `<div class="item-popup-passive minor-passive">${item.minorTrait.icon} ${item.minorTrait.name}: ${item.minorTrait.desc}</div>` : ""}
     ${wasEmpty
       ? `<div class="item-popup-passive" style="color:var(--green)">✅ Boş slota otomatik kuşanıldı!</div>`
-      : `<div class="popup-quick-actions">
+      : `${!canEquipItem(item, data).ok ? `<div class="item-popup-passive" style="color:var(--gold)">🔒 Seviyen yetmiyor — envantere eklendi. ${canEquipItem(item, data).reason}</div>` : ""}
+         <div class="popup-quick-actions">
           <button id="popupEquipBtn" class="btn-mini nadir-mini">✅ Şimdi Kuşan</button>
           <button id="popupScrapBtn" class="btn-mini">✨ Hurdaya Çevir<span>+${computeScrapGainForItem(item)} Hurda</span></button>
         </div>`}
