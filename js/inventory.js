@@ -45,11 +45,18 @@ closeCollectionBtn.onclick = () => collectionModal.classList.add("hidden");
 // istediği eşyayı manuel olarak kuşanabilir ya da hurdaya çevirebilir.
 // ============================================================
 export function getSlotInventory(slot) {
-  const inv = (S.currentPlayerData?.inventory && S.currentPlayerData.inventory[slot]) || [];
+  const invRaw = (S.currentPlayerData?.inventory && S.currentPlayerData.inventory[slot]) || [];
+  // BUG FIX: Eski (id'siz) eşyalara TEK bir "legacy-slot" id'si veriliyordu —
+  // aynı slotta 2+ id'siz eşya varsa HEPSİ aynı id'yi alıyor, karta basınca
+  // ikisi birden yakalanıyor ve sat/hurda/+bas çalışmıyordu. Artık her eşyaya
+  // slot+index bazlı BENZERSİZ bir id veriliyor (id'si olan zaten korunur).
+  const inv = invRaw.map((it, idx) =>
+    it.id ? it : { ...it, id: `legacy-${slot}-${idx}` }
+  );
   const equipped = S.currentPlayerData?.equipment && S.currentPlayerData.equipment[slot];
   // Bu güncellemeden önce kuşanılmış (id'siz) eşyalar için geriye dönük uyumluluk
   if (equipped && !inv.some(it => it.id && equipped.id && it.id === equipped.id)) {
-    const legacyId = equipped.id || `legacy-${slot}`;
+    const legacyId = equipped.id || `legacy-equipped-${slot}`;
     return [{ ...equipped, id: legacyId }, ...inv];
   }
   return inv;
