@@ -87,8 +87,10 @@
    KUTULAR — vault kartları
    ============================================================ */
 #tabMarket .vaults{ display:flex; flex-direction:column; gap:13px; }
-#tabMarket .vault{
+#tabMarket .vault:not(.v-nadir):not(.v-efsanevi):not(.v-mitik):not(.v-kabus){
   --rc:var(--r-nadir);
+}
+#tabMarket .vault{
   position:relative; overflow:hidden; width:100%; text-align:left;
   appearance:none; cursor:pointer; font-family:var(--font-body);
   display:flex; align-items:center; gap:15px; padding:16px;
@@ -113,8 +115,11 @@
 #tabMarket .vault:hover .v-shine{ transform:translateX(430px) skewX(-18deg); }
 #tabMarket .vault:active{ transform:translateY(-1px) scale(.995); }
 #tabMarket .vault:focus-visible{ outline:2px solid var(--rc); outline-offset:3px; }
-#tabMarket .vault[disabled]{ opacity:.5; cursor:not-allowed; filter:grayscale(.35); }
-#tabMarket .vault[disabled]:hover{ transform:none; }
+#tabMarket .vault[disabled],
+#tabMarket .vault.cant-afford{ opacity:.5; filter:grayscale(.35); }
+#tabMarket .vault[disabled]{ cursor:not-allowed; }
+#tabMarket .vault[disabled]:hover,
+#tabMarket .vault.cant-afford:hover{ transform:none; }
 
 #tabMarket .v-shine{
   position:absolute; top:0; left:-130px; width:70px; height:100%; pointer-events:none;
@@ -189,8 +194,10 @@
 #tabMarket .sb-timer svg{ width:15px; height:15px; }
 
 #tabMarket .mkt-wares{ display:flex; flex-direction:column; gap:10px; }
-#tabMarket .mkt-wares .ware-card{
+#tabMarket .mkt-wares .ware-card:not(.r-nadir):not(.r-efsanevi):not(.r-mitik):not(.r-kabus):not(.r-standart){
   --rc:var(--r-standart);
+}
+#tabMarket .mkt-wares .ware-card{
   display:flex; align-items:center; gap:13px; padding:12px; border-radius:15px;
   background:
     radial-gradient(120% 120% at 0% 0%, color-mix(in srgb,var(--rc) 12%,transparent), transparent 55%),
@@ -241,8 +248,10 @@
    Envanter sekmesindeki .inv-item-v2 bu kurallardan ETKİLENMEZ.
    ============================================================ */
 #tabMarket .mkt-listings{ display:flex; flex-direction:column; gap:10px; }
-#tabMarket .mkt-listings .inv-item-v2{
+#tabMarket .mkt-listings .inv-item-v2:not(.rarity-nadir):not(.rarity-efsanevi):not(.rarity-mitik):not(.rarity-kabus):not(.rarity-standart){
   --rc:var(--r-standart);
+}
+#tabMarket .mkt-listings .inv-item-v2{
   display:flex; flex-wrap:wrap; align-items:center; gap:11px; padding:12px; border-radius:15px;
   background:linear-gradient(180deg,var(--panel-light),var(--panel));
   border:1px solid var(--etch); box-shadow:0 6px 18px rgba(0,0,0,.28);
