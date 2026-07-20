@@ -22,6 +22,8 @@
 <link rel="stylesheet" href="css/07-efekt-motorlari.css">
 <link rel="stylesheet" href="css/08-fadeless-prototip.css">
 <link rel="stylesheet" href="css/09-login-tema.css">
+<!-- Çarşı (market) premium yeniden tasarımı — #tabMarket'e scope'lu, en sonda. -->
+<link rel="stylesheet" href="css/10-carsi.css">
 </head>
 <body>
 
@@ -678,83 +680,143 @@
       </div>
     </section>
 
-    <!-- SEKME: MARKET (V2 Faz 4 — Günlük Market + Kalıcı Nadir/Efsanevi + Özel Kutu) -->
+    <!-- SEKME: MARKET (Çarşı) — FADELESS premium yeniden tasarım.
+         market.js'in doldurduğu TÜM id'ler korunur:
+         #myGoldMarket, #marketDailyGrid, #marketListingsGrid, #myListingsGrid,
+         #tradeLogsFeed ve kutu butonları (#buyNadirChestBtn / #buyEfsaneviChestBtn /
+         #buyMitikBoxBtn / #buyKabusBoxBtn) + içlerindeki .co-p-val.
+         Görsel/stil css/10-carsi.css'te, #tabMarket'e scope'lu. -->
     <section id="tabMarket" class="tab-panel">
-      <div class="tab-keystone">
-        <span class="tk-ico">⚖</span>
-        <h2 class="tk-title">Kara <span class="lit">Çarşı</span></h2>
-        <p class="tk-sub">Her şeyin bir bedeli var — bazen fazlası</p>
-        <div class="tk-ornament"></div>
+
+      <!-- Çarşı'ya özel ikon sprite'ı (para/nadirlik mühürleri/sekme ikonları).
+           Eşya ikonları BU sprite'tan DEĞİL, market.js'teki itemIconSvg(slot,rarity)'den
+           gelir — o yüzden isim↔ikon eşleşmesi asla kaymaz. -->
+      <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+        <symbol id="c-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5" fill="currentColor" opacity=".16"/><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9.5 9.2h5M9 12h6M9.5 14.8h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+        <symbol id="c-scrap" viewBox="0 0 24 24"><path d="M12 3l2.4 4.2L19 8l-3 3.6.8 4.9L12 14l-4.8 2.5.8-4.9L5 8l4.6-.8z" fill="currentColor" opacity=".2"/><path d="M12 3l2.4 4.2L19 8l-3 3.6.8 4.9L12 14l-4.8 2.5.8-4.9L5 8l4.6-.8z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></symbol>
+        <symbol id="c-flame" viewBox="0 0 24 24"><path d="M12 3c1 3-1.5 4-1.5 6.5A2.5 2.5 0 0 0 13 12c1.2-1 1-2.5 1-2.5 1.4 1.2 3 3 3 5.5a5 5 0 1 1-10 0C7 12 10 9.5 12 3z" fill="currentColor"/></symbol>
+        <symbol id="c-box" viewBox="0 0 24 24"><path d="M3 8l9-4 9 4v8l-9 4-9-4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M3 8l9 4 9-4M12 12v8" stroke="currentColor" stroke-width="1.7"/></symbol>
+        <symbol id="c-sword" viewBox="0 0 24 24"><path d="M14.5 3L20 3l0 5.5-9 9-2.5-2.5 9-9zM11 17.5L6.5 22l-2-2L9 15.5M4 13l4 4" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+        <symbol id="c-shop" viewBox="0 0 24 24"><path d="M4 9h16l-1 11H5zM4 9l1.5-5h13L20 9M9 13v3m6-3v3" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+        <symbol id="c-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 7v5l3.5 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+        <symbol id="c-arrow" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+        <symbol id="c-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+        <!-- nadirlik mühürleri -->
+        <symbol id="sig-nadir" viewBox="0 0 24 24"><path d="M6 4h12l3 5-9 11L3 9z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M3 9h18M9 4l-1 5 4 11 4-11-1-5" stroke="currentColor" stroke-width="1.2" fill="none"/></symbol>
+        <symbol id="sig-efsanevi" viewBox="0 0 24 24"><path d="M3 9l4 3 5-7 5 7 4-3-2 10H5z" fill="currentColor" opacity=".9" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/><circle cx="3" cy="9" r="1.4" fill="currentColor"/><circle cx="21" cy="9" r="1.4" fill="currentColor"/><circle cx="12" cy="4" r="1.4" fill="currentColor"/></symbol>
+        <symbol id="sig-mitik" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M12 3.5v17M3.5 12h17M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width=".9" opacity=".55"/><circle cx="12" cy="12" r="3" fill="currentColor"/></symbol>
+        <symbol id="sig-kabus" viewBox="0 0 24 24"><path d="M12 3c4 0 7 3 7 7 0 2.5-1.3 4-1.3 6 0 1.5-1 2.5-2.2 2.5l-.5-2-1 2h-4l-1-2-.5 2C7.3 20.5 6.3 19.5 6.3 18c0-2-1.3-3.5-1.3-6 0-4 3-7 7-7z" fill="currentColor" opacity=".9"/><circle cx="9.3" cy="11" r="1.5" fill="var(--bg)"/><circle cx="14.7" cy="11" r="1.5" fill="var(--bg)"/><path d="M7 3l1.5 2M17 3l-1.5 2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
+      </defs></svg>
+
+      <!-- başlık -->
+      <div class="mkt-head">
+        <span class="mkt-eyebrow"><svg><use href="#c-flame"/></svg>Fadeless</span>
+        <h2 class="mkt-title">Çarşı</h2>
+        <p class="mkt-sub">Ganimetini seç. Kaderini zorla.</p>
       </div>
 
-      <div class="panel">
-        <div class="box-area-top">
-          <h2 class="panel-title">🪙 Bakiyen</h2>
-          <span class="streak-chip">💰 <b id="myGoldMarket">0</b> Altın</span>
+      <!-- cüzdan -->
+      <div class="mkt-wallet">
+        <span class="mkt-coin gold"><svg><use href="#c-coin"/></svg><b id="myGoldMarket">0</b><i>Altın</i></span>
+        <span class="mkt-coin scrap"><svg><use href="#c-scrap"/></svg><b id="myScrapMarket">0</b><i>Hurda</i></span>
+      </div>
+
+      <!-- alt sekmeler -->
+      <nav class="mkt-tabs" role="tablist" aria-label="Çarşı bölümleri">
+        <button type="button" class="mkt-seg is-active" role="tab" aria-selected="true" data-mkt="kutular"><svg><use href="#c-box"/></svg>Kutular</button>
+        <button type="button" class="mkt-seg" role="tab" aria-selected="false" data-mkt="silahlar"><svg><use href="#c-sword"/></svg>Silahlar</button>
+        <button type="button" class="mkt-seg" role="tab" aria-selected="false" data-mkt="pazar"><svg><use href="#c-shop"/></svg>Pazar</button>
+      </nav>
+
+      <!-- ============ KUTULAR ============ -->
+      <div class="mkt-pane is-active" data-pane="kutular" role="tabpanel">
+        <div class="mkt-label">Sandıklar · yukarı çıktıkça daha tehlikeli</div>
+        <div class="vaults">
+
+          <button id="buyNadirChestBtn" type="button" class="vault v-nadir" title="Garanti Nadir Sandık">
+            <span class="v-shine"></span>
+            <span class="v-sigil"><svg><use href="#sig-nadir"/></svg></span>
+            <span class="v-info">
+              <span class="v-tag">En iyi değer</span>
+              <span class="v-name">Nadir Sandık</span>
+              <span class="v-flavor">Şansını dene — çoğu zaman iyi çıkar.</span>
+              <span class="v-buy">
+                <span class="v-price"><svg><use href="#c-coin"/></svg><span class="co-p-val">0</span></span>
+                <span class="v-cta">AÇ<svg><use href="#c-arrow"/></svg></span>
+              </span>
+            </span>
+          </button>
+
+          <button id="buyEfsaneviChestBtn" type="button" class="vault v-efsanevi" title="Garanti Efsanevi Sandık">
+            <span class="v-shine"></span>
+            <span class="v-sigil"><svg><use href="#sig-efsanevi"/></svg></span>
+            <span class="v-info">
+              <span class="v-tag">Efsanevi garanti</span>
+              <span class="v-name">Efsanevi Sandık</span>
+              <span class="v-flavor">Gerçek ganimet burada başlar.</span>
+              <span class="v-buy">
+                <span class="v-price"><svg><use href="#c-coin"/></svg><span class="co-p-val">0</span></span>
+                <span class="v-cta">AÇ<svg><use href="#c-arrow"/></svg></span>
+              </span>
+            </span>
+          </button>
+
+          <button id="buyMitikBoxBtn" type="button" class="vault v-mitik" title="Mitik Kutusu">
+            <span class="v-shine"></span>
+            <span class="v-sigil"><svg><use href="#sig-mitik"/></svg></span>
+            <span class="v-info">
+              <span class="v-tag">Az bulunur</span>
+              <span class="v-name">Mitik Kutusu</span>
+              <span class="v-flavor">Az kişinin dokunduğu güç seni bekliyor.</span>
+              <span class="v-buy">
+                <span class="v-price"><svg><use href="#c-coin"/></svg><span class="co-p-val">0</span></span>
+                <span class="v-cta">AÇ<svg><use href="#c-arrow"/></svg></span>
+              </span>
+            </span>
+          </button>
+
+          <button id="buyKabusBoxBtn" type="button" class="vault v-kabus" title="Kabus Kutusu">
+            <span class="ember"></span><span class="ember"></span><span class="ember"></span><span class="ember"></span>
+            <span class="v-shine"></span>
+            <span class="v-sigil"><svg><use href="#sig-kabus"/></svg></span>
+            <span class="v-info">
+              <span class="v-tag">Sınırlı · en tehlikeli</span>
+              <span class="v-name">Kabus Kutusu</span>
+              <span class="v-flavor">Girmeye cesaretin var mı? Ya efsane çıkarsın ya hiç.</span>
+              <span class="v-buy">
+                <span class="v-price"><svg><use href="#c-coin"/></svg><span class="co-p-val">0</span></span>
+                <span class="v-cta">AÇ<svg><use href="#c-arrow"/></svg></span>
+              </span>
+            </span>
+          </button>
+
         </div>
-        <p class="equip-hint">👆 Altın şu an sadece test amaçlı elle veriliyor — kazanım kaynağı (görev/savaş ödülü vb.) ayrı bir aşamada eklenecek.</p>
       </div>
 
-      <div class="rpg-panel">
-        <div class="panel-header">☀ Günün Tezgâhı</div>
-        <p class="equip-hint">👆 Statlar zaten görünür, sürpriz yok. Her gün 5 yeni eşya, gece yarısı yenilenir.</p>
-        <div id="marketDailyGrid" class="inventory-list"></div>
-      </div>
-
-      <div class="rpg-panel">
-        <div class="panel-header">🗝 Kalıcı Sandıklar</div>
-        <p class="equip-hint">👆 Rotasyondan bağımsız, her zaman satın alınabilir — garanti Nadir/Efsanevi sandık açar.</p>
-        <div class="chest-duo">
-          <button id="buyNadirChestBtn" type="button" class="chest-offer co-nadir" title="Garanti Nadir Sandık">
-            <span class="co-ico">🔷</span>
-            <span class="co-n">Nadir Sandık</span>
-            <span class="co-p">◉ <span class="co-p-val">0</span> Altın</span>
-          </button>
-          <button id="buyEfsaneviChestBtn" type="button" class="chest-offer co-efsanevi" title="Garanti Efsanevi Sandık">
-            <span class="co-ico">🌟</span>
-            <span class="co-n">Efsanevi Sandık</span>
-            <span class="co-p">◉ <span class="co-p-val">0</span> Altın</span>
-          </button>
+      <!-- ============ SILAHLAR ============ -->
+      <div class="mkt-pane" data-pane="silahlar" role="tabpanel">
+        <div class="mkt-shopbar">
+          <div class="sb-l"><b>Günün Tezgâhı</b><span>Her gün 5 yeni eşya, gece yarısı yenilenir</span></div>
+          <div class="sb-timer"><svg><use href="#c-clock"/></svg><span id="mktDailyTimer">--:--:--</span></div>
         </div>
+        <div id="marketDailyGrid" class="inventory-list mkt-wares"></div>
       </div>
 
-      <div class="rpg-panel">
-        <div class="panel-header">🜏 Yasak Kutular</div>
-        <p class="equip-hint">👆 Ayrı bir satın alma akışı — içerik havuzu eklenene kadar pasif, tıklayınca bilgi verir.</p>
-        <div class="chest-duo">
-          <button id="buyMitikBoxBtn" type="button" class="chest-offer co-mitik locked" title="Mitik Kutusu (yakında)">
-            <span class="co-ico">🔮</span>
-            <span class="co-n">Mitik Kutusu</span>
-            <span class="co-p">◉ <span class="co-p-val">0</span> Altın</span>
-          </button>
-          <button id="buyKabusBoxBtn" type="button" class="chest-offer co-kabus locked" title="Kabus Kutusu (yakında)">
-            <span class="co-ico">💀</span>
-            <span class="co-n">Kabus Kutusu</span>
-            <span class="co-p">◉ <span class="co-p-val">0</span> Altın</span>
-          </button>
-        </div>
+      <!-- ============ PAZAR ============ -->
+      <div class="mkt-pane" data-pane="pazar" role="tabpanel">
+        <div class="mkt-label"><svg class="lbl-ico"><use href="#c-shop"/></svg>Oyuncu Pazarı</div>
+        <p class="mkt-hint">Diğer oyuncuların Altın karşılığı sattığı eşyalar. Satışa çıkarmak için Çanta'da bir eşyaya dokun.</p>
+        <div id="marketListingsGrid" class="inventory-list mkt-listings"></div>
+
+        <div class="mkt-label mt"><svg class="lbl-ico"><use href="#c-plus"/></svg>Listelemelerim</div>
+        <p class="mkt-hint">Aktif satış ilanların — istediğin an iptal edip eşyanı geri alabilirsin.</p>
+        <div id="myListingsGrid" class="inventory-list mkt-listings"></div>
+
+        <div class="mkt-label mt"><svg class="lbl-ico"><use href="#c-shop"/></svg>Ticaret Kaydı</div>
+        <p class="mkt-hint">Tamamlanan ve güvenlik nedeniyle engellenen tüm ticaretlerin herkese açık kaydı.</p>
+        <div id="tradeLogsFeed" class="battle-log mkt-logs"></div>
       </div>
 
-      <!-- V2 Faz 4 (madde 4): Oyuncular Arası Pazar. Eşya satışa çıkarmak
-           Envanter → bir eşyaya dokun → "🪙 Pazara Çıkar" üzerinden yapılıyor
-           (bkz. renderInventoryModal). Burası SADECE satın alma/iptal tarafı. -->
-      <div class="rpg-panel">
-        <div class="panel-header">⚖ Oyuncu Pazarı</div>
-        <p class="equip-hint">👆 Diğer oyuncuların Altın karşılığı sattığı eşyalar. Eşyanı satışa çıkarmak için Çanta'da bir eşyaya dokun.</p>
-        <div id="marketListingsGrid" class="inventory-list"></div>
-      </div>
-
-      <div class="rpg-panel">
-        <div class="panel-header">📤 Listelemelerim</div>
-        <p class="equip-hint">👆 Aktif satış ilanların — istediğin an iptal edip eşyanı geri alabilirsin.</p>
-        <div id="myListingsGrid" class="inventory-list"></div>
-      </div>
-
-      <div class="rpg-panel">
-        <div class="panel-header">🕮 Ticaret Kaydı</div>
-        <p class="equip-hint">👆 Tamamlanan ve güvenlik nedeniyle engellenen/geri alınan tüm ticaretlerin herkese açık kaydı.</p>
-        <div id="tradeLogsFeed" class="battle-log"></div>
-      </div>
     </section>
 
     <!-- SEKME: HARİTA — tek kapı: Canlı Harita (MAP/index.html).
