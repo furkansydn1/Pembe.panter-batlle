@@ -137,6 +137,11 @@ export function renderMarketTab() {
   if (!S.currentPlayerData || !marketDailyGridEl) return;
 
   const gold = getGold(S.currentPlayerData);
+  // FADELESS Çarşı cüzdanı: Altın + Hurda göstergelerini doldur.
+  const goldEl = document.getElementById("myGoldMarket");
+  const scrapEl = document.getElementById("myScrapMarket");
+  if (goldEl) goldEl.textContent = gold;
+  if (scrapEl) scrapEl.textContent = getScrap(S.currentPlayerData);
   const items = Array.isArray(S.currentPlayerData.dailyMarket) ? S.currentPlayerData.dailyMarket : [];
 
   if (!items.length) {
@@ -145,24 +150,26 @@ export function renderMarketTab() {
     marketDailyGridEl.innerHTML = items.map(it => {
       const canAfford = gold >= it.price;
       const statLabel = SLOT_MAP[it.slot]?.type === "atk" ? "Saldırı" : "Savunma";
-      // FADELESS: prototipteki .ware-card/.ware-ico/.ware-body/.price-tag
-      // yapısı birebir kullanılıyor. Efsun/pasif/minor-trait bilgileri
-      // prototipin tek satırlık .ware-stat formatına (" · " ile ayrılmış)
-      // sığdırıldı — ayrı ayrı kutu/rozet olarak gösterilmiyor.
-      const statParts = [
-        `⚔️ Saldırı <b>+${it.atk}</b>`,
-        `🛡️ Savunma <b>+${it.def}</b>`
+      // FADELESS Çarşı v2: premium stat-pill görünümü (css/10-carsi.css →
+      // #tabMarket .mkt-wares). İKON DEĞİŞMEDİ — hâlâ itemIconSvg(slot,rarity)
+      // ile slot'a bağlı çiziliyor, o yüzden isim↔ikon eşleşmesi kaymaz.
+      // data-market-buy / .price-tag / r-{rarity} hook'ları da korunuyor.
+      const slotLabel = SLOT_MAP[it.slot]?.label || "";
+      const liveDesc = getLiveEffectDesc(it);
+      const pills = [
+        `<span class="wp">⚔️ <b>+${it.atk}</b></span>`,
+        `<span class="wp">🛡️ <b>+${it.def}</b></span>`
       ];
-      if (it.enchantPct) statParts.push(`✨ Efsun <b>+%${it.enchantPct}</b> ${statLabel}`);
-      if (getLiveEffectDesc(it)) statParts.push(getLiveEffectDesc(it));
-      if (it.minorTrait) statParts.push(`${it.minorTrait.icon} ${it.minorTrait.name}`);
-      statParts.push(RARITY_LABELS_TR[it.rarity]);
+      if (it.enchantPct) pills.push(`<span class="wp">✨ <b>+%${it.enchantPct}</b> ${statLabel}</span>`);
+      if (liveDesc) pills.push(`<span class="wp">${liveDesc}</span>`);
+      if (it.minorTrait) pills.push(`<span class="wp">${it.minorTrait.icon} ${it.minorTrait.name}</span>`);
       return `
         <div class="ware-card r-${it.rarity}">
-          <div class="ware-ico">${itemIconSvg(it.slot, it.rarity, 26)}</div>
+          <div class="ware-ico">${itemIconSvg(it.slot, it.rarity, 30)}</div>
           <div class="ware-body">
             <div class="ware-name">${it.name}</div>
-            <div class="ware-stat">${statParts.join(" · ")}</div>
+            <div class="ware-rar">${RARITY_LABELS_TR[it.rarity]} · ${slotLabel}</div>
+            <div class="ware-pills">${pills.join("")}</div>
           </div>
           <button type="button" class="price-tag ${it.purchased || !canAfford ? "sold" : ""}" data-market-buy="${it.id}" ${it.purchased || !canAfford ? "disabled" : ""}>
             ${it.purchased ? "✅ Alındı" : `◉ ${it.price}`}
@@ -762,3 +769,52 @@ export function renderTradeLogsFeed(entries) {
   }).join("");
 }
 
+
+// ============================================================
+// FADELESS ÇARŞI — alt sekme geçişi (Kutular / Silahlar / Pazar)
+// + Günün Tezgâhı için yerel gece yarısına geri sayım.
+// Statik HTML (.mkt-seg / .mkt-pane) üzerinde tek seferlik bağlanır;
+// grid'lerin içinde değil, o yüzden renderMarketTab yeniden çizince
+// bozulmaz. İkonlar ve satın-alma hook'ları bundan etkilenmez.
+// ============================================================
+function initCarsiSubtabs() {
+  const root = document.getElementById("tabMarket");
+  if (!root) return;
+  const segs = root.querySelectorAll(".mkt-seg");
+  const panes = root.querySelectorAll(".mkt-pane");
+  if (!segs.length) return;
+  segs.forEach(seg => {
+    seg.addEventListener("click", () => {
+      const key = seg.getAttribute("data-mkt");
+      segs.forEach(s => {
+        const on = s === seg;
+        s.classList.toggle("is-active", on);
+        s.setAttribute("aria-selected", on ? "true" : "false");
+      });
+      panes.forEach(p => p.classList.toggle("is-active", p.getAttribute("data-pane") === key));
+    });
+  });
+}
+
+function tickCarsiDailyTimer() {
+  const el = document.getElementById("mktDailyTimer");
+  if (!el) return;
+  const now = new Date();
+  const next = new Date(now);
+  next.setHours(24, 0, 0, 0); // yerel gece yarısı = günlük market yenilenmesi
+  const s = Math.max(0, Math.floor((next - now) / 1000));
+  const h = String(Math.floor(s / 3600)).padStart(2, "0");
+  const m = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
+  const ss = String(s % 60).padStart(2, "0");
+  el.textContent = `${h}:${m}:${ss}`;
+}
+
+if (typeof document !== "undefined") {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => { initCarsiSubtabs(); tickCarsiDailyTimer(); });
+  } else {
+    initCarsiSubtabs();
+    tickCarsiDailyTimer();
+  }
+  setInterval(tickCarsiDailyTimer, 1000);
+}
