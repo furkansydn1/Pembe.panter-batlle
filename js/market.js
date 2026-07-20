@@ -182,16 +182,27 @@ export function renderMarketTab() {
     });
   }
 
+  // Not: `disabled` ATANMIYOR — disabled buton click event'i hiç ateşlemez,
+  // yani altın yetersizken buyPermanentChest/buySpecialBox içindeki "Yeterli
+  // Altının yok" uyarısı hiç tetiklenemezdi (Nadir/Efsanevi'nin eski kilit
+  // bug'ı buydu). Bunun yerine sadece görsel "soluk" class'ı toggle'lanıyor;
+  // buton tıklanabilir kalır, uyarıyı fonksiyonların kendisi verir. 4'ü aynı.
   if (buyNadirChestBtn) {
-    buyNadirChestBtn.disabled = gold < MARKET_PERMANENT_CHEST_PRICE.nadir;
+    buyNadirChestBtn.classList.toggle("cant-afford", gold < MARKET_PERMANENT_CHEST_PRICE.nadir);
     buyNadirChestBtn.querySelector(".co-p-val").textContent = MARKET_PERMANENT_CHEST_PRICE.nadir;
   }
   if (buyEfsaneviChestBtn) {
-    buyEfsaneviChestBtn.disabled = gold < MARKET_PERMANENT_CHEST_PRICE.efsanevi;
+    buyEfsaneviChestBtn.classList.toggle("cant-afford", gold < MARKET_PERMANENT_CHEST_PRICE.efsanevi);
     buyEfsaneviChestBtn.querySelector(".co-p-val").textContent = MARKET_PERMANENT_CHEST_PRICE.efsanevi;
   }
-  if (buyMitikBoxBtn) buyMitikBoxBtn.querySelector(".co-p-val").textContent = MARKET_SPECIAL_BOX_PRICE.mitik;
-  if (buyKabusBoxBtn) buyKabusBoxBtn.querySelector(".co-p-val").textContent = MARKET_SPECIAL_BOX_PRICE.kabus;
+  if (buyMitikBoxBtn) {
+    buyMitikBoxBtn.classList.toggle("cant-afford", gold < MARKET_SPECIAL_BOX_PRICE.mitik);
+    buyMitikBoxBtn.querySelector(".co-p-val").textContent = MARKET_SPECIAL_BOX_PRICE.mitik;
+  }
+  if (buyKabusBoxBtn) {
+    buyKabusBoxBtn.classList.toggle("cant-afford", gold < MARKET_SPECIAL_BOX_PRICE.kabus);
+    buyKabusBoxBtn.querySelector(".co-p-val").textContent = MARKET_SPECIAL_BOX_PRICE.kabus;
+  }
 }
 
 // Günlük Market'ten tek bir eşya satın alır: Kutu akışının aksine animasyon
@@ -778,21 +789,20 @@ export function renderTradeLogsFeed(entries) {
 // bozulmaz. İkonlar ve satın-alma hook'ları bundan etkilenmez.
 // ============================================================
 function initCarsiSubtabs() {
-  const root = document.getElementById("tabMarket");
-  if (!root) return;
-  const segs = root.querySelectorAll(".mkt-seg");
-  const panes = root.querySelectorAll(".mkt-pane");
-  if (!segs.length) return;
-  segs.forEach(seg => {
-    seg.addEventListener("click", () => {
-      const key = seg.getAttribute("data-mkt");
-      segs.forEach(s => {
-        const on = s === seg;
-        s.classList.toggle("is-active", on);
-        s.setAttribute("aria-selected", on ? "true" : "false");
-      });
-      panes.forEach(p => p.classList.toggle("is-active", p.getAttribute("data-pane") === key));
+  // root'a değil document'a bağlıyoruz: #tabMarket ilk bağlama anında DOM'da
+  // olmayabilir (tab lazy-render edilebilir) — delegasyon her koşulda çalışır.
+  document.addEventListener("click", (e) => {
+    const seg = e.target.closest(".mkt-seg");
+    if (!seg) return;
+    const root = seg.closest("#tabMarket");
+    if (!root) return;
+    const key = seg.getAttribute("data-mkt");
+    root.querySelectorAll(".mkt-seg").forEach(s => {
+      const on = s === seg;
+      s.classList.toggle("is-active", on);
+      s.setAttribute("aria-selected", on ? "true" : "false");
     });
+    root.querySelectorAll(".mkt-pane").forEach(p => p.classList.toggle("is-active", p.getAttribute("data-pane") === key));
   });
 }
 
