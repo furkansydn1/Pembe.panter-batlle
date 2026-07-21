@@ -20,12 +20,14 @@ const ORC_FRAME = 100;
 const ORC_DISPLAY = 210;        // görünen gövde ~46px genişlik (slime r=22 ile uyumlu)
 const ORC_ROW_IDLE = 0, ORC_ROW_WALK = 1, ORC_ROW_ATK1 = 2, ORC_ROW_ATK2 = 3, ORC_ROW_HURT = 4, ORC_ROW_DEATH = 5;
 const ORC_FRAMES_IDLE = 6, ORC_FRAMES_WALK = 8, ORC_FRAMES_ATK = 6, ORC_FRAMES_HURT = 4, ORC_FRAMES_DEATH = 4;
+// [BİYOM] Reskin: bataklıkta Blood Monster sheet'i yüklenir (düzen orc ile birebir aynı).
+var ORC_SKIN = (typeof ACTIVE_BIOME !== "undefined" && ACTIVE_BIOME.skins && ACTIVE_BIOME.skins.orc) || null;
 
 if (typeof orcImg === "undefined") {
   var orcImg = new Image();
   var orcImgReady = false;
   orcImg.onload = () => { orcImgReady = true; };
-  orcImg.src = "assets/enemies/orc.png";
+  orcImg.src = ORC_SKIN ? ORC_SKIN.src : "assets/enemies/orc.png"; // [BİYOM]
 }
 
 // Vuruş flaşı için izole ara canvas (beyaz sadece siluete oturur,
@@ -45,7 +47,7 @@ function makeOrc(x, y) {
     type: "orc",
     x, y,
     r: 22,
-    hp: 33, maxHp: 33,
+    hp: Math.round(33 * MOB_HP_MULT), maxHp: Math.round(33 * MOB_HP_MULT), // [DENGE] biyom can çarpanı
     walkSpeed: 78,       // slime'dan (70) birazcık hızlı — "yılmaz" hissi
     aggroRange: 190,
     attackRange: 48,
@@ -108,8 +110,24 @@ function updateOrcs(dt) {
         o.attackVariant = 1 - o.attackVariant; // her saldırıda animasyon değişsin
       } else {
         const n = dist || 1;
-        o.x += (dx / n) * o.walkSpeed * dt;
-        o.y += (dy / n) * o.walkSpeed * dt;
+        let spd = o.walkSpeed;
+        // [BATAKLIK ZEKÂSI] Blood Monster: düz koşmaz, yengeç gibi SALINARAK
+        // yaklaşır (vuruş açısı tutturması zorlaşır). Canı %40 altına düşünce
+        // KAN KUDURMASI: hızlanır ve saldırı arası kısalır (aşağıda cooldown).
+        if (ORC_SKIN) {
+          if (o.weaveSeed === undefined) o.weaveSeed = Math.random() * 6.28;
+          if (!o.frenzy && o.hp < o.maxHp * 0.4) {
+            o.frenzy = true;
+            spawnFloatingText(o.x, o.y - 34, "KUDURDU!", "#ff5c6c", { size: 12, pop: true });
+          }
+          if (o.frenzy) spd *= 1.5;
+          o.weaveT = (o.weaveT || 0) + dt;
+          const weave = Math.sin(o.weaveT * 5 + o.weaveSeed) * spd * 0.55;
+          o.x += (-(dy / n)) * weave * dt;  // kovalama yönüne DİK salınım
+          o.y += ((dx / n)) * weave * dt;
+        }
+        o.x += (dx / n) * spd * dt;
+        o.y += (dy / n) * spd * dt;
         if (dx !== 0) o.facing = dx > 0 ? 1 : -1;
       }
     } else if (o.state === "attack") {
@@ -126,10 +144,11 @@ function updateOrcs(dt) {
         o.hasHitThisAttack = true;
         const hitDist = Math.hypot(player.x - o.x, player.y - o.y);
         if (hitDist < o.attackRange + 20 && player.invulnT <= 0) {
-          player.hp = Math.max(0, player.hp - 7);
+          const dmgHit = Math.round(7 * MOB_DMG_MULT); // [DENGE] biyom hasar çarpanı
+          player.hp = Math.max(0, player.hp - dmgHit);
           player.invulnT = 0.6;
           triggerShake(4, 0.15);
-          spawnFloatingText(player.x, player.y - player.r - 6, "-7", "#ff5c6c");
+          spawnFloatingText(player.x, player.y - player.r - 6, "-" + dmgHit, "#ff5c6c");
           const kx = (player.x - o.x) / (hitDist || 1), ky = (player.y - o.y) / (hitDist || 1);
           player.knockVx = kx * 180; player.knockVy = ky * 180;
           hpLabelEl.textContent = player.hp;
@@ -141,7 +160,9 @@ function updateOrcs(dt) {
       }
     } else if (o.state === "cooldown") {
       o.stateT += dt;
-      if (o.stateT >= ORC_ATTACK_COOLDOWN) {
+      // [BATAKLIK ZEKÂSI] Kudurmuş Blood daha seri vurur
+      const cdOrc = (ORC_SKIN && o.frenzy) ? ORC_ATTACK_COOLDOWN * 0.6 : ORC_ATTACK_COOLDOWN;
+      if (o.stateT >= cdOrc) {
         o.state = "chase";
         o.stateT = 0;
       }
@@ -174,7 +195,7 @@ function updateOrcs(dt) {
             o.deathT = 0;
             // Toz kazanımı KALDIRILDI — hesaba işlenmiyordu, harita ekonomisi
             // sadeleştirildi (gerçek damlalar: maybeDropItem içinde).
-            maybeDropItem(o.x, o.y);
+            maybeDropItem(o.x, o.y, "orc");
             deathJuice(o, "rgba(140,170,90,0.85)", 18); // halka patlaması + tok ses + donma
           }
         }

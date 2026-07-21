@@ -51,15 +51,32 @@ swordSwipeImg.src = "assets/player/kilic-iz.png";
 const groundImg = new Image();
 let groundImgReady = false;
 groundImg.onload = () => { groundImgReady = true; };
-groundImg.src = "assets/map/cim-tile.png";
-const GROUND_TILE = 256; // çim karosunun px boyutu (döşeme için)
+groundImg.src = ACTIVE_BIOME.groundTile; // [BİYOM] zemin karosu biyoma göre
+const GROUND_TILE = ACTIVE_BIOME.groundTileSize || 256; // [BİYOM] karo px boyutu (orman 256, bataklık 512)
 
 const treeImg = new Image();
 let treeImgReady = false;
 treeImg.onload = () => { treeImgReady = true; };
-treeImg.src = "assets/map/agac.png";
+treeImg.src = ACTIVE_BIOME.treeSprite; // [BİYOM]
 
 const rockImg = new Image();
 let rockImgReady = false;
 rockImg.onload = () => { rockImgReady = true; };
-rockImg.src = "assets/map/kaya.png";
+rockImg.src = ACTIVE_BIOME.rockSprite; // [BİYOM]
+
+// ---- [BİYOM] BATAKLIK PROP'LARI + ÖLÜM EKRANI KURUKAFASI ----
+// balkabağı/tabela = engel sprite'ı, kemik/mantar = süs (drawDecor).
+// dead-skull.png: 128px hücre, 2 satır x 7 kare (satır 0 = beliriş) — 05-effects
+// ölüm ekranında oynatır. Canavar reskin sheet'leri kendi dosyalarında yüklenir.
+const balkabagiImg = new Image(); let balkabagiReady = false;
+balkabagiImg.onload = () => { balkabagiReady = true; }; balkabagiImg.src = "assets/map/balkabagi.png";
+const tabelaImg = new Image(); let tabelaReady = false;
+tabelaImg.onload = () => { tabelaReady = true; }; tabelaImg.src = "assets/map/tabela.png";
+const kemik1Img = new Image(); let kemik1Ready = false;
+kemik1Img.onload = () => { kemik1Ready = true; }; kemik1Img.src = "assets/map/kemik1.png";
+const kemik2Img = new Image(); let kemik2Ready = false;
+kemik2Img.onload = () => { kemik2Ready = true; }; kemik2Img.src = "assets/map/kemik2.png";
+const mantarImg = new Image(); let mantarReady = false;
+mantarImg.onload = () => { mantarReady = true; }; mantarImg.src = "assets/map/mantar.png";
+const deadImg = new Image(); let deadImgReady = false;
+deadImg.onload = () => { deadImgReady = true; }; deadImg.src = "assets/enemies/dead-skull.png";

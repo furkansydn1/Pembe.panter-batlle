@@ -61,7 +61,51 @@ const DROP_CHANCE_LEGENDARY_ITEM = 0.001; // %0.1 (binde bir) — Efsanevi Eşya
 const DROP_CHANCE_RARE_ITEM = 0.04;       // %4   — Nadir Eşya
 const DROP_CHANCE_STANDARD_ITEM = 0.07;   // %7   — Sıradan Eşya
 
-function maybeDropItem(x, y) {
+// [BİYOM] Ağırlıklı seçim: [[değer, ağırlık], ...] → ağırlığa göre değer döner.
+function weightedPick(tbl) {
+  let tot = 0;
+  for (const [, w] of tbl) tot += w;
+  let r = Math.random() * tot;
+  for (const [v, w] of tbl) { if ((r -= w) < 0) return v; }
+  return tbl[tbl.length - 1][0];
+}
+
+// [BİYOM] Bataklık drop tablosu — her kesimde çalışır. Sıralama: önce eşya
+// katmanı (en nadirden, TEK damla), sonra kitap, sonra garantili altın+hurda+EXP.
+// NOT: Sıradan/Nadir EŞYA damlaları şimdilik oturum GÖSTERGESİDİR (uçan yazı +
+// sayaç) — köprü bunları hesaba İŞLEMEZ; gerçek eşya üretimi kutu motorunun işi.
+function biomeDrop(x, y, kind, L) {
+  // [LOOT] Düşme sesi — kesim başına bir kez, hafif pitch oynamasıyla
+  if (typeof playSfx === "function" && typeof JUICE !== "undefined" && JUICE.sfx)
+    playSfx("dusme", { volume: 0.5, pitch: 1, pitchVar: 0.07 });
+  let dropY = y - 26;
+  if (Math.random() < L.rareItemPct) {
+    sessionRareItem += 1; setLabel(rareItemLabelEl, sessionRareItem);
+    spawnFloatingText(x, dropY, "💠 NADİR EŞYA!", "#7ec8ff", { size: 15, pop: true }); dropY -= 18;
+  } else if (Math.random() < ((L.stdItemPct && L.stdItemPct[kind]) || 0)) {
+    sessionStandardItem += 1; setLabel(standardItemLabelEl, sessionStandardItem);
+    spawnFloatingText(x, dropY, "🗡 Sıradan Eşya", "#cfd6da"); dropY -= 16;
+  }
+  if (Math.random() < L.bookPct) {
+    sessionItems += 1; setLabel(itemsLabelEl, sessionItems);
+    spawnFloatingText(x, dropY, "📖 Sıradan Kitap", "#8fd9ff"); dropY -= 16;
+  }
+  const g = weightedPick(L.goldW);
+  sessionRare += g; setLabel(rareLabelEl, sessionRare);
+  spawnFloatingText(x, dropY, "🪙 +" + g + " Altın", "#ffd24d"); dropY -= 16;
+  const h = weightedPick(L.scrapW);
+  sessionLegendary += h; setLabel(legendaryLabelEl, sessionLegendary);
+  spawnFloatingText(x, dropY, "🔩 +" + h + " Hurda", "#c9c9c9"); dropY -= 16;
+  const er = (L.exp && L.exp[kind]) || [3, 7];
+  const e = er[0] + Math.floor(Math.random() * (er[1] - er[0] + 1));
+  sessionExp += e; setLabel(expLabelEl, sessionExp);
+  spawnFloatingText(x, dropY, "⭐ +" + e + " EXP", "#b5ff8f");
+}
+
+function maybeDropItem(x, y, kind) {
+  // [BİYOM] Biyom kendi loot tablosunu getirdiyse (bataklık) onu kullan;
+  // getirmediyse (orman) aşağıdaki ESKİ sistem aynen çalışır.
+  if (ACTIVE_BIOME.loot) { biomeDrop(x, y, kind || "orc", ACTIVE_BIOME.loot); return; }
   let dropY = y - 26; // art arda düşen yazılar üst üste binmesin diye kayan y
 
   // ---- Efsanevi / Nadir / Sıradan Eşya sistemi KALDIRILDI ----

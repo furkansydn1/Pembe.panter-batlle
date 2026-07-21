@@ -42,8 +42,9 @@ const slashTrails = [];   // {x,y,ang,t,life,crit}
 // sonrası neredeyse bedava — pitch/volume dahil hiçbir maliyeti yok.
 const SFX_PATHS = {
   vurus: "assets/sfx/sword_clash.wav",
-  adim: "assets/sfx/foley_footstep_gravel_1.wav",
+  adim: (typeof ACTIVE_BIOME !== "undefined" && ACTIVE_BIOME.footstep) || "assets/sfx/foley_footstep_gravel_1.wav", // [BİYOM] bataklıkta vıcık adım
   olum: "assets/sfx/vibraphone_negative.wav",
+  dusme: "assets/sfx/coin_2.wav",  // [LOOT] eşya/altın düşme "çınlaması"
 };
 let audioCtx = null;
 const sfxBuffers = {};
@@ -187,16 +188,28 @@ function drawDeathOverlay() {
   ctx.globalAlpha = fade;
   ctx.textAlign = "center";
 
-  // Başlık hafif "damga vurulmuş" gibi büyüyerek oturur
-  const pop = 1 + Math.max(0, 0.25 - t) * 1.4;
-  ctx.fillStyle = "#d94b3f";
-  ctx.font = `600 ${Math.round(46 * pop)}px Georgia, "Times New Roman", serif`;
-  ctx.fillText("ÖLDÜN", canvas.width / 2, canvas.height / 2 - 8);
-
+  const cx = canvas.width / 2, cy = canvas.height / 2;
+  if (deadImgReady) {
+    // [YENİ] Kurukafa belirişi (dead-skull.png satır 0: 7 kare, 128px hücre).
+    // ~0.8 sn'de oynar, son karede kalır. "ÖLDÜN" küçülüp altına iner.
+    const F = 7, CELL = 128, DUR = 0.8, S = 116;
+    const fi = Math.min(F - 1, Math.floor((t / DUR) * F));
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(deadImg, fi * CELL, 0, CELL, CELL, cx - S / 2, cy - S - 24, S, S);
+    ctx.fillStyle = "#d94b3f";
+    ctx.font = '600 30px Georgia, "Times New Roman", serif';
+    ctx.fillText("ÖLDÜN", cx, cy + 12);
+  } else {
+    // YEDEK: görsel yüklenmediyse eski damga başlık
+    const pop = 1 + Math.max(0, 0.25 - t) * 1.4;
+    ctx.fillStyle = "#d94b3f";
+    ctx.font = `600 ${Math.round(46 * pop)}px Georgia, "Times New Roman", serif`;
+    ctx.fillText("ÖLDÜN", cx, cy - 8);
+  }
   const kalan = Math.max(1, Math.ceil(deathSeq.dur - t));
   ctx.fillStyle = "#e7e0d0";
   ctx.font = '15px Georgia, "Times New Roman", serif';
-  ctx.fillText("Yeniden doğuş: " + kalan, canvas.width / 2, canvas.height / 2 + 30);
+  ctx.fillText("Yeniden doğuş: " + kalan, cx, cy + 42);
 
   ctx.restore();
   ctx.textAlign = "left";

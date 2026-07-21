@@ -14,19 +14,28 @@
 //   satır 4 = saldırı ARKAYA(aynı yapı)
 // Hasar/ölüm satırı YOK → vuruşta beyaz siluet flaşı, ölümde flaş+ezilme.
 // ============================================================
-const GOBLIN_CELL = 192;        // sprite karesinin px boyutu
+// [BİYOM] Reskin: bataklıkta Dövüşçü Goblin sheet'i yüklenir. Farklı ızgaralı
+// sheet'ler aynı iskelete otursun diye skin; HÜCRE boyutunu, SATIR düzenini ve
+// KARE sayılarını kendisi getirir (00-core → BIOMES.swamp.skins.goblin).
+var GOBLIN_SKIN = (typeof ACTIVE_BIOME !== "undefined" && ACTIVE_BIOME.skins && ACTIVE_BIOME.skins.goblin) || null;
+const GOBLIN_CELL = GOBLIN_SKIN && GOBLIN_SKIN.cell ? GOBLIN_SKIN.cell : 192; // sprite karesinin px boyutu
 // Karakter gövdesi 192'lik karenin içinde ~75-80px — kare büyük çizilir ki
 // goblin ekranda "iri" (slime/askerden büyük, r=24'e uygun) görünsün.
-const GOBLIN_DISPLAY = 115;     // görünen gövde ~47px
-const GOBLIN_ROW_IDLE = 0, GOBLIN_ROW_WALK = 1;
-const GOBLIN_ROW_ATK_SIDE = 2, GOBLIN_ROW_ATK_FRONT = 3, GOBLIN_ROW_ATK_BACK = 4;
-const GOBLIN_FRAMES_IDLE = 7, GOBLIN_FRAMES_WALK = 6, GOBLIN_FRAMES_ATK = 6;
+const GOBLIN_DISPLAY = GOBLIN_SKIN && GOBLIN_SKIN.display ? GOBLIN_SKIN.display : 115; // görünen gövde ~47px (skin kendi boyunu getirebilir)
+const GOBLIN_ROW_IDLE = GOBLIN_SKIN && GOBLIN_SKIN.rowIdle !== undefined ? GOBLIN_SKIN.rowIdle : 0,
+      GOBLIN_ROW_WALK = GOBLIN_SKIN && GOBLIN_SKIN.rowWalk !== undefined ? GOBLIN_SKIN.rowWalk : 1;
+const GOBLIN_ROW_ATK_SIDE = GOBLIN_SKIN && GOBLIN_SKIN.rowAtkSide !== undefined ? GOBLIN_SKIN.rowAtkSide : 2,
+      GOBLIN_ROW_ATK_FRONT = GOBLIN_SKIN && GOBLIN_SKIN.rowAtkFront !== undefined ? GOBLIN_SKIN.rowAtkFront : 3,
+      GOBLIN_ROW_ATK_BACK = GOBLIN_SKIN && GOBLIN_SKIN.rowAtkBack !== undefined ? GOBLIN_SKIN.rowAtkBack : 4;
+const GOBLIN_FRAMES_IDLE = GOBLIN_SKIN && GOBLIN_SKIN.framesIdle ? GOBLIN_SKIN.framesIdle : 7,
+      GOBLIN_FRAMES_WALK = GOBLIN_SKIN && GOBLIN_SKIN.framesWalk ? GOBLIN_SKIN.framesWalk : 6,
+      GOBLIN_FRAMES_ATK = GOBLIN_SKIN && GOBLIN_SKIN.framesAtk ? GOBLIN_SKIN.framesAtk : 6;
 
 if (typeof goblinImg === "undefined") {
   var goblinImg = new Image();
   var goblinImgReady = false;
   goblinImg.onload = () => { goblinImgReady = true; };
-  goblinImg.src = "assets/enemies/goblin.png";
+  goblinImg.src = GOBLIN_SKIN ? GOBLIN_SKIN.src : "assets/enemies/goblin.png"; // [BİYOM]
 }
 
 // Vuruş flaşı için izole ara canvas (askerdeki teknikle aynı — beyaz sadece
@@ -45,7 +54,7 @@ function makeGoblin(x, y) {
     type: "goblin",
     x, y,
     r: 24,
-    hp: 50, maxHp: 50,
+    hp: Math.round(50 * MOB_HP_MULT), maxHp: Math.round(50 * MOB_HP_MULT), // [DENGE] biyom can çarpanı
     walkSpeed: 55,
     chargeSpeed: 300,
     aggroRange: 220,   // bu menzile girince fark eder ve yaklaşmaya başlar
@@ -99,8 +108,26 @@ function updateGoblins(dt) {
           if (g.chargeDirX !== 0) g.facing = g.chargeDirX > 0 ? 1 : -1;
         } else {
           const nx = dx / (dist || 1), ny = dy / (dist || 1);
-          g.x += nx * g.walkSpeed * dt;
-          g.y += ny * g.walkSpeed * dt;
+          // [BATAKLIK ZEKÂSI] Pawn — SÜRÜ İÇGÜDÜSÜ: işçiler yalnız avlanmaz.
+          // En yakın yoldaşına hafifçe sokulur; yanında yoldaş varken (220px)
+          // CESARETLENİR: %18 hızlanır ve şarj hazırlığı kısalır (telegraph).
+          let spdG = g.walkSpeed;
+          if (GOBLIN_SKIN) {
+            let mate = null, md = 1e9;
+            for (const og of goblins) {
+              if (og === g || og.dead) continue;
+              const dd = Math.hypot(og.x - g.x, og.y - g.y);
+              if (dd < md) { md = dd; mate = og; }
+            }
+            g.packBrave = !!(mate && md < 220);
+            if (g.packBrave) spdG *= 1.18;
+            if (mate && md > 80 && md < 420) {
+              g.x += ((mate.x - g.x) / md) * 30 * dt;
+              g.y += ((mate.y - g.y) / md) * 30 * dt;
+            }
+          }
+          g.x += nx * spdG * dt;
+          g.y += ny * spdG * dt;
           if (nx !== 0) g.facing = nx > 0 ? 1 : -1;
         }
       } else {
@@ -117,7 +144,8 @@ function updateGoblins(dt) {
     } else if (g.state === "telegraph") {
       g.stateT += dt;
       // Telegraf sırasında yerinde durur — meşaleyi kaldırma animasyonu oynar
-      if (g.stateT >= GOBLIN_TELEGRAPH_DUR) {
+      // [BATAKLIK ZEKÂSI] Cesaretli pawn şarja daha çabuk kalkar
+      if (g.stateT >= (GOBLIN_SKIN && g.packBrave ? GOBLIN_TELEGRAPH_DUR * 0.72 : GOBLIN_TELEGRAPH_DUR)) {
         g.state = "charge";
         g.stateT = 0;
       }
@@ -149,7 +177,7 @@ function updateGoblins(dt) {
       const cdx = player.x - g.x, cdy = player.y - g.y;
       const cdist = Math.hypot(cdx, cdy);
       if (cdist < g.r + player.r && g.contactCooldown <= 0 && player.invulnT <= 0) {
-        const dmg = 14;
+        const dmg = Math.round(14 * MOB_DMG_MULT); // [DENGE] biyom hasar çarpanı
         player.hp = Math.max(0, player.hp - dmg);
         player.invulnT = 0.6;
         g.contactCooldown = GOBLIN_CONTACT_COOLDOWN;
@@ -187,7 +215,7 @@ function updateGoblins(dt) {
             g.deathT = 0;
             // Toz kazanımı KALDIRILDI — hesaba işlenmiyordu, harita ekonomisi
             // sadeleştirildi (gerçek damlalar: maybeDropItem içinde).
-            maybeDropItem(g.x, g.y);
+            maybeDropItem(g.x, g.y, "goblin");
             deathJuice(g, "rgba(200,160,90,0.85)", 20); // en iri düşman → en büyük patlama
           }
         }

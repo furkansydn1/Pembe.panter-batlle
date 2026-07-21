@@ -18,14 +18,19 @@ function drawGround() {
       for (let wy = startY; wy < endY; wy += T) {
         const sx = wx - camera.x, sy = wy - camera.y;
         // Karo indeksine göre flip yönü (dama tahtası varyasyonu)
-        const ix = Math.round(wx / T), iy = Math.round(wy / T);
-        const flipX = (ix % 2 === 0) ? 1 : -1;
-        const flipY = (iy % 2 === 0) ? 1 : -1;
-        ctx.save();
-        ctx.translate(sx + (flipX < 0 ? T : 0), sy + (flipY < 0 ? T : 0));
-        ctx.scale(flipX, flipY);
-        ctx.drawImage(groundImg, 0, 0, T, T);
-        ctx.restore();
+        if (ACTIVE_BIOME.groundFlip === false) {
+          // [ZEMİN v3] Flip'siz düz döşeme: yönlü detaylı karolar için
+          ctx.drawImage(groundImg, sx, sy, T, T);
+        } else {
+          const ix = Math.round(wx / T), iy = Math.round(wy / T);
+          const flipX = (ix % 2 === 0) ? 1 : -1;
+          const flipY = (iy % 2 === 0) ? 1 : -1;
+          ctx.save();
+          ctx.translate(sx + (flipX < 0 ? T : 0), sy + (flipY < 0 ? T : 0));
+          ctx.scale(flipX, flipY);
+          ctx.drawImage(groundImg, 0, 0, T, T);
+          ctx.restore();
+        }
       }
     }
   } else {
@@ -43,8 +48,19 @@ function drawGround() {
     }
   }
 
-  // Harita kenar çizgisi
-  ctx.strokeStyle = "rgba(255,45,135,0.4)";
+  // [BİYOM] Süsler (kemik/mantar) — zeminin üstü, zehir tonunun ALTI:
+  // ton süslerin de üstüne serilince ortam bütünleşir.
+  if (typeof drawDecor === "function") drawDecor();
+
+  // [BİYOM] Zehir/sis tonu — zeminin üstüne, obstacle/canavarların ALTINA serilir.
+  // Görünen alanı (world-pass'te 0,0..VIEW_W,VIEW_H) kaplar, çok hafif.
+  if (ACTIVE_BIOME.tint) {
+    ctx.fillStyle = ACTIVE_BIOME.tint;
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  }
+
+  // Harita kenar çizgisi (biyoma göre renk)
+  ctx.strokeStyle = ACTIVE_BIOME.borderColor;
   ctx.lineWidth = 4;
   ctx.strokeRect(-camera.x, -camera.y, WORLD_W, WORLD_H);
 }
@@ -61,7 +77,22 @@ function drawObstacles() {
     ctx.fillStyle = "rgba(0,0,0,0.35)";
     ctx.fill();
 
-    if (o.type === "rock") {
+    if (o.type === "pumpkin" || o.type === "sign") {
+      // [BİYOM] Bataklık engelleri: çürük balkabağı + kurukafalı tabela.
+      // Tabela uzun sprite (64x128) — tabanı çarpışma noktasına oturur, üstü taşar.
+      const im = o.type === "pumpkin" ? (balkabagiReady ? balkabagiImg : null)
+                                      : (tabelaReady ? tabelaImg : null);
+      if (im) {
+        const w = o.r * (o.type === "sign" ? 2.4 : 2.9);
+        const h = w * (im.height / im.width);
+        // kırpılmış görsel: dibi = nesnenin dibi → tabanı sy'ye (hafif gömülü) otur
+        ctx.drawImage(im, sx - w / 2, sy + o.r * 0.55 - h, w, h);
+      } else {
+        // YEDEK: görsel yoksa düz daire
+        ctx.beginPath(); ctx.arc(sx, sy, o.r, 0, Math.PI * 2);
+        ctx.fillStyle = o.type === "pumpkin" ? "#a8622a" : "#7a5a3a"; ctx.fill();
+      }
+    } else if (o.type === "rock") {
       if (rockImgReady) {
         // Piksel-art kaya: çarpışma dairesine (r) göre ölçeklenir, tabanı
         // gölgenin üstüne, zemine tam oturur.
@@ -133,4 +164,89 @@ function drawEdgeArrows() {
     }
   }
   ctx.globalAlpha = 1;
+}
+
+// [BİYOM] SÜS ÇİZİMİ — kemik/mantar. Çarpışmaz; drawGround sonunda,
+// zehir tonundan önce çağrılır. Görsel yüklenmediyse sessizce atlanır.
+// Süs görselleri artık İÇERİĞE KIRPILI (saydam kenar yok) → PNG'nin dibi =
+// nesnenin dibi. Bu yüzden tabanı doğrudan d.y hizasına oturtuyoruz + gölge.
+const DECOR_W = { kemik1: 30, kemik2: 22, mantar: 48 }; // ekran genişliği (world); mantar büyütüldü
+function drawDecor() {
+  const list = ACTIVE_BIOME.decor;
+  if (!list) return;
+  for (const d of list) {
+    const sx = d.x - camera.x, sy = d.y - camera.y;
+    if (sx < -70 || sx > VIEW_W + 70 || sy < -70 || sy > VIEW_H + 70) continue;
+    let im = null;
+    if (d.type === "kemik1" && kemik1Ready) im = kemik1Img;
+    else if (d.type === "kemik2" && kemik2Ready) im = kemik2Img;
+    else if (d.type === "mantar" && mantarReady) im = mantarImg;
+    if (!im) continue;
+    const w = DECOR_W[d.type] || 28;
+    const h = w * (im.height / im.width);
+    // yere oturma gölgesi (nesne genişliğine göre elips)
+    ctx.beginPath();
+    ctx.ellipse(sx, sy + 1, w * 0.42, w * 0.16, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(0,0,0,0.30)";
+    ctx.fill();
+    // taban d.y'ye otursun (2px zemine gömülü dursun)
+    ctx.drawImage(im, sx - w / 2, sy - h + 2, w, h);
+
+    // MANTAR KONUŞMASI: aktif satır varsa kabarcıkla üstünde göster
+    if (d.type === "mantar" && d._line && d._lineT > 0) {
+      drawMantarBubble(sx, sy - h - 4, d._line, d._lineT);
+    }
+  }
+}
+
+// ---- Mantar konuşma sistemi ----
+const MANTAR_LINES = [
+  "Bana her şey uyar kanka",
+  "kitap okumak meditasyon yapmak moruk ya",
+  "hııııı başka",
+  "Halla Hallaaa",
+  "Yine benim üstüme kalıcak aq ya",
+];
+function mantarSay(d, text) {
+  d._line = text || MANTAR_LINES[(Math.random() * MANTAR_LINES.length) | 0];
+  d._lineT = 2.6;          // ekranda kalma süresi (sn)
+  d._next = 4 + Math.random() * 5; // sonraki lafa kadar (sn)
+}
+// Her mantarın kendi sayaçlarını işletir; sırayla, çakışmasın diye rastgele gecikmeli.
+function updateDecor(dt) {
+  const list = ACTIVE_BIOME.decor;
+  if (!list) return;
+  for (const d of list) {
+    if (d.type !== "mantar") continue;
+    if (d._next === undefined) { d._next = 1 + Math.random() * 6; d._lineT = 0; } // ilk gecikme
+    if (d._lineT > 0) d._lineT -= dt;
+    d._next -= dt;
+    if (d._next <= 0) mantarSay(d);
+  }
+}
+// Konuşma kabarcığı (dünya-uzayında, zoom ile ölçeklenir)
+function drawMantarBubble(cx, topY, text, lifeT) {
+  const alpha = Math.min(1, lifeT / 0.4); // sönerken solsun
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.font = '600 11px -apple-system, "Segoe UI", Roboto, sans-serif';
+  ctx.textAlign = "center";
+  const tw = Math.min(150, ctx.measureText(text).width);
+  const padX = 7, padY = 5, bw = tw + padX * 2, bh = 20;
+  const bx = cx - bw / 2, by = topY - bh;
+  // kabarcık gövdesi
+  ctx.fillStyle = "rgba(18,19,25,0.92)";
+  ctx.strokeStyle = "rgba(150,190,90,0.6)";
+  ctx.lineWidth = 1;
+  if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 6); ctx.fill(); ctx.stroke(); }
+  else { ctx.fillRect(bx, by, bw, bh); ctx.strokeRect(bx, by, bw, bh); }
+  // kuyruk
+  ctx.beginPath();
+  ctx.moveTo(cx - 4, by + bh); ctx.lineTo(cx + 4, by + bh); ctx.lineTo(cx, by + bh + 5);
+  ctx.closePath(); ctx.fillStyle = "rgba(18,19,25,0.92)"; ctx.fill();
+  // yazı
+  ctx.fillStyle = "#dfe8c2";
+  ctx.fillText(text, cx, by + 14, 150);
+  ctx.restore();
+  ctx.textAlign = "left";
 }

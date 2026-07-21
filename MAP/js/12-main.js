@@ -27,6 +27,7 @@ function loop(now) {
     }
     updateFloatingTexts(dt);
     updateParticles(dt);
+    if (typeof updateDecor === "function") updateDecor(dt); // [BİYOM] mantar konuşma sayaçları
     updateCamera(dt);
   }
   updateWaveManager(dt); // "ana ekran"da da respawn sayacı işlemeye devam etsin

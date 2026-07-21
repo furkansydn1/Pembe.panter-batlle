@@ -173,6 +173,20 @@ function updatePlayer(dt) {
 
         triggerShake(3, 0.12);
         spawnSwingParticles();
+
+        // [BİYOM] Mantar sürprizi: kılıç savrulurken menzildeki mantar
+        // "halla halla!" diye bağırır :) (1.6 sn kişisel bekleme ile)
+        if (ACTIVE_BIOME.decor) {
+          for (const dcr of ACTIVE_BIOME.decor) {
+            if (dcr.type !== "mantar") continue;
+            if (Math.hypot(dcr.x - player.x, dcr.y - player.y) > reach + 16) continue;
+            const nowMs = Date.now();
+            if (dcr._halla && nowMs - dcr._halla < 1600) continue;
+            dcr._halla = nowMs;
+            // vurulunca hemen "Halla Hallaaa" desin (kendi kabarcığında)
+            if (typeof mantarSay === "function") mantarSay(dcr, "Halla Hallaaa");
+          }
+        }
       }
     }
   }

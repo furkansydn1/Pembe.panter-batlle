@@ -20,7 +20,12 @@ const SOLDIER_FRAME = 100;      // her karenin px cinsinden genişlik/yüksekli�
 // sadece ~16-34px yer kaplıyor (Aseprite bol boşluklu export etmiş).
 // O yüzden kare BÜYÜK çiziliyor ki içindeki asker normal boyutta görünsün.
 const SOLDIER_DISPLAY = 230;    // ekranda çizilecek kare boyutu → görünen asker ~37px
-const SOLDIER_ROW_IDLE = 0, SOLDIER_ROW_WALK = 1, SOLDIER_ROW_ATTACK = 2, SOLDIER_ROW_HURT = 5, SOLDIER_ROW_DEATH = 6;
+// [BİYOM] Reskin: bataklıkta Demon sheet'i. Demon'da hurt=4, death=5. satırda
+// (askerde 5/6) — satır numaraları skin'den gelir, kare sayıları aynı.
+var SOLDIER_SKIN = (typeof ACTIVE_BIOME !== "undefined" && ACTIVE_BIOME.skins && ACTIVE_BIOME.skins.soldier) || null;
+const SOLDIER_ROW_IDLE = 0, SOLDIER_ROW_WALK = 1, SOLDIER_ROW_ATTACK = 2,
+      SOLDIER_ROW_HURT = SOLDIER_SKIN ? SOLDIER_SKIN.rowHurt : 5,
+      SOLDIER_ROW_DEATH = SOLDIER_SKIN ? SOLDIER_SKIN.rowDeath : 6;
 const SOLDIER_FRAMES_IDLE = 6, SOLDIER_FRAMES_WALK = 8, SOLDIER_FRAMES_ATTACK = 6, SOLDIER_FRAMES_HURT = 4, SOLDIER_FRAMES_DEATH = 4;
 
 // Bu resim normalde 01-assets.js'te yüklenir; o dosyaya elin değmediyse
@@ -30,7 +35,7 @@ if (typeof soldierImg === "undefined") {
   var soldierImg = new Image();
   var soldierImgReady = false;
   soldierImg.onload = () => { soldierImgReady = true; };
-  soldierImg.src = "assets/enemies/soldier.png";
+  soldierImg.src = SOLDIER_SKIN ? SOLDIER_SKIN.src : "assets/enemies/soldier.png"; // [BİYOM]
 }
 
 const SOLDIER_CONTACT_COOLDOWN = 0.9;   // saldırı vuruşları arası, oyuncunun tekrar hasar alabilmesi için minimum süre
@@ -52,7 +57,7 @@ function makeSoldier(x, y) {
     x, y,
     homeX: x, homeY: y,
     r: 16,
-    hp: 35, maxHp: 35,
+    hp: Math.round(35 * MOB_HP_MULT), maxHp: Math.round(35 * MOB_HP_MULT), // [DENGE] biyom can çarpanı
     walkSpeed: 95,
     aggroRange: 240,     // bu menzile girmeden asker fark etmez, home noktasında bekler
     attackRange: 58,     // bu mesafeye girince durup saldırıya geçer
@@ -98,6 +103,33 @@ function updateSoldiers(dt) {
         s.state = "chase";
       }
     } else if (s.state === "chase") {
+      // [BATAKLIK ZEKÂSI] Demon — GÖLGE ADIMI: birkaç saniyede bir gölgeye
+      // karışıp oyuncunun YANINA yırtılarak belirir (düz kovalamaz, sinsi
+      // yaklaşır). İniş noktası engele denk gelirse o tur vazgeçer.
+      if (SOLDIER_SKIN) {
+        if (s.blinkT === undefined) s.blinkT = 2 + Math.random() * 3;
+        s.blinkT -= dt;
+        if (s.blinkT <= 0) {
+          s.blinkT = 4 + Math.random() * 2.5;
+          if (dist > 130 && dist < 320) {
+            const n2 = dist || 1, side = Math.random() < 0.5 ? 1 : -1;
+            const jump = Math.min(110, dist - 60);
+            let nx2 = s.x + (dx / n2) * jump - (dy / n2) * side * 40;
+            let ny2 = s.y + (dy / n2) * jump + (dx / n2) * side * 40;
+            nx2 = Math.max(30, Math.min(WORLD_W - 30, nx2));
+            ny2 = Math.max(30, Math.min(WORLD_H - 30, ny2));
+            let blocked = false;
+            for (const ob of obstacles) {
+              if (Math.hypot(nx2 - ob.x, ny2 - ob.y) < ob.r + s.r + 6) { blocked = true; break; }
+            }
+            if (!blocked) {
+              if (typeof spawnPoofAt === "function") spawnPoofAt(s.x, s.y); // kaybolma dumanı
+              s.x = nx2; s.y = ny2;
+              if (typeof spawnPoofAt === "function") spawnPoofAt(s.x, s.y); // beliriş dumanı
+            }
+          }
+        }
+      }
       if (dist > s.aggroRange * 1.5) {
         // Oyuncu çok uzaklaştı, pes edip eve dön
         s.state = "idle";
@@ -118,10 +150,11 @@ function updateSoldiers(dt) {
         s.hasHitThisAttack = true;
         const hitDist = Math.hypot(player.x - s.x, player.y - s.y);
         if (hitDist < s.attackRange + 22 && player.invulnT <= 0) {
-          player.hp = Math.max(0, player.hp - 11);
+          const dmgHit = Math.round(11 * MOB_DMG_MULT); // [DENGE] biyom hasar çarpanı
+          player.hp = Math.max(0, player.hp - dmgHit);
           player.invulnT = 0.6;
           triggerShake(5, 0.18);
-          spawnFloatingText(player.x, player.y - player.r - 6, "-11", "#ff5c6c");
+          spawnFloatingText(player.x, player.y - player.r - 6, "-" + dmgHit, "#ff5c6c");
           const kx = (player.x - s.x) / (hitDist || 1), ky = (player.y - s.y) / (hitDist || 1);
           player.knockVx = kx * 200; player.knockVy = ky * 200;
           hpLabelEl.textContent = player.hp;
@@ -167,7 +200,7 @@ function updateSoldiers(dt) {
             s.deathT = 0;
             // Toz kazanımı KALDIRILDI — hesaba işlenmiyordu, harita ekonomisi
             // sadeleştirildi (gerçek damlalar: maybeDropItem içinde).
-            maybeDropItem(s.x, s.y);
+            maybeDropItem(s.x, s.y, "soldier");
             deathJuice(s, "rgba(200,60,60,0.85)", 16);
           }
         }

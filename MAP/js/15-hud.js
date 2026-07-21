@@ -28,7 +28,7 @@
       ? heroData.xpNeed : 100; // veri yoksa 100'lük yedek bar
 
     // ---- 4) Sayaç değişince "pıt" ----
-    var bumpIds = ["rareLabel", "itemsLabel", "legendaryLabel", "pointsLabel", "expCurLabel"];
+    var bumpIds = ["rareLabel", "itemsLabel", "legendaryLabel", "pointsLabel", "expCurLabel", "standardItemLabel", "rareItemLabel"];
     for (var i = 0; i < bumpIds.length; i++) {
       (function (el) {
         if (!el || typeof MutationObserver === "undefined") return;

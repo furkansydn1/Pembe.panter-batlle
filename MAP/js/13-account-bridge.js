@@ -17,10 +17,16 @@
 // ============================================================
 (function () {
   const KEY = "ppbMapPending";
+  // [EŞYA KASASI] Sıradan/Nadir eşya dropları AYRI anahtarda birikir.
+  // Neden ayrı? Eski js/map.js "ppbMapPending"i işledikten sonra KOMPLE
+  // siler — eşyaları oraya koysaydık, ana oyun güncellenmeden girilen ilk
+  // oturumda silinip kaybolurlardı. Bu anahtara eski kod hiç dokunmaz;
+  // güncel js/map.js gerçek eşyaya çevirip kendisi temizler.
+  const ITEM_KEY = "ppbMapPendingItems";
   const SYNC_INTERVAL_MS = 3000;
 
   // Son senkronda sayaçlar ne durumdaydı — fark (delta) bunun üstünden hesaplanır.
-  let last = { book: 0, scrap: 0, xp: 0, deaths: 0, gold: 0 };
+  let last = { book: 0, scrap: 0, xp: 0, deaths: 0, gold: 0, itemStd: 0, itemRare: 0 };
 
   function readCounters() {
     // Sayaçlar 04-economy.js'te top-level let olarak tanımlı; tüm klasik
@@ -31,7 +37,9 @@
       scrap: typeof sessionLegendary === "number" ? sessionLegendary : 0, // "Hurda" sayacı
       xp: typeof sessionExp === "number" ? sessionExp : 0,
       deaths: typeof sessionDeaths === "number" ? sessionDeaths : 0,
-      gold: typeof sessionRare === "number" ? sessionRare : 0             // "Altın" sayacı
+      gold: typeof sessionRare === "number" ? sessionRare : 0,            // "Altın" sayacı
+      itemStd: typeof sessionStandardItem === "number" ? sessionStandardItem : 0, // Sıradan Eşya
+      itemRare: typeof sessionRareItem === "number" ? sessionRareItem : 0         // Nadir Eşya
     };
   }
 
@@ -42,9 +50,12 @@
       scrap: cur.scrap - last.scrap,
       xp: cur.xp - last.xp,
       deaths: cur.deaths - last.deaths,
-      gold: cur.gold - last.gold
+      gold: cur.gold - last.gold,
+      itemStd: cur.itemStd - last.itemStd,
+      itemRare: cur.itemRare - last.itemRare
     };
-    if (delta.book <= 0 && delta.scrap <= 0 && delta.xp <= 0 && delta.deaths <= 0 && delta.gold <= 0) return;
+    if (delta.book <= 0 && delta.scrap <= 0 && delta.xp <= 0 && delta.deaths <= 0 && delta.gold <= 0
+        && delta.itemStd <= 0 && delta.itemRare <= 0) return;
 
     let pending = {};
     try { pending = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { pending = {}; }
@@ -55,8 +66,16 @@
     pending.gold = (pending.gold || 0) + Math.max(0, delta.gold);
     pending.updatedAt = Date.now();
 
+    // [EŞYA KASASI] Eşyalar ayrı anahtara birikir (üstteki nota bak).
+    let pendItems = {};
+    try { pendItems = JSON.parse(localStorage.getItem(ITEM_KEY) || "{}") || {}; } catch (e) { pendItems = {}; }
+    pendItems.std = (pendItems.std || 0) + Math.max(0, delta.itemStd);
+    pendItems.rare = (pendItems.rare || 0) + Math.max(0, delta.itemRare);
+    pendItems.updatedAt = Date.now();
+
     try {
       localStorage.setItem(KEY, JSON.stringify(pending));
+      localStorage.setItem(ITEM_KEY, JSON.stringify(pendItems));
       last = cur; // yazma başarılıysa senkron noktasını ilerlet
     } catch (e) {
       // localStorage doluysa/kapalıysa bir sonraki denemede tekrar yazılır;
