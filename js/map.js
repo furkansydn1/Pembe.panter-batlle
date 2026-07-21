@@ -38,6 +38,11 @@ export const MAP_ROLL_SPREAD = 0.15;
 // recommendedLevel: sert bir engel değil, canEnterMap()'te yumuşak bir alt
 // sınır (MAP_LEVEL_LENIENCY kadar esneklik var).
 export const MAP_LEVEL_LENIENCY = 3;
+// [DİYAR KİLİDİ] MAP tarafında gerçekten inşa edilmiş diyar sayısı (order olarak).
+// Yeni bir diyar MAP mini-oyununda hazır oldukça bu sayıyı 1 artırman yeterli —
+// kartındaki "🔒 Yakında" kendiliğinden "Diyara Gir"e döner. Şu an: 1=Unutulmuş
+// Orman, 2=Zehirli Bataklık hazır; 3-5 (Yıkık Kale, Gölge Uçurumu, Kâbus Diyarı) yakında.
+export const IMPLEMENTED_MAP_MAX_ORDER = 2;
 export const MAP_TIERS = [
   {
     id: "unutulmus-orman", order: 1, label: "Unutulmuş Orman",
@@ -273,7 +278,7 @@ export function renderMapTab() {
         </div>
         ${locked ? `<p class="box-status" style="margin:6px 0;">${check.reason}</p>` : ""}
         <div class="realm-actions">
-          ${map.order === 1
+          ${map.order <= IMPLEMENTED_MAP_MAX_ORDER
             ? `<button class="btn-mini nadir-mini" data-map-enter="${map.id}" ${locked ? "disabled" : ""}>Diyara Gir</button>`
             : `<button class="btn-mini" disabled style="opacity:0.55; cursor:default;">🔒 Yakında</button>`}
         </div>
