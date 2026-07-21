@@ -196,7 +196,6 @@ closeCollectionBtn.onclick = () => collectionModal.classList.add("hidden");
 // slot boşsa otomatik kuşanılır; doluysa envantere eklenir ve oyuncu
 // istediği eşyayı manuel olarak kuşanabilir ya da hurdaya çevirebilir.
 // ============================================================
-// ============================================================
 // [v2.2 fix] ORTAK ID NORMALİZASYONU
 // ------------------------------------------------------------
 // SORUN: getSlotInventory() eskiden id'siz/çakışan eşyalara SADECE ekranda
@@ -233,14 +232,14 @@ function itemFingerprint(it) {
 
 export function getSlotInventory(slot) {
   const invRaw = (S.currentPlayerData?.inventory && S.currentPlayerData.inventory[slot]) || [];
-  const inv = normalizeSlotItems(invRaw, slot);
-  const equipped = S.currentPlayerData?.equipment && S.currentPlayerData.equipment[slot];
-  // Bu güncellemeden önce kuşanılmış (id'siz) eşyalar için geriye dönük uyumluluk
-  if (equipped && !inv.some(it => it.id && equipped.id && it.id === equipped.id)) {
-    const legacyId = equipped.id || `legacy-equipped-${slot}`;
-    return [{ ...equipped, id: legacyId }, ...inv];
-  }
-  return inv;
+  // [v2.3 fix] ESKİ HÂL: kuşanılı eşya envanter dizisinde yoksa (ki equipItem
+  // doğru çalıştığından beri HER ZAMAN öyle olur) onu ekranlık olarak listenin
+  // başına geri ekliyordu — bu yüzden az önce kuşandığın/uzun süredir takılı
+  // olan HER eşya, envanter listesinde de "ekstra bir kart" gibi görünüyordu
+  // (veri bozuk değildi, salt görüntüleme kaynaklıydı — bkz. teşhis).
+  // Kuşanılı eşya zaten karakter/kuşanım ekranında gösteriliyor; envanter
+  // listesinde ayrıca göstermeye gerek yok, bu yüzden bu ekleme tamamen kaldırıldı.
+  return normalizeSlotItems(invRaw, slot);
 }
 
 export async function equipItem(slot, itemId) {
