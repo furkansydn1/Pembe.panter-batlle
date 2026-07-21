@@ -100,8 +100,8 @@ var BIOMES = {
     // İç tip adları: orc=Blood Monster (ŞANSLI canavar), soldier=Demon, goblin=Pawn.
     loot: {
       bookPct: 0.035,                                  // %3.5 kitap (hepsinden)
-      rareItemPct: 0.001,                              // %0.1 NADİR eşya (hepsinden)
-      stdItemPct: { orc: 0.085, soldier: 0.045, goblin: 0.045 }, // sıradan eşya: Blood %8.5, diğerleri %4.5
+      rareItemPct: 0.005,                              // %0.5 NADİR eşya (hepsinden — 200 kesimde ~1)
+      stdItemPct: { orc: 0.02, soldier: 0.02, goblin: 0.02 },    // sıradan eşya %2 (hepsinde eşit — denge ayarı)
       goldW:  [[1, 50], [2, 40], [3, 30], [4, 10]],    // her kesim 1-4 altın (ağırlık 50/40/30/10)
       scrapW: [[1, 50], [2, 40], [3, 30], [4, 10]],    // hurda aynı oranlar
       exp: { orc: [3, 7], soldier: [5, 7], goblin: [3, 5] }, // min3-max7; en tehlikeli (Demon) en cömert
