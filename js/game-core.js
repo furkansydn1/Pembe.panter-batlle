@@ -12,6 +12,9 @@ import { dateStr, emptyEquipment, formatRemaining, renderMapTab } from "./map.js
 import { renderMarketListingsGrid, renderMarketTab, renderMyListingsPanel, renderTradeBanBanner, renderTradeLogsFeed } from "./market.js";
 import { WEEKLY_LEADERBOARD_DOC_ID, ensureDailyMarketForToday, ensureDailyQuestsForToday, ensureMonthlyQuestsForThisMonth, ensureWeeklyLeaderboardReset, ensureWeeklyQuestsForThisWeek, getMsUntilNextSunday, incrementQuestProgress, renderBagGrid, renderQuests } from "./quests.js";
 import { S, clearActiveListeners } from "./state.js";
+// [GEÇİCİ DEBUG] Envanter/equipment teşhisi için konsoldan erişim.
+// Sorun çözülünce bu satırı SİL — production'da global'e state basmayalım.
+window.__DEBUG_S = S;
 import { maybeShowNewFeatures, maybeShowTutorialV2 } from "./tutorial-updates.js";
 import { checkTimeBasedNotifications, renderBattleLog, sfxLevelUp } from "./ui-misc.js";
 import { BOUNTY_DOC_ID, META_COL, ensureOracleBetResolved, renderBounty, renderBountyForm, renderOracleForm, renderOraclePanel, renderWheel } from "./wheel-bounty-oracle.js";
