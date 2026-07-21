@@ -59,6 +59,49 @@ export async function autoUnequipOverleveledItems() {
 }
 
 // ============================================================
+// YİNELENEN ENVANTER ID'Sİ TEMİZLİĞİ (kalıcı çözüm)
+// ------------------------------------------------------------
+// SORUN [v2 hotfix]: equipItem()'in bir önceki (hatalı) hali, eski kuşanılı
+// eşyayı hem getSlotInventory'nin ekranlık "otomatik ekleme"siyle hem de kendi
+// "eski eşyayı envantere geri koy" adımıyla İKİ KEZ envantere yazabiliyordu.
+// Sonuç: aynı id'ye sahip 2 kopya aynı slotta beliriyordu ("rastgele item
+// spawn oldu" bug'ı). equipItem artık düzeltildi ama bu bug'ı equip
+// düğmesine basmış olan hesaplarda kalıntı zaten oluşmuş olabilir.
+// ÇÖZÜM: Her slotta aynı id'yi taşıyan fazladan kopyaları (ilkini koru,
+// gerisini sil) otomatik temizler. Gerçekten farklı 2 eşya (farklı id) asla
+// silinmez — sadece BİREBİR id çakışması temizlenir.
+export async function dedupeDuplicateInventoryItems() {
+  const data = S.currentPlayerData;
+  if (!data || !S.currentPlayerId || !data.inventory) return;
+  const newInventory = { ...data.inventory };
+  let changed = false;
+
+  for (const slot in newInventory) {
+    const list = newInventory[slot] || [];
+    const seen = new Set();
+    const deduped = list.filter(it => {
+      if (!it.id) return true; // id'siz olanlara dokunma, ayrı bir fix zaten var (getSlotInventory)
+      if (seen.has(it.id)) return false;
+      seen.add(it.id);
+      return true;
+    });
+    if (deduped.length !== list.length) {
+      newInventory[slot] = deduped;
+      changed = true;
+    }
+  }
+
+  if (!changed) return;
+  try {
+    await updateDoc(doc(db, PLAYERS_COL, S.currentPlayerId), { inventory: newInventory });
+    S.currentPlayerData.inventory = newInventory;
+    console.warn("[Yinelenen eşya temizliği] Aynı id'li fazladan eşya kopyaları silindi.");
+  } catch (e) {
+    console.error("[Yinelenen eşya temizliği] hata:", e);
+  }
+}
+
+// ============================================================
 // HAYALET EŞYA TEMİZLİĞİ (kalıcı çözüm)
 // ------------------------------------------------------------
 // SORUN: equipItem() (eski hali) eşyayı equipment[slot]'a kopyalıyordu ama
@@ -164,12 +207,7 @@ export function getSlotInventory(slot) {  const invRaw = (S.currentPlayerData?.i
 
 export async function equipItem(slot, itemId) {
   if (!S.currentPlayerData) return false;
-  // getSlotInventory kullanıyoruz çünkü id'siz/çakışan eski kayıtları burada
-  // zaten normalize ediyor — bu sayede aşağıdaki "envanterden çıkar" işlemi
-  // ham (bozuk) Firestore verisi yerine düzeltilmiş id'ler üzerinden çalışır
-  // ve o düzeltme kalıcı olarak Firestore'a yazılmış olur.
-  const normalizedInv = getSlotInventory(slot);
-  const target = normalizedInv.find(it => it.id === itemId);
+  const target = getSlotInventory(slot).find(it => it.id === itemId);
   if (!target) { alert("Eşya bulunamadı."); return false; }
   const levelCheck = canEquipItem(target, S.currentPlayerData);
   if (!levelCheck.ok) { alert(levelCheck.reason); return false; }
@@ -178,15 +216,30 @@ export async function equipItem(slot, itemId) {
   const newEquipment = { ...(S.currentPlayerData.equipment || emptyEquipment()), [slot]: target };
   const stats = computeStatsFromEquipment(newEquipment, S.currentPlayerData.statAllocated);
 
-  // BUG FIX: Kuşanılan eşyayı envanter dizisinden GERÇEKTEN çıkar (eskiden
-  // sadece equipment'a kopyalanıp envanterde de "hayalet kopya" olarak
-  // kalıyordu → çantada aynı eşya "KUŞANILI" görünüp satılamıyordu).
-  // Eski kuşanılı eşya varsa (ve farklıysa) envantere geri koy; id'si yoksa
-  // kalıcı bir id ver ki bu eşya da ileride aynı bug'a düşmesin.
-  let newInvArr = normalizedInv.filter(it => it.id !== itemId);
+  // BUG FIX (v2): HAM (ham Firestore) envanter dizisinden çalış — getSlotInventory()'nin
+  // döndürdüğü liste EKRANLIK olarak kuşanılı eşyayı zaten otomatik ekliyor (geriye dönük
+  // uyumluluk için). O listeyi baz alıp üstüne bir de "eski kuşanılıyı geri koy" yaparsak
+  // eşya İKİ KEZ envantere yazılır (yaşanan "rastgele item spawn" bug'ı buydu). Bu yüzden
+  // ham diziyi kullanıyoruz; id normalizasyonunu burada kendimiz, tekrar eklemeden yapıyoruz.
+  const rawList = S.currentPlayerData.inventory?.[slot] || [];
+  const seen = new Set();
+  let newInvArr = rawList
+    .filter(it => it.id !== itemId) // kuşanılan eşyayı çıkar
+    .map((it, idx) => {
+      if (it.id && !seen.has(it.id)) { seen.add(it.id); return it; }
+      let newId = it.id ? `${it.id}-dup${idx}` : `legacy-${slot}-${idx}`;
+      while (seen.has(newId)) newId += "x";
+      seen.add(newId);
+      return { ...it, id: newId };
+    });
+
+  // Eski kuşanılı eşya varsa ve HAM listede zaten yoksa (id eşleşmiyorsa) envantere geri koy.
   if (prevEquipped && prevEquipped.id !== target.id) {
-    const fixedPrev = prevEquipped.id ? prevEquipped : { ...prevEquipped, id: genItemId() };
-    newInvArr = [...newInvArr, fixedPrev];
+    const alreadyInInventory = rawList.some(it => it.id && prevEquipped.id && it.id === prevEquipped.id);
+    if (!alreadyInInventory) {
+      const fixedPrev = prevEquipped.id ? prevEquipped : { ...prevEquipped, id: genItemId() };
+      newInvArr = [...newInvArr, fixedPrev];
+    }
   }
 
   await updateDoc(doc(db, PLAYERS_COL, S.currentPlayerId), {
