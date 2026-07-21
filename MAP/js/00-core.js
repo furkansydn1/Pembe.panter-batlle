@@ -27,3 +27,31 @@
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 ctx.imageSmoothingEnabled = false; // piksel-art netliği için
+
+// ============================================================
+// [DİKEY ENTEGRASYON] RESPONSIVE PORTRAIT CANVAS + ZOOM (GÖRÜŞ) SİSTEMİ
+// Canvas artık sabit 900x600 değil — ekranı tam kaplar (dikey). Tüm dünya
+// çizimi ZOOM ile ölçeklenir: "kaç dünya-birimi genişlik görünsün" (VIEW_W_TARGET)
+// küçüldükçe yakınlaşır. Oyuncu tercihi ⚙️ ayarından (16-settings) gelir ve
+// localStorage["ppbMapZoom"]'da saklanır. DPR=1 (buffer = CSS px) — tüm eski
+// canvas.width/height mantığı "ekran px" olarak aynen çalışsın diye bilinçli.
+// ============================================================
+var VIEW_W_TARGET = 400; // görünen dünya genişliği (world birimi) — küçük = daha yakın
+var VIEW_W = 400, VIEW_H = 700, ZOOM = 1;
+(function () {
+  try { var z = parseFloat(localStorage.getItem("ppbMapZoom")); if (z >= 300 && z <= 580) VIEW_W_TARGET = z; } catch (e) {}
+})();
+function computeView() {
+  ZOOM = canvas.width / VIEW_W_TARGET;   // ekran px / dünya birimi
+  VIEW_W = VIEW_W_TARGET;                 // görünen dünya genişliği (world)
+  VIEW_H = canvas.height / ZOOM;          // görünen dünya yüksekliği (world)
+}
+function resizeCanvas() {
+  canvas.width = Math.max(1, Math.round(window.innerWidth));
+  canvas.height = Math.max(1, Math.round(window.innerHeight));
+  ctx.imageSmoothingEnabled = false;
+  computeView();
+}
+resizeCanvas();
+window.addEventListener("resize", resizeCanvas);
+window.addEventListener("orientationchange", function () { setTimeout(resizeCanvas, 120); });

@@ -11,6 +11,7 @@ const player = {
   spriteFrameT: 0,      // sprite karesi zaman sayacı (walk/idle için)
   attacking: false,
   attackT: 0,           // saldırı animasyon zaman sayacı (0..ATTACK_DURATION)
+  aimAngle: 0,          // [DİKEY] oto-saldırının hedeflediği açı (en yakın düşmana)
   attackCooldown: 0,
   hp: 100,
   maxHp: 100,
@@ -24,7 +25,12 @@ const ATTACK_DURATION = 0.28; // saniye
 const ATTACK_COOLDOWN = 0.22; // saniye (art arda çok hızlı vuramasın)
 const ATTACK_BUFFER = 0.18;   // saniye — erken basılan saldırı bu kadar süre "hatırlanır" (input buffering)
 const ATTACK_LUNGE = 150;     // saldırıda ileri atılma itişi (px/s, knock kanalından sönümlenir)
-let attackBufferT = 0;        // saldırı tamponu sayacı
+// [DİKEY] Oto-saldırı: cleave (yay) yarı açısı. Prototipteki ±38°'yi baz aldık;
+// oto-hedef zaten en yakına nişanlandığı için bu açı "yanındaki KAÇ düşmanı da
+// biçer"i belirler. Dengeli değer; istersen buradan tek yerden ayarla.
+const PLAYER_ARC_HALF = 40 * Math.PI / 180; // ±40° (toplam 80° cleave)
+const AUTO_ENGAGE_MARGIN = 12;  // menzile bu kadar pay eklenince saldırı tetiklenir
+let attackBufferT = 0;        // saldırı tamponu sayacı (artık kullanılmıyor — oto-saldırı)
 let footstepT = 0;            // adım sesi zamanlayıcısı
 
 
@@ -49,8 +55,9 @@ function updatePlayer(dt) {
 
   player.moving = len > 0.05;
 
-  // Yön (facing) güncelle — sadece anlamlı bir hareket varsa
-  if (player.moving) {
+  // Yön (facing) güncelle — sadece anlamlı bir hareket varsa VE saldırı anında
+  // değilse (oto-saldırı yönü hedefe kilitli kalsın, hareketle bozulmasın).
+  if (player.moving && !player.attacking) {
     if (Math.abs(ix) > Math.abs(iy)) player.facing = ix > 0 ? "right" : "left";
     else player.facing = iy > 0 ? "down" : "up";
   }
@@ -128,31 +135,46 @@ function updatePlayer(dt) {
     });
   }
 
-  // Saldırı tetikleme — INPUT BUFFERING ile:
-  // Cooldown/animasyon bitmeden basılan saldırı çöpe gitmez, 0.18 sn boyunca
-  // "tamponda" bekler ve ilk uygun anda otomatik patlar. "Bastım ama olmadı"
-  // hissini öldürür; seri kesmede akıcılığın anahtarı bu.
+  // [DİKEY] OTOMATİK SALDIRI — saldırı butonu yok. Her uygun anda (cooldown
+  // bitince) en yakın düşman hedeflenir; menzildeyse kılıç ona doğru savrulur.
+  // Oyuncu sadece hareket/kaçınmaya odaklanır. Hız statı hâlâ attackCooldown
+  // setter'ından (14-hero-stats) geçtiği için aynen çalışır.
   if (player.attackCooldown > 0) player.attackCooldown -= dt;
-  if (attackRequested) {
-    attackBufferT = ATTACK_BUFFER;
-    attackRequested = false;
-  }
-  if (attackBufferT > 0) attackBufferT -= dt;
-  if (attackBufferT > 0 && !player.attacking && player.attackCooldown <= 0) {
-    attackBufferT = 0;
-    player.attacking = true;
-    player.attackT = 0;
-    player.attackCooldown = ATTACK_COOLDOWN;
+  if (!player.attacking && player.attackCooldown <= 0) {
+    let near = null, nd = Infinity;
+    function scanEnemies(arr) {
+      if (typeof arr === "undefined") return;
+      for (const e of arr) {
+        if (e.dead) continue;
+        const d = Math.hypot(e.x - player.x, e.y - player.y);
+        if (d < nd) { nd = d; near = e; }
+      }
+    }
+    scanEnemies(typeof orcs !== "undefined" ? orcs : undefined);
+    scanEnemies(typeof soldiers !== "undefined" ? soldiers : undefined);
+    scanEnemies(typeof goblins !== "undefined" ? goblins : undefined);
 
-    // GERÇEK LUNGE: karakter baktığı yöne fiziksel olarak atılır (sadece
-    // görsel kaydırma değil). Knock kanalını kullanır → çarpışmaya saygılı,
-    // kendiliğinden sönümlenir. Mobilde isabet almayı da gizlice kolaylaştırır.
-    const lungeDir = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[player.facing];
-    player.knockVx += lungeDir[0] * ATTACK_LUNGE;
-    player.knockVy += lungeDir[1] * ATTACK_LUNGE;
+    if (near) {
+      // İsabet testiyle aynı erişim (player.r + 30 + hedef.r) + küçük pay
+      const reach = player.r + 30 + near.r + AUTO_ENGAGE_MARGIN;
+      if (nd <= reach) {
+        player.aimAngle = Math.atan2(near.y - player.y, near.x - player.x);
+        // Sprite için 4 yönlü facing (hedefin açısına en yakın yön)
+        player.facing = Math.abs(Math.cos(player.aimAngle)) > Math.abs(Math.sin(player.aimAngle))
+          ? (Math.cos(player.aimAngle) > 0 ? "right" : "left")
+          : (Math.sin(player.aimAngle) > 0 ? "down" : "up");
+        player.attacking = true;
+        player.attackT = 0;
+        player.attackCooldown = ATTACK_COOLDOWN;
 
-    triggerShake(3, 0.12);
-    spawnSwingParticles();
+        // Lunge: hedefe doğru fiziksel atılma (knock kanalı — çarpışmaya saygılı)
+        player.knockVx += Math.cos(player.aimAngle) * ATTACK_LUNGE;
+        player.knockVy += Math.sin(player.aimAngle) * ATTACK_LUNGE;
+
+        triggerShake(3, 0.12);
+        spawnSwingParticles();
+      }
+    }
   }
 
   if (player.attacking) {

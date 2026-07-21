@@ -281,17 +281,19 @@ function updateParticles(dt) {
 
 function updateCamera(dt) {
   // Oyuncuyu merkezde tutmaya çalış, harita sınırlarına clamp et
-  const targetX = player.x - canvas.width / 2;
-  const targetY = player.y - canvas.height / 2;
+  // [DİKEY] Görünen dünya boyutu artık ZOOM'a bağlı (VIEW_W/VIEW_H world birimi)
+  const targetX = player.x - VIEW_W / 2;
+  const targetY = player.y - VIEW_H / 2;
   camera.x += (targetX - camera.x) * Math.min(1, dt * 6);
   camera.y += (targetY - camera.y) * Math.min(1, dt * 6);
-  camera.x = Math.max(0, Math.min(WORLD_W - canvas.width, camera.x));
-  camera.y = Math.max(0, Math.min(WORLD_H - canvas.height, camera.y));
+  camera.x = Math.max(0, Math.min(Math.max(0, WORLD_W - VIEW_W), camera.x));
+  camera.y = Math.max(0, Math.min(Math.max(0, WORLD_H - VIEW_H), camera.y));
 
   if (shakeT > 0) {
     shakeT -= dt;
-    camera.x += (Math.random() - 0.5) * shakeMag;
-    camera.y += (Math.random() - 0.5) * shakeMag;
+    // shakeMag ekran px cinsinden tasarlandı; dünya birimine çevir (ekran px = shakeMag)
+    camera.x += (Math.random() - 0.5) * shakeMag / ZOOM;
+    camera.y += (Math.random() - 0.5) * shakeMag / ZOOM;
   }
 }
 

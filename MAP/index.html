@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Pembe Panterler — Unutulmuş Orman</title>
-<link rel="stylesheet" href="css/style.css?v=4">
+<link rel="stylesheet" href="css/style.css?v=5">
 </head>
 <body>
 
@@ -59,11 +59,22 @@
 
   <div class="fps-badge">FPS <b id="fpsLabel">0</b></div>
 
+  <!-- [DİKEY] Saldırı butonu kaldırıldı (oto-saldırı). Joystick DİNAMİK:
+       10-input.js parmağın değdiği yere taşıyıp gösteriyor. -->
   <div id="touchControls">
     <div id="joystickZone"><div id="joystickStick"></div></div>
-    <button id="attackBtn" aria-label="Saldır">
-      <svg viewBox="0 0 24 24"><path d="M13.5 3 21 10.5l-2.2 2.2-2-2-6.1 6.1.9.9L9.4 20 4 14.6l2.3-2.2.9.9 6.1-6.1-2-2Z"/><path d="M4.5 19.5 3 21"/></svg>
-    </button>
+  </div>
+
+  <!-- [DİKEY] Görüş/yakınlık ayarı (opsiyonel, kalıcı) — 16-settings.js işler -->
+  <button id="settingsGear" aria-label="Görüş ayarı">⚙</button>
+  <div id="settingsPanel">
+    <div class="settings-card">
+      <div class="settings-title">Görüş / Yakınlık</div>
+      <input id="zoomSlider" type="range" min="300" max="580" value="400">
+      <div class="settings-val" id="zoomVal">Orta</div>
+      <div class="settings-hint">Kaydır — herkes kendi keyfine göre yakınlaştırır. Tercihin kaydedilir.</div>
+      <button id="settingsClose">Kapat</button>
+    </div>
   </div>
 
   <div class="hint-box" id="hintBox">
@@ -91,22 +102,23 @@
 <!-- SIRALAMA ÖNEMLİ: dosyalar yukarıdan aşağı bu sırayla yüklenir, sırayı bozma!
      13-account-bridge: kazançları ana oyuna taşır · 14-hero-stats: hesap
      statlarını haritaya uygular · 15-hud: HUD canlandırma (bar, seviye, isim). -->
-<script src="js/00-core.js?v=4"></script>
-<script src="js/01-assets.js?v=4"></script>
-<script src="js/02-world.js?v=4"></script>
-<script src="js/03-player.js?v=4"></script>
-<script src="js/04-economy.js?v=4"></script>
-<script src="js/05-effects.js?v=4"></script>
-<script src="js/06-orc.js?v=4"></script>
-<script src="js/07-soldier.js?v=4"></script>
-<script src="js/08-goblin.js?v=4"></script>
-<script src="js/09-wave.js?v=4"></script>
-<script src="js/10-input.js?v=4"></script>
-<script src="js/11-render.js?v=4"></script>
-<script src="js/13-account-bridge.js?v=4"></script>
-<script src="js/14-hero-stats.js?v=4"></script>
-<script src="js/12-main.js?v=4"></script>
-<script src="js/15-hud.js?v=4"></script>
+<script src="js/00-core.js?v=5"></script>
+<script src="js/01-assets.js?v=5"></script>
+<script src="js/02-world.js?v=5"></script>
+<script src="js/03-player.js?v=5"></script>
+<script src="js/04-economy.js?v=5"></script>
+<script src="js/05-effects.js?v=5"></script>
+<script src="js/06-orc.js?v=5"></script>
+<script src="js/07-soldier.js?v=5"></script>
+<script src="js/08-goblin.js?v=5"></script>
+<script src="js/09-wave.js?v=5"></script>
+<script src="js/10-input.js?v=5"></script>
+<script src="js/11-render.js?v=5"></script>
+<script src="js/13-account-bridge.js?v=5"></script>
+<script src="js/14-hero-stats.js?v=5"></script>
+<script src="js/12-main.js?v=5"></script>
+<script src="js/15-hud.js?v=5"></script>
+<script src="js/16-settings.js?v=5"></script>
 
 <!-- ============ MOBİL: TAM EKRAN + YATAY KİLİT (v2 — inatçı sürüm) ============
 ESKİ SORUN: { once:true } yüzünden ilk deneme reddedilirse bir daha ASLA
@@ -125,10 +137,10 @@ orada tek yol Paylaş → Ana Ekrana Ekle (oyun kendi penceresinde açılır). -
     return !!(document.fullscreenElement || document.webkitFullscreenElement);
   }
 
-  async function lockLandscape() {
+  async function lockPortrait() {
     try {
       if (screen.orientation && screen.orientation.lock) {
-        await screen.orientation.lock("landscape");
+        await screen.orientation.lock("portrait");
       }
     } catch (e) { /* iOS vb. desteklemiyorsa sessiz geç */ }
   }
@@ -145,7 +157,7 @@ orada tek yol Paylaş → Ana Ekrana Ekle (oyun kendi penceresinde açılır). -
       const el = document.documentElement;
       if (el.requestFullscreen) await el.requestFullscreen();
       else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
-      await lockLandscape();
+      await lockPortrait();
     } catch (e) { /* reddedilirse sorun değil — bir SONRAKİ dokunuşta yine denenir */ }
   }
 
@@ -153,11 +165,11 @@ orada tek yol Paylaş → Ana Ekrana Ekle (oyun kendi penceresinde açılır). -
   document.addEventListener("touchstart", tryFullscreen, { passive: true });
 
   // Tam ekrana girildiğinde yatay kilidi (bir kez daha) dene
-  document.addEventListener("fullscreenchange", () => { if (isFullscreen()) lockLandscape(); });
-  document.addEventListener("webkitfullscreenchange", () => { if (isFullscreen()) lockLandscape(); });
+  document.addEventListener("fullscreenchange", () => { if (isFullscreen()) lockPortrait(); });
+  document.addEventListener("webkitfullscreenchange", () => { if (isFullscreen()) lockPortrait(); });
 
   // Telefon elle döndürüldüğünde: tam ekrandaysak kilidi tazele
-  window.addEventListener("orientationchange", () => { if (isFullscreen()) lockLandscape(); });
+  window.addEventListener("orientationchange", () => { if (isFullscreen()) lockPortrait(); });
 })();
 </script>
 

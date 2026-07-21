@@ -11,8 +11,8 @@ function drawGround() {
     // Görünen alanın dünya koordinatındaki sınırları
     const startX = Math.floor(camera.x / T) * T;
     const startY = Math.floor(camera.y / T) * T;
-    const endX = camera.x + canvas.width;
-    const endY = camera.y + canvas.height;
+    const endX = camera.x + VIEW_W; // [DİKEY] görünen dünya genişliği (zoom'a bağlı)
+    const endY = camera.y + VIEW_H;
 
     for (let wx = startX; wx < endX; wx += T) {
       for (let wy = startY; wy < endY; wy += T) {
@@ -36,8 +36,8 @@ function drawGround() {
     const gridSize = 48;
     const gsx = Math.floor(camera.x / gridSize) * gridSize;
     const gsy = Math.floor(camera.y / gridSize) * gridSize;
-    for (let gx = gsx; gx < camera.x + canvas.width + gridSize; gx += gridSize) {
-      for (let gy = gsy; gy < camera.y + canvas.height + gridSize; gy += gridSize) {
+    for (let gx = gsx; gx < camera.x + VIEW_W + gridSize; gx += gridSize) {
+      for (let gy = gsy; gy < camera.y + VIEW_H + gridSize; gy += gridSize) {
         ctx.fillRect(gx - camera.x, gy - camera.y, 2, 2);
       }
     }
@@ -52,7 +52,7 @@ function drawGround() {
 function drawObstacles() {
   for (const o of obstacles) {
     const sx = o.x - camera.x, sy = o.y - camera.y;
-    if (sx < -120 || sx > canvas.width + 120 || sy < -160 || sy > canvas.height + 120) continue;
+    if (sx < -120 || sx > VIEW_W + 120 || sy < -160 || sy > VIEW_H + 120) continue;
 
     // gölge (yere oturma hissi) — kayada sprite genişliğine uyacak şekilde geniş
     const shadowRx = (o.type === "rock" && rockImgReady) ? o.r * 1.4 : o.r * 0.9;
@@ -101,9 +101,36 @@ function drawObstacles() {
 }
 
 function drawHUD() {
-  // Şu an ekstra HUD yok (HTML üzerindeki .hud-top zaten var), sadece debug
-  // amaçlı oyuncu koordinatlarını gösterelim (test için faydalı).
-  ctx.fillStyle = "rgba(255,255,255,0.5)";
-  ctx.font = "11px monospace";
-  ctx.fillText(`x:${player.x.toFixed(0)} y:${player.y.toFixed(0)} facing:${player.facing}`, 10, canvas.height - 10);
+  // (Debug koordinat yazısı kaldırıldı — dikey ekranda gereksizdi.)
+}
+
+// ============================================================
+// [DİKEY] EKRAN-DIŞI DÜŞMAN OKLARI
+// Zoom yüzünden ekran dışında kalan düşmanların yönünü/türünü ekran kenarında
+// küçük renkli oklarla gösterir. EKRAN-UZAYINDA çizilir (12-main'de dünya
+// çiziminden SONRA, transform sıfırlanmış halde çağrılır). Renk = tür.
+// ============================================================
+function drawEdgeArrows() {
+  const cx = canvas.width / 2, cy = canvas.height / 2, pad = 24;
+  const lists = [];
+  if (typeof orcs !== "undefined") lists.push(orcs);
+  if (typeof soldiers !== "undefined") lists.push(soldiers);
+  if (typeof goblins !== "undefined") lists.push(goblins);
+  for (const arr of lists) {
+    for (const e of arr) {
+      if (e.dead) continue;
+      const sx = (e.x - camera.x) * ZOOM, sy = (e.y - camera.y) * ZOOM;
+      if (sx >= -8 && sx <= canvas.width + 8 && sy >= -8 && sy <= canvas.height + 8) continue; // ekranda
+      const ang = Math.atan2(sy - cy, sx - cx);
+      let ex = cx + Math.cos(ang) * (cx - pad), ey = cy + Math.sin(ang) * (cy - pad);
+      ex = Math.max(pad, Math.min(canvas.width - pad, ex));
+      ey = Math.max(pad, Math.min(canvas.height - pad, ey));
+      ctx.save();
+      ctx.translate(ex, ey); ctx.rotate(ang); ctx.globalAlpha = 0.72;
+      ctx.fillStyle = e.type === "goblin" ? "#8fd98f" : e.type === "soldier" ? "#aab4c8" : "#c9a24a";
+      ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(-7, -7); ctx.lineTo(-7, 7); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+  }
+  ctx.globalAlpha = 1;
 }

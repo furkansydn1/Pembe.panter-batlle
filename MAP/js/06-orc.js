@@ -158,10 +158,10 @@ function updateOrcs(dt) {
       const attackRangeP = player.r + 30 + o.r;
       if (toDist < attackRangeP && !o.justHit) {
         const angleTo = Math.atan2(toY, toX);
-        const facingAngle = Math.atan2(dirVec[1], dirVec[0]);
+        const facingAngle = (typeof player.aimAngle === "number") ? player.aimAngle : Math.atan2(dirVec[1], dirVec[0]); // [DIKEY] oto-hedef acisi
         let diff = Math.abs(angleTo - facingAngle);
         if (diff > Math.PI) diff = Math.PI * 2 - diff;
-        if (diff < (100 * Math.PI / 180) / 2) {
+        if (diff < PLAYER_ARC_HALF) { // [DIKEY] daraltilmis cleave acisi
           o.justHit = true;
           const hit = rollPlayerHit(12); // %15 kritik şansı, kritikte 2x (05-effects)
           o.hp -= hit.dmg;
@@ -188,7 +188,7 @@ function drawOrcs() {
   for (const o of orcs) {
     const sx = o.x - camera.x, sy = o.y - camera.y;
     const cullM = ORC_DISPLAY / 2 + 20;
-    if (sx < -cullM || sx > canvas.width + cullM || sy < -cullM || sy > canvas.height + cullM) continue;
+    if (sx < -cullM || sx > VIEW_W + cullM || sy < -cullM || sy > VIEW_H + cullM) continue;
 
     let row, frame, alpha = 1;
 

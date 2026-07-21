@@ -360,3 +360,100 @@ canvas{
   .res-cell b{ font-size:12px; }
   .fps-badge{ display:none; }
 }
+
+/* ============================================================
+   [DİKEY ENTEGRASYON] PORTRAIT DÜZEN + AUTO-ATTACK + AYAR PANELİ
+   Orijinal HUD (char-frame / resource-panel / bar id'leri) korunur —
+   sadece dikey ekrana güzelce oturması için yeniden konumlandırılır.
+   ============================================================ */
+#gameWrap{ position:fixed; inset:0; width:100vw; height:100vh; }
+canvas{
+  width:100%; height:100%;
+  max-width:none; max-height:none;
+  box-shadow:none;               /* dikey tam ekranda çerçeve gölgesi gereksiz */
+  background:#141018;
+}
+
+/* --- Üst şerit: kahraman plakası tam genişlik, barlar esner --- */
+.char-frame{
+  left:calc(8px + env(safe-area-inset-left, 0px));
+  right:calc(8px + env(safe-area-inset-right, 0px));
+  top:calc(8px + env(safe-area-inset-top, 0px));
+  padding:7px 12px 7px 8px;
+}
+.char-bars{ min-width:0; flex:1; }
+
+/* --- Kaynak defteri: plakanın hemen altında, sağa yaslı --- */
+.resource-panel{
+  top:calc(60px + env(safe-area-inset-top, 0px));
+  right:calc(8px + env(safe-area-inset-right, 0px));
+  padding:5px 3px;
+}
+.res-cell{ padding:2px 9px; min-width:40px; }
+
+/* --- FPS rozeti: sol üst köşeye (alt köşe joystick alanıyla çakışmasın) --- */
+.fps-badge{ bottom:auto; top:calc(104px + env(safe-area-inset-top, 0px)); left:calc(8px + env(safe-area-inset-left,0px)); }
+
+/* --- İpucu kutusu biraz yukarı (safe-area) --- */
+.hint-box{ bottom:calc(10px + env(safe-area-inset-bottom, 0px)); }
+
+/* --- Dinamik joystick: display JS ile açılır/kapanır; z-index üstte --- */
+#touchControls{ z-index:8; }
+#joystickZone{ z-index:8; }
+
+/* ============================================================
+   AYAR (GÖRÜŞ/YAKINLIK) — buton eski saldırı düğmesinin yerinde
+   ============================================================ */
+#settingsGear{
+  position:absolute; z-index:12;
+  right:calc(16px + env(safe-area-inset-right, 0px));
+  bottom:calc(22px + env(safe-area-inset-bottom, 0px));
+  width:46px; height:46px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  background:radial-gradient(circle at 35% 30%, #2a2d38, #14161d 75%);
+  color:var(--gold); border:1px solid var(--etch);
+  box-shadow:0 5px 14px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.06);
+  font-size:20px; line-height:1; pointer-events:auto;
+}
+#settingsGear:active{ transform:translateY(2px); }
+#settingsPanel{
+  display:none; position:absolute; inset:0; z-index:40;
+  align-items:center; justify-content:center; padding:24px;
+  background:radial-gradient(ellipse at center, rgba(18,19,26,.86), rgba(6,7,10,.94));
+}
+#settingsPanel.on{ display:flex; }
+.settings-card{
+  position:relative; width:100%; max-width:320px; text-align:center;
+  padding:24px 22px;
+  background:linear-gradient(180deg, rgba(26,27,34,.97), rgba(18,19,25,.97));
+  border:1px solid var(--etch); border-radius:10px;
+  box-shadow:0 10px 40px rgba(0,0,0,.6);
+}
+.settings-card::before{
+  content:""; position:absolute; top:-4px; left:-4px; width:12px; height:12px;
+  border-top:1px solid var(--gold); border-left:1px solid var(--gold); opacity:.6;
+}
+.settings-card::after{
+  content:""; position:absolute; bottom:-4px; right:-4px; width:12px; height:12px;
+  border-bottom:1px solid var(--gold); border-right:1px solid var(--gold); opacity:.6;
+}
+.settings-title{
+  font-family:var(--serif); font-size:15px; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--gold); margin-bottom:18px;
+}
+#zoomSlider{
+  -webkit-appearance:none; appearance:none; width:100%; height:6px; border-radius:4px;
+  background:#2a2c36; outline:none;
+}
+#zoomSlider::-webkit-slider-thumb{
+  -webkit-appearance:none; width:26px; height:26px; border-radius:50%;
+  background:var(--gold); border:2px solid rgba(255,255,255,.2);
+  box-shadow:0 2px 6px rgba(0,0,0,.5);
+}
+#zoomSlider::-moz-range-thumb{ width:26px; height:26px; border:none; border-radius:50%; background:var(--gold); }
+.settings-val{ margin-top:12px; font-family:var(--serif); color:var(--bone); font-size:15px; }
+.settings-hint{ margin-top:8px; font-size:9.5px; letter-spacing:.06em; color:var(--ash); line-height:1.5; }
+#settingsClose{
+  margin-top:20px; padding:12px 32px; border:none; border-radius:8px;
+  background:var(--gold); color:#1a1206; font-weight:700; font-size:14px; letter-spacing:.04em;
+}

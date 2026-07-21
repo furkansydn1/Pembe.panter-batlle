@@ -152,10 +152,10 @@ function updateSoldiers(dt) {
       const attackRangeP = player.r + 30 + s.r;
       if (toDist < attackRangeP && !s.justHit) {
         const angleTo = Math.atan2(toY, toX);
-        const facingAngle = Math.atan2(dirVec[1], dirVec[0]);
+        const facingAngle = (typeof player.aimAngle === "number") ? player.aimAngle : Math.atan2(dirVec[1], dirVec[0]); // [DIKEY] oto-hedef acisi
         let diff = Math.abs(angleTo - facingAngle);
         if (diff > Math.PI) diff = Math.PI * 2 - diff;
-        if (diff < (100 * Math.PI / 180) / 2) {
+        if (diff < PLAYER_ARC_HALF) { // [DIKEY] daraltilmis cleave acisi
           s.justHit = true;
           const hit = rollPlayerHit(9); // %15 kritik şansı, kritikte 2x (05-effects)
           s.hp -= hit.dmg;
@@ -181,7 +181,7 @@ function drawSoldiers() {
   for (const s of soldiers) {
     const sx = s.x - camera.x, sy = s.y - camera.y;
     const cullM = SOLDIER_DISPLAY / 2 + 20;
-    if (sx < -cullM || sx > canvas.width + cullM || sy < -cullM || sy > canvas.height + cullM) continue;
+    if (sx < -cullM || sx > VIEW_W + cullM || sy < -cullM || sy > VIEW_H + cullM) continue;
 
     let row, frame, alpha = 1;
 

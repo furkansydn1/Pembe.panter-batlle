@@ -172,10 +172,10 @@ function updateGoblins(dt) {
       const attackRange = player.r + 30 + g.r;
       if (toDist < attackRange && !g.justHit) {
         const angleTo = Math.atan2(toY, toX);
-        const facingAngle = Math.atan2(dirVec[1], dirVec[0]);
+        const facingAngle = (typeof player.aimAngle === "number") ? player.aimAngle : Math.atan2(dirVec[1], dirVec[0]); // [DIKEY] oto-hedef acisi
         let diff = Math.abs(angleTo - facingAngle);
         if (diff > Math.PI) diff = Math.PI * 2 - diff;
-        if (diff < (100 * Math.PI / 180) / 2) {
+        if (diff < PLAYER_ARC_HALF) { // [DIKEY] daraltilmis cleave acisi
           g.justHit = true;
           const hit = rollPlayerHit(14); // %15 kritik şansı, kritikte 2x (05-effects)
           g.hp -= hit.dmg;
@@ -209,7 +209,7 @@ function drawGoblins() {
   for (const g of goblins) {
     const sx = g.x - camera.x, sy = g.y - camera.y;
     const cullM = GOBLIN_DISPLAY / 2 + 20;
-    if (sx < -cullM || sx > canvas.width + cullM || sy < -cullM || sy > canvas.height + cullM) continue;
+    if (sx < -cullM || sx > VIEW_W + cullM || sy < -cullM || sy > VIEW_H + cullM) continue;
 
     // ---- ÖLÜM: hasar/ölüm satırı olmadığı için beyaz flaş + ezilerek sönme ----
     if (g.dead) {

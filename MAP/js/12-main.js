@@ -43,7 +43,14 @@ function loop(now) {
     }
   }
 
+  // [DİKEY] ---- DÜNYA KATMANI: ZOOM ile ölçekli çizilir ----
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // NOT: çizim fonksiyonları zaten "sx = worldX - camera.x" ile kamera kaydırmasını
+  // KENDİLERİ yapıyor. O yüzden burada SADECE ZOOM ölçeği uygulanır — ayrıca
+  // translate(-camera) YAPILMAZ (yaparsak kamera iki kez çıkar, dünya kayar).
+  ctx.save();
+  ctx.scale(ZOOM, ZOOM);
   drawGround();
   drawObstacles();
   drawGoblins();
@@ -52,8 +59,11 @@ function loop(now) {
   drawParticles();
   drawPlayer();
   drawFloatingTexts();
-  drawHUD();
-  if (deathSeq.active) drawDeathOverlay(); // en üstte: karartma + ÖLDÜN + sayaç
+  ctx.restore();
+
+  // [DİKEY] ---- EKRAN KATMANI: transform sıfır (ekran px) ----
+  if (typeof drawEdgeArrows === "function") drawEdgeArrows(); // ekran-dışı düşman okları
+  if (deathSeq.active) drawDeathOverlay();                    // karartma + ÖLDÜN + sayaç
 
   fpsAcc += rawDt; fpsFrames++;
   if (fpsAcc >= 0.5) {
