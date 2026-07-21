@@ -1,6 +1,6 @@
 import { HURDA_FROM_RARITY, getScrap } from "./core-config.js";
 import { closeCollectionBtn, closeInventoryBtn, collectionBtn, collectionList, collectionModal, collectionProgress, inventoryList, inventoryModal, inventoryModalTitle } from "./dom.js";
-import { getTodaysEvent } from "./events-badges.js";
+import { genItemId, getTodaysEvent } from "./events-badges.js";
 import { PLAYERS_COL, db, doc, updateDoc } from "./firebase-setup.js";
 import { BOOK_TIER_ICONS, LEVEL_REQUIREMENT_BY_RARITY, MAX_UPGRADE_LEVEL, RARITY_CHANCE_LABELS, RARITY_LABELS_TR, canEquipItem, canUpgradeItem, computeStatsFromEquipment, getUpgradeCost, getUpgradeSuccessChance, upgradeItem } from "./item-systems.js";
 import { ALL_ITEMS_BY_SLOT, SLOTS, SLOT_MAP, TOTAL_ITEM_COUNT, getLiveEffectDesc, itemIconSvg } from "./items-data.js";
@@ -55,6 +55,48 @@ export async function autoUnequipOverleveledItems() {
     console.warn("[Otomatik söküm] Seviyeni aşan eşyalar envantere alındı.");
   } catch (e) {
     console.error("[Otomatik söküm] hata:", e);
+  }
+}
+
+// ============================================================
+// HAYALET EŞYA TEMİZLİĞİ (kalıcı çözüm)
+// ------------------------------------------------------------
+// SORUN: equipItem() (eski hali) eşyayı equipment[slot]'a kopyalıyordu ama
+// inventory[slot] dizisinden hiç silmiyordu. Sonuç: kuşanılan eşya aynı id
+// ile envanterde de kalıyor, getSlotInventory bunu tekrar tekrar üste EKLEMİYOR
+// (id zaten var diye) ama SİLMİYOR de — kart "✅ KUŞANILI" rozetiyle envanterde
+// görünmeye devam ediyor, satma/hurdaya çevirme kilitli kalıyor. Bu bug'ı
+// yaşamış oyuncularda (equipItem düzeltilmeden ÖNCE kuşanmış olanlarda) veri
+// zaten bozuk durumda — kod düzelse bile geçmiş kayıt kendiliğinden temizlenmez.
+// ÇÖZÜM: Bu fonksiyon oyuncu verisi yüklendiğinde çağrılır; her slotta,
+// equipment[slot]'un id'siyle AYNI id'ye sahip envanter kayıtlarını (hayalet
+// kopyaları) siler. Gerçek eşya kaybolmaz — zaten equipment'ta duruyor,
+// sadece envanterdeki fazlalık kopya temizlenir. Değişiklik yoksa Firestore'a
+// hiç yazmaz.
+export async function cleanupGhostEquippedItems() {
+  const data = S.currentPlayerData;
+  if (!data || !S.currentPlayerId || !data.equipment) return;
+  const newInventory = { ...(data.inventory || {}) };
+  let changed = false;
+
+  for (const slot in data.equipment) {
+    const equipped = data.equipment[slot];
+    if (!equipped || !equipped.id) continue;
+    const rawList = newInventory[slot] || [];
+    const filtered = rawList.filter(it => it.id !== equipped.id);
+    if (filtered.length !== rawList.length) {
+      newInventory[slot] = filtered;
+      changed = true;
+    }
+  }
+
+  if (!changed) return; // hayalet kopya yok, dokunma
+  try {
+    await updateDoc(doc(db, PLAYERS_COL, S.currentPlayerId), { inventory: newInventory });
+    S.currentPlayerData.inventory = newInventory;
+    console.warn("[Hayalet eşya temizliği] Kuşanılı eşyaların envanterdeki kalıntı kopyaları silindi.");
+  } catch (e) {
+    console.error("[Hayalet eşya temizliği] hata:", e);
   }
 }
 
@@ -122,14 +164,34 @@ export function getSlotInventory(slot) {  const invRaw = (S.currentPlayerData?.i
 
 export async function equipItem(slot, itemId) {
   if (!S.currentPlayerData) return false;
-  const target = getSlotInventory(slot).find(it => it.id === itemId);
+  // getSlotInventory kullanıyoruz çünkü id'siz/çakışan eski kayıtları burada
+  // zaten normalize ediyor — bu sayede aşağıdaki "envanterden çıkar" işlemi
+  // ham (bozuk) Firestore verisi yerine düzeltilmiş id'ler üzerinden çalışır
+  // ve o düzeltme kalıcı olarak Firestore'a yazılmış olur.
+  const normalizedInv = getSlotInventory(slot);
+  const target = normalizedInv.find(it => it.id === itemId);
   if (!target) { alert("Eşya bulunamadı."); return false; }
   const levelCheck = canEquipItem(target, S.currentPlayerData);
   if (!levelCheck.ok) { alert(levelCheck.reason); return false; }
+
+  const prevEquipped = S.currentPlayerData.equipment?.[slot] || null;
   const newEquipment = { ...(S.currentPlayerData.equipment || emptyEquipment()), [slot]: target };
   const stats = computeStatsFromEquipment(newEquipment, S.currentPlayerData.statAllocated);
+
+  // BUG FIX: Kuşanılan eşyayı envanter dizisinden GERÇEKTEN çıkar (eskiden
+  // sadece equipment'a kopyalanıp envanterde de "hayalet kopya" olarak
+  // kalıyordu → çantada aynı eşya "KUŞANILI" görünüp satılamıyordu).
+  // Eski kuşanılı eşya varsa (ve farklıysa) envantere geri koy; id'si yoksa
+  // kalıcı bir id ver ki bu eşya da ileride aynı bug'a düşmesin.
+  let newInvArr = normalizedInv.filter(it => it.id !== itemId);
+  if (prevEquipped && prevEquipped.id !== target.id) {
+    const fixedPrev = prevEquipped.id ? prevEquipped : { ...prevEquipped, id: genItemId() };
+    newInvArr = [...newInvArr, fixedPrev];
+  }
+
   await updateDoc(doc(db, PLAYERS_COL, S.currentPlayerId), {
     equipment: newEquipment,
+    [`inventory.${slot}`]: newInvArr,
     attack: stats.attack,
     defense: stats.defense,
     speed: stats.speed,

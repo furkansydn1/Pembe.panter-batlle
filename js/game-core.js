@@ -5,7 +5,7 @@ import { BASE_ATTACK, BASE_DEFENSE, ENERGY_MAX, ENERGY_REGEN_MS_PER_POINT, ENERG
 import { badgesGridEl, badgesProgressEl, charAllocAtkEl, charAllocDefEl, charLevelBadgeEl, charStatPointsCountEl, charStatPointsRowEl, charXpFillEl, charXpLabelEl, closeViewEquipmentBtn, collectionModal, currentPlayerNameEl, dailyEventBanner, energyBarFill, energyStatus, energyTasksRow, gameScreen, inventoryModal, leaderboardEl, levelUpConfettiLayer, levelUpLevelNumberEl, levelUpOverlay, loginScreen, materialsGridEl, myAttackEl, myAttackEnvEl, myAttackWarEl, myDefenseEl, myDefenseEnvEl, myDefenseWarEl, myGoldBoxEl, myGoldEnvEl, myGoldMarketEl, myGoldWarEl, myPointsEl, myPointsEnvEl, myPointsWarEl, myScrapBoxEl, myScrapEl, myScrapEnvEl, myScrapWarEl, myStreakEl, statAllocAtkBtn, statAllocDefBtn, statsOpponentsEl, statsOverviewEl, statsStreakEl, streakChip, topEnergyFillEl, topEnergyLabelEl, topGoldValEl, topPerformersBanner, topPointsValEl, topScrapValEl, tpBestName, tpWorstName, viewEquipmentGrid, viewEquipmentModal, viewEquipmentTitle, weeklyLeaderboardInfoEl } from "./dom.js";
 import { BADGES, ensurePersonalDailyEventForToday, getTodaysEvent, randInt } from "./events-badges.js";
 import { LOG_COL, MARKET_LISTINGS_COL, PLAYERS_COL, TRADE_LOGS_COL, collection, db, doc, getDoc, limit, onSnapshot, orderBy, query, updateDoc } from "./firebase-setup.js";
-import { autoUnequipOverleveledItems, renderCollection, renderInventoryModal } from "./inventory.js";
+import { autoUnequipOverleveledItems, cleanupGhostEquippedItems, renderCollection, renderInventoryModal } from "./inventory.js";
 import { BOOK_TIER_ICONS, BOOK_TIER_NAMES, RARITY_ORDER, computeStatsFromEquipment, getBooks, xpNeededForLevel } from "./item-systems.js";
 import { SLOTS, itemIconSvg } from "./items-data.js";
 import { dateStr, emptyEquipment, formatRemaining, renderMapTab } from "./map.js";
@@ -59,6 +59,13 @@ export async function startGame() {
     if (!S.__autoUnequipDone) {
       S.__autoUnequipDone = true;
       autoUnequipOverleveledItems();
+    }
+    // [Kalıcı fix] Kuşanılan eşyanın envanterde "hayalet kopya" olarak kalması
+    // bug'ından (eski equipItem'dan miras) etkilenmiş hesapları girişte bir kez
+    // otomatik temizle. Bkz. inventory.js → cleanupGhostEquippedItems.
+    if (!S.__ghostCleanupDone) {
+      S.__ghostCleanupDone = true;
+      cleanupGhostEquippedItems();
     }
     currentPlayerNameEl.textContent = S.currentPlayerData.nick;
     renderMyStats();
