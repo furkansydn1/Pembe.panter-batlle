@@ -3,7 +3,8 @@ import { mapExplorerExitBtnEl, mapExplorerSceneEl, mapExplorerTitleEl, mapResult
 import { randInt } from "./events-badges.js";
 import { PLAYERS_COL, db, doc, updateDoc } from "./firebase-setup.js";
 import { getCurrentEnergy } from "./game-core.js";
-import { BOOK_TIER_ICONS, BOOK_TIER_NAMES, applyXpGain, getBooks } from "./item-systems.js";
+import { BOOK_TIER_ICONS, BOOK_TIER_NAMES, applyXpGain, generateLootItemForRarity, getBooks } from "./item-systems.js";
+import { SLOTS } from "./items-data.js";
 import { DOMINANCE_RATIO } from "./market.js";
 import { S } from "./state.js";
 
@@ -446,8 +447,21 @@ export async function claimMapFarmRewards() {
   const deaths = Math.max(0, Math.floor(pending.deaths || 0));
   const goldGain = Math.max(0, Math.floor(pending.gold || 0));
 
-  if (bookGain <= 0 && scrapGain <= 0 && xpGain <= 0 && deaths <= 0 && goldGain <= 0) {
+  // [MAP EŞYA KASASI] Haritada düşen Sıradan/Nadir eşyalar AYRI anahtarda
+  // birikir (MAP/js/13-account-bridge.js yazar; eski sürümler bu anahtara hiç
+  // dokunmadığı için kayıp riski yoktur). Burada kutu motorunun fabrikasıyla
+  // (generateLootItemForRarity — Günlük Market de aynısını kullanır) GERÇEK
+  // eşyaya çevrilip envantere basılır.
+  const MAP_ITEMS_KEY = "ppbMapPendingItems";
+  let pendingItems = null;
+  try { pendingItems = JSON.parse(localStorage.getItem(MAP_ITEMS_KEY) || "null"); } catch (e) { pendingItems = null; }
+  const stdItemCount = Math.max(0, Math.floor((pendingItems && pendingItems.std) || 0));
+  const rareItemCount = Math.max(0, Math.floor((pendingItems && pendingItems.rare) || 0));
+
+  if (bookGain <= 0 && scrapGain <= 0 && xpGain <= 0 && deaths <= 0 && goldGain <= 0
+      && stdItemCount <= 0 && rareItemCount <= 0) {
     localStorage.removeItem(MAP_PENDING_KEY);
+    localStorage.removeItem(MAP_ITEMS_KEY);
     return;
   }
 
@@ -464,9 +478,42 @@ export async function claimMapFarmRewards() {
     payload.books = newBooks;
   }
 
+  // [MAP EŞYA KASASI] Eşyaları bas: rastgele slota, kutu motoruyla birebir aynı
+  // fabrikadan (isim havuzu, stat, efsun, id — hepsi gerçek). Tek turda en fazla
+  // 40 eşya işlenir (Firestore yazım emniyeti); artan olursa kasada bekler,
+  // bir sonraki kontrol turunda (2 sn'de bir / odakta) işlenir.
+  const totalItems = Math.min(40, stdItemCount + rareItemCount);
+  const processedRare = Math.min(rareItemCount, totalItems);
+  const processedStd = totalItems - processedRare;
+  if (totalItems > 0) {
+    const invUpdates = {};
+    const newNames = [];
+    for (let i = 0; i < totalItems; i++) {
+      const rarity = i < processedRare ? "nadir" : "standart";
+      const slot = SLOTS[randInt(0, SLOTS.length - 1)].key;
+      const item = generateLootItemForRarity(slot, rarity);
+      if (!invUpdates[slot]) {
+        const cur = (S.currentPlayerData.inventory && S.currentPlayerData.inventory[slot]) || [];
+        invUpdates[slot] = [...cur];
+      }
+      invUpdates[slot].push(item);
+      newNames.push(item.name);
+    }
+    for (const slot of Object.keys(invUpdates)) payload[`inventory.${slot}`] = invUpdates[slot];
+    // Koleksiyon kitabı da haberdar olsun (kutudan çıkmış gibi keşfedilir)
+    payload.discoveredItems = Array.from(new Set([...(S.currentPlayerData.discoveredItems || []), ...newNames]));
+  }
+
   await updateDoc(doc(db, PLAYERS_COL, S.currentPlayerId), payload);
   localStorage.removeItem(MAP_PENDING_KEY);
-  console.log(`[MAP köprüsü] Hesaba işlendi: +${bookGain} Sıradan Kitap, +${scrapGain} Hurda, +${goldGain} Altın, +${xpGain} XP, -${deaths * MAP_FARM_DEATH_PENALTY} Puan (${deaths} ölüm)`);
+  // Kasa: işlenen düşülür; artan varsa (40 sınırı) sonraki tura kalır.
+  const remStd = stdItemCount - processedStd, remRare = rareItemCount - processedRare;
+  if (remStd > 0 || remRare > 0) {
+    try { localStorage.setItem(MAP_ITEMS_KEY, JSON.stringify({ std: remStd, rare: remRare, updatedAt: Date.now() })); } catch (e) {}
+  } else {
+    localStorage.removeItem(MAP_ITEMS_KEY);
+  }
+  console.log(`[MAP köprüsü] Hesaba işlendi: +${bookGain} Sıradan Kitap, +${scrapGain} Hurda, +${goldGain} Altın, +${xpGain} XP, +${processedStd} Sıradan Eşya, +${processedRare} Nadir Eşya, -${deaths * MAP_FARM_DEATH_PENALTY} Puan (${deaths} ölüm)`);
 }
 
 // Oyuncu giriş yaptıktan sonra bir kez bekleyen ödülleri işle; ayrıca

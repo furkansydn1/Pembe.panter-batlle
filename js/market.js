@@ -34,7 +34,11 @@ export const MARKET_DAILY_ITEM_COUNT = 5;
 // Günlük Market'in kendi rarity ağırlığı — Kutu'dan (artık standart-only) farklı
 // olarak burada Nadir/Efsanevi de çıkabiliyor, çünkü bu "drop" değil, statı görünen
 // bilinçli bir satın alma. Yüzdeler toplamı 100.
-export const MARKET_RARITY_WEIGHTS = { efsanevi: 8, nadir: 32, standart: 60 };
+// [ORAN DÜZELTME] Efsanevi %8 → %2: 5 slotluk günlük markette %8, "aynı gün
+// 2 efsanevi" durumunu ~%5 ihtimalle (2-3 haftada bir) üretiyordu — "çok düşük
+// olmalı" hedefine göre fazlaydı. %2 ile: efsanevi ~10 günde bir tek görünür,
+// aynı gün 2 tanesi ~%0.4 (yılda bir-iki kez).
+export const MARKET_RARITY_WEIGHTS = { efsanevi: 2, nadir: 33, standart: 65 };
 // Taban fiyatlar = her rarity'nin Altın aralığının ORTA NOKTASI (tam sayı).
 // computeFairTradeGoldPrice() (oyuncular arası pazarda "adil fiyat" hesabı)
 // hâlâ bu objeyi kullanıyor, o yüzden silinmedi.
