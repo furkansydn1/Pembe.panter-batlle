@@ -78,11 +78,19 @@ export async function dedupeDuplicateInventoryItems() {
 
   for (const slot in newInventory) {
     const list = newInventory[slot] || [];
-    const seen = new Set();
+    const seenIds = new Set();
+    const seenFingerprints = new Set();
     const deduped = list.filter(it => {
-      if (!it.id) return true; // id'siz olanlara dokunma, ayrı bir fix zaten var (getSlotInventory)
-      if (seen.has(it.id)) return false;
-      seen.add(it.id);
+      if (it.id) {
+        if (seenIds.has(it.id)) return false;
+        seenIds.add(it.id);
+        return true;
+      }
+      // [v2.2 fix] id'siz eski kalıntılar: aynı içerikte (isim+nadirlik+statlar) birden
+      // fazlaysa bu da equipItem'in eski hâlinin bıraktığı bir kopyadır — ilkini koru.
+      const fp = itemFingerprint(it);
+      if (seenFingerprints.has(fp)) return false;
+      seenFingerprints.add(fp);
       return true;
     });
     if (deduped.length !== list.length) {
@@ -124,9 +132,18 @@ export async function cleanupGhostEquippedItems() {
 
   for (const slot in data.equipment) {
     const equipped = data.equipment[slot];
-    if (!equipped || !equipped.id) continue;
+    if (!equipped) continue;
     const rawList = newInventory[slot] || [];
-    const filtered = rawList.filter(it => it.id !== equipped.id);
+    let filtered;
+    if (equipped.id) {
+      filtered = rawList.filter(it => it.id !== equipped.id);
+    } else {
+      // [v2.2 fix] Kuşanılı eşyanın kendisi id'siz (çok eski kayıt) — bu durumda
+      // önceden hiç temizlenmiyordu. İçerik parmak izi eşleşen envanter
+      // kayıtlarını (kuşanılı eşyanın hayalet kopyaları) temizle.
+      const equippedFp = itemFingerprint(equipped);
+      filtered = rawList.filter(it => it.id || itemFingerprint(it) !== equippedFp);
+    }
     if (filtered.length !== rawList.length) {
       newInventory[slot] = filtered;
       changed = true;
@@ -179,23 +196,44 @@ closeCollectionBtn.onclick = () => collectionModal.classList.add("hidden");
 // slot boşsa otomatik kuşanılır; doluysa envantere eklenir ve oyuncu
 // istediği eşyayı manuel olarak kuşanabilir ya da hurdaya çevirebilir.
 // ============================================================
-export function getSlotInventory(slot) {  const invRaw = (S.currentPlayerData?.inventory && S.currentPlayerData.inventory[slot]) || [];
-  // BUG FIX: İki farklı sorun tek yerde çözülüyor:
-  //  (1) Eski eşyaların id'si HİÇ yok → karta basınca ayırt edilemiyordu.
-  //  (2) id üreteci geçmişte AYNI id'yi iki esyaya vermiş (çakışma) → iki kart
-  //      aynı data-id'yi taşıyor, birine basınca ikisi birden tepki veriyor,
-  //      sat/hurda/kuşan yanlış/çift eşyaya gidiyordu (yaşanan kask/kalkan bug'ı).
-  // Çözüm: id yoksa VEYA daha önce görülmüş (çakışan) bir id ise, o eşyaya
-  // slot+index bazlı benzersiz bir id ver. Zaten benzersiz olan id korunur.
+// ============================================================
+// [v2.2 fix] ORTAK ID NORMALİZASYONU
+// ------------------------------------------------------------
+// SORUN: getSlotInventory() eskiden id'siz/çakışan eşyalara SADECE ekranda
+// gösterirken geçici bir id uyduruyordu (Firestore'a hiç yazılmıyordu).
+// equipItem() ise "hangi eşyaya basıldığını" bu ekranlık id ile öğreniyor
+// ama envanterden SİLERKEN ham (Firestore) diziyi kullanıyordu — ham dizideki
+// öğenin gerçek id'si (genelde undefined) ekranlık id ile hiç eşleşmiyordu.
+// Sonuç: filtre hiçbir şey silmiyor, kuşanılan eski eşya envanterde ekstra
+// kopya olarak kalıyordu (dedupe/ghost-cleanup da id'siz olduğu için bunu
+// yakalayamıyordu, çünkü onlar da gerçek `id` alanına bakıyor).
+// ÇÖZÜM: Normalizasyonu TEK yerde yapıp hem ekranda hem equipItem'in
+// filtrelemesinde/yazmasında AYNI id'leri kullanıyoruz. equipItem artık bu
+// normalize edilmiş listeyi Firestore'a geri yazdığı için id'ler kalıcı hale
+// gelir — bir eşya bir kez kuşanılıp bırakıldığında o slottaki tüm id'ler
+// sabitlenmiş olur, bug bir daha o slotta tekrarlanmaz.
+function normalizeSlotItems(list, slot) {
   const seen = new Set();
-  const inv = invRaw.map((it, idx) => {
+  return (list || []).map((it, idx) => {
     if (it.id && !seen.has(it.id)) { seen.add(it.id); return it; }
-    // id yok ya da çakışıyor → benzersizleştir
     let newId = it.id ? `${it.id}-dup${idx}` : `legacy-${slot}-${idx}`;
     while (seen.has(newId)) newId += "x";
     seen.add(newId);
     return { ...it, id: newId };
   });
+}
+
+// İki eşyanın "aynı eşya" olup olmadığını id'siz durumlarda da anlamak için
+// içerik parmak izi (isim+nadirlik+atk+def+efsun+minor trait). Sadece id'si
+// olmayan kalıntıları temizlerken kullanılır, id'si olan eşyalere dokunmaz.
+function itemFingerprint(it) {
+  if (!it) return "";
+  return [it.name, it.rarity, it.atk, it.def, it.enchantPct || 0, it.minorTrait?.id || ""].join("|");
+}
+
+export function getSlotInventory(slot) {
+  const invRaw = (S.currentPlayerData?.inventory && S.currentPlayerData.inventory[slot]) || [];
+  const inv = normalizeSlotItems(invRaw, slot);
   const equipped = S.currentPlayerData?.equipment && S.currentPlayerData.equipment[slot];
   // Bu güncellemeden önce kuşanılmış (id'siz) eşyalar için geriye dönük uyumluluk
   if (equipped && !inv.some(it => it.id && equipped.id && it.id === equipped.id)) {
@@ -220,18 +258,16 @@ export async function equipItem(slot, itemId) {
   // döndürdüğü liste EKRANLIK olarak kuşanılı eşyayı zaten otomatik ekliyor (geriye dönük
   // uyumluluk için). O listeyi baz alıp üstüne bir de "eski kuşanılıyı geri koy" yaparsak
   // eşya İKİ KEZ envantere yazılır (yaşanan "rastgele item spawn" bug'ı buydu). Bu yüzden
-  // ham diziyi kullanıyoruz; id normalizasyonunu burada kendimiz, tekrar eklemeden yapıyoruz.
+  // ham diziyi kullanıyoruz.
+  // BUG FIX (v2.2): itemId, getSlotInventory()'nin ekranda ürettiği id — ham dizideki
+  // öğenin gerçek id'si onunla eşleşmeyebilir (id'siz/çakışan eski eşyalarda hep böyleydi,
+  // bu yüzden filtre hiçbir şey silmiyordu ve kuşanılan eşya envanterde ekstra kalıyordu).
+  // Çözüm: ham diziyi ÖNCE getSlotInventory ile AYNI mantıkla normalize et, filtrelemeyi ve
+  // yazmayı bu normalize edilmiş (id'leri ekranla birebir aynı) liste üzerinden yap. Böylece
+  // hem doğru öğe silinir hem de id'ler Firestore'a kalıcı yazılır (bug o slotta bir daha
+  // tekrarlanmaz).
   const rawList = S.currentPlayerData.inventory?.[slot] || [];
-  const seen = new Set();
-  let newInvArr = rawList
-    .filter(it => it.id !== itemId) // kuşanılan eşyayı çıkar
-    .map((it, idx) => {
-      if (it.id && !seen.has(it.id)) { seen.add(it.id); return it; }
-      let newId = it.id ? `${it.id}-dup${idx}` : `legacy-${slot}-${idx}`;
-      while (seen.has(newId)) newId += "x";
-      seen.add(newId);
-      return { ...it, id: newId };
-    });
+  let newInvArr = normalizeSlotItems(rawList, slot).filter(it => it.id !== itemId);
 
   // Eski kuşanılı eşya varsa ve HAM listede zaten yoksa (id eşleşmiyorsa) envantere geri koy.
   if (prevEquipped && prevEquipped.id !== target.id) {
