@@ -99,7 +99,8 @@ var BIOMES = {
     // [LOOT] Bataklık drop tablosu (04-economy okur; orman ESKİ sistemde kalır).
     // İç tip adları: orc=Blood Monster (ŞANSLI canavar), soldier=Demon, goblin=Pawn.
     loot: {
-      bookPct: 0.035,                                  // %3.5 kitap (hepsinden)
+      bookPct: 0.03,          // %3 — 1. maptaki sıradan kitaptan (%6) daha nadir
+      bookTier: "nadir",      // [KİTAP] bataklık NADİR kitap düşürür (sıradan değil)                                  // %3.5 kitap (hepsinden)
       rareItemPct: 0.005,                              // %0.5 NADİR eşya (hepsinden — 200 kesimde ~1)
       stdItemPct: { orc: 0.02, soldier: 0.02, goblin: 0.02 },    // sıradan eşya %2 (hepsinde eşit — denge ayarı)
       goldW:  [[1, 50], [2, 40], [3, 30], [4, 10]],    // her kesim 1-4 altın (ağırlık 50/40/30/10)

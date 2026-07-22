@@ -26,7 +26,7 @@
   const SYNC_INTERVAL_MS = 3000;
 
   // Son senkronda sayaçlar ne durumdaydı — fark (delta) bunun üstünden hesaplanır.
-  let last = { book: 0, scrap: 0, xp: 0, deaths: 0, gold: 0, itemStd: 0, itemRare: 0 };
+  let last = { book: 0, scrap: 0, xp: 0, deaths: 0, gold: 0, itemStd: 0, itemRare: 0, rareBook: 0 };
 
   function readCounters() {
     // Sayaçlar 04-economy.js'te top-level let olarak tanımlı; tüm klasik
@@ -39,7 +39,8 @@
       deaths: typeof sessionDeaths === "number" ? sessionDeaths : 0,
       gold: typeof sessionRare === "number" ? sessionRare : 0,            // "Altın" sayacı
       itemStd: typeof sessionStandardItem === "number" ? sessionStandardItem : 0, // Sıradan Eşya
-      itemRare: typeof sessionRareItem === "number" ? sessionRareItem : 0         // Nadir Eşya
+      itemRare: typeof sessionRareItem === "number" ? sessionRareItem : 0,        // Nadir Eşya
+      rareBook: typeof sessionRareBook === "number" ? sessionRareBook : 0         // [KİTAP] Nadir Kitap
     };
   }
 
@@ -52,10 +53,11 @@
       deaths: cur.deaths - last.deaths,
       gold: cur.gold - last.gold,
       itemStd: cur.itemStd - last.itemStd,
-      itemRare: cur.itemRare - last.itemRare
+      itemRare: cur.itemRare - last.itemRare,
+      rareBook: cur.rareBook - last.rareBook
     };
     if (delta.book <= 0 && delta.scrap <= 0 && delta.xp <= 0 && delta.deaths <= 0 && delta.gold <= 0
-        && delta.itemStd <= 0 && delta.itemRare <= 0) return;
+        && delta.itemStd <= 0 && delta.itemRare <= 0 && delta.rareBook <= 0) return;
 
     let pending = {};
     try { pending = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { pending = {}; }
@@ -71,6 +73,7 @@
     try { pendItems = JSON.parse(localStorage.getItem(ITEM_KEY) || "{}") || {}; } catch (e) { pendItems = {}; }
     pendItems.std = (pendItems.std || 0) + Math.max(0, delta.itemStd);
     pendItems.rare = (pendItems.rare || 0) + Math.max(0, delta.itemRare);
+    pendItems.rareBook = (pendItems.rareBook || 0) + Math.max(0, delta.rareBook); // [KİTAP] Nadir Kitap
     pendItems.updatedAt = Date.now();
 
     try {

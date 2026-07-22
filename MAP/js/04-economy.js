@@ -5,6 +5,7 @@ let playerPoints = 20;
 const DEATH_POINT_PENALTY = 1; // her ölümde kaybedilen puan
 let sessionDust = 0;      // bu oturumda toplanan toz
 let sessionItems = 0;     // "Sıradan Kitap" sayısı
+let sessionRareBook = 0;  // [KİTAP] "Nadir Kitap" sayısı (bataklık) — köprü books.nadir'e işler
 let sessionRare = 0;      // "Altın" sayısı
 let sessionLegendary = 0; // "Hurda" sayısı
 let sessionLegendaryItem = 0; // Efsanevi Eşya sayısı
@@ -87,8 +88,15 @@ function biomeDrop(x, y, kind, L) {
     spawnFloatingText(x, dropY, "🗡 Sıradan Eşya", "#cfd6da"); dropY -= 16;
   }
   if (Math.random() < L.bookPct) {
-    sessionItems += 1; setLabel(itemsLabelEl, sessionItems);
-    spawnFloatingText(x, dropY, "📖 Sıradan Kitap", "#8fd9ff"); dropY -= 16;
+    if (L.bookTier === "nadir") {
+      // [KİTAP] Bataklık: NADİR kitap. Ayrı sayaçta biriktirilir (köprü books.nadir'e
+      // işler). HUD "kitap" hücresi toplam kitabı göstersin diye ikisini toplarız.
+      sessionRareBook += 1; setLabel(itemsLabelEl, sessionItems + sessionRareBook);
+      spawnFloatingText(x, dropY, "📖 Nadir Kitap", "#c9a6ff"); dropY -= 16;
+    } else {
+      sessionItems += 1; setLabel(itemsLabelEl, sessionItems + sessionRareBook);
+      spawnFloatingText(x, dropY, "📖 Sıradan Kitap", "#8fd9ff"); dropY -= 16;
+    }
   }
   const g = weightedPick(L.goldW);
   sessionRare += g; setLabel(rareLabelEl, sessionRare);
