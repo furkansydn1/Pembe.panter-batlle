@@ -6,8 +6,9 @@
 //   Saldırı  → canavara verilen hasar çarpanı
 //   Savunma  → canavardan gelen hasarı azaltma
 //   Can      → haritadaki maksimum can (hesaptaki maxHp birebir)
-//   Hız      → saldırı bekleme süresini kısaltır (battle.js eğrisiyle aynı)
-//   Kritik   → vuruşların bir kısmı 1.6x hasar (battle.js ile aynı çarpan)
+//   Hız      → saldırı bekleme süresini kısaltır (duel-engine eğrisiyle senkron)
+//   Kritik   → şans burada hesaplanır (taban %5 + critStat/100, tavan %40),
+//              zar TEK yerde atılır: 05-effects.js → rollPlayerHit (2x hasar)
 //
 // KURULUM: MAP/index.html'de bu satırı 12-main.js'ten ÖNCE ekle:
 //   <script src="js/14-hero-stats.js"></script>
@@ -24,9 +25,10 @@
   var DMG_MULT_CAP = 6;      // hasar çarpanı tavanı (yüksek seviye map1'i ezsin ama sınırlı)
   var DEF_K = 40;            // savunma azalan-getiri sabiti: azaltma = def/(def+DEF_K)
   var DEF_REDUCTION_CAP = 0.8; // gelen hasar en fazla %80 azalır
-  var CRIT_CHANCE_CAP = 0.5; // battle.js ile aynı: kritik şansı %50 tavan
-  var CRIT_MULTIPLIER = 1.6; // battle.js ile aynı: kritik hasar çarpanı
-  var BASE_CRIT_CHANCE = 0.05; // [V4] TABAN kritik: eşyasız oyuncu bile %5 kritik atar (core-config BASE_CRIT ile eşleşir)
+  var CRIT_CHANCE_CAP = 0.40; // [v6] duel-engine DUEL_CRIT_CAP ile senkron: kritik şansı %40 tavan
+  // [v6] CRIT_MULTIPLIER buradan KALDIRILDI — zaten kullanılmıyordu (kritik zarı
+  // ve çarpanı tek yerde, 05-effects.js rollPlayerHit'te; oradaki CRIT_MULT geçerli).
+  var BASE_CRIT_CHANCE = 0.05; // TABAN kritik: eşyasız oyuncu %5 kritik atar (core-config BASE_CRIT ile eşleşir)
   var SPD_HALF_VALUE = 25;   // battle.js ile aynı: bu kadar Hız, maks bonusun yarısı
   var MAX_ASPD_MULT = 3;     // battle.js ile aynı: hız tavanı
 

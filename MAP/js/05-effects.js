@@ -80,10 +80,19 @@ function playSfx(name, { volume = 1, pitch = 1, pitchVar = 0 } = {}) {
 }
 
 // ---------- KRİTİK VURUŞ ----------
-const CRIT_CHANCE = 0.15;
-const CRIT_MULT = 2;
+// [v6 BUG FIX — "MAP'te sürekli kritik atıyorum"] Eskiden şans SABİT %15'ti
+// (CRIT_CHANCE = 0.15 hardcoded) ve 14-hero-stats'in hesapladığı gerçek,
+// stat-tabanlı şans (window.__mapCritChance) HİÇ okunmuyordu — yani kritik
+// eşyan olsa da olmasa da herkes %15 kritik atıyordu. Artık zar, köprüden
+// gelen gerçek şansla atılıyor: eşyasız oyuncu taban %5, kritik eşyası
+// olan daha fazla. Köprü henüz yüklenmemişse taban %5'e düşer.
+const CRIT_FALLBACK_CHANCE = 0.05; // taban kritik (core-config BASE_CRIT=5 ile senkron)
+const CRIT_MULT = 2; // PvE çarpanı — kritik artık NADİR olduğu için 2x his olarak kalabilir
 function rollPlayerHit(base) {
-  const crit = Math.random() < CRIT_CHANCE;
+  const chance = (typeof window !== "undefined" && typeof window.__mapCritChance === "number")
+    ? window.__mapCritChance
+    : CRIT_FALLBACK_CHANCE;
+  const crit = Math.random() < chance;
   return { dmg: crit ? base * CRIT_MULT : base, crit };
 }
 
