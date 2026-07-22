@@ -61,10 +61,10 @@ export const MARKET_GOLD_PRICE_RANGE = {
 // Kalıcı ürünler — "çok yüksek altın fiyatı" (Günlük Market'in en pahalı
 // standart kalemine göre kabaca 10x/40x). Dengeleme/tuning sonradan kolayca
 // değiştirilebilir, tek kaynak burası.
-export const MARKET_PERMANENT_CHEST_PRICE = { nadir: 5000, efsanevi: 15000 };
+export const MARKET_PERMANENT_CHEST_PRICE = { nadir: 1000, efsanevi: 4000 };
 
 // Kabus/Mitik özel kutu — fiyat placeholder, satın alma akışı henüz bağlı değil.
-export const MARKET_SPECIAL_BOX_PRICE = { mitik: 35000, kabus: 100000 };
+export const MARKET_SPECIAL_BOX_PRICE = { mitik: 25000, kabus: 70000 };
 
 // ============================================================
 // OYUNCULAR ARASI PAZAR (Trade) + ANTI-ABUSE (V2 Faz 4, madde 4/5)
