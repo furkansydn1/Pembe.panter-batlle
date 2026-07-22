@@ -288,8 +288,8 @@ buyKabusBoxBtn.onclick = () => buySpecialBox("kabus");
 
 export function renderTradeBanBanner() {
   if (!tradeBanBannerEl || !S.currentPlayerData) return;
-  const banned = !!S.currentPlayerData.tradeBanned;
-  tradeBanBannerEl.classList.toggle("hidden", !banned);
+  // [TİCARET SERBEST] ban banner'ı her zaman gizli
+  tradeBanBannerEl.classList.toggle("hidden", true);
   if (banned && tradeBanReasonTextEl) {
     tradeBanReasonTextEl.textContent = S.currentPlayerData.tradeBanReason || "Sebep belirtilmedi.";
   }
@@ -306,6 +306,16 @@ export function getMyActiveListings() {
 // Composite index gerektirmeyen tek-alanlı bir sorgu (sellerId == X), pencere/
 // karşı taraf filtresi client-side yapılıyor — 9-10 kişilik bir oyun için
 // bu sorgu hacmi önemsiz.
+// Denetim izine tek satır "işaretli" ticaret kaydı yazar (ban YOK).
+async function __writeTradeFlagLog(sellerId, buyerId, reason, flagReason) {
+  const batch = writeBatch(db);
+  batch.set(doc(collection(db, TRADE_LOGS_COL)), {
+    sellerId, buyerId, timestamp: Date.now(),
+    flagged: true, flagReason: flagReason || "manuel_inceleme", reason, autoBan: false
+  });
+  await batch.commit();
+}
+
 export async function checkTradePairVelocity(sellerId, buyerId) {
   const cutoff = Date.now() - TRADE_PAIR_WINDOW_MS;
   const q = query(collection(db, TRADE_LOGS_COL), where("sellerId", "==", sellerId));
@@ -320,10 +330,17 @@ export async function checkTradePairVelocity(sellerId, buyerId) {
 
 // Ticaret gerçekleşmeden ÖNCE (transaction'a hiç girmeden) tespit edilen
 // ikili-hız istismarı için: ikisini de banla + denetim izine bir kayıt düş.
+// [OTO-BAN KALDIRILDI] Eski flagAndBanTradePair ikisini de banlıyordu; artık
+// SADECE denetim izine kayıt düşer (admin elle banlar). İsim korunur ki başka
+// çağrı varsa kırılmasın; ban satırları çıkarıldı.
+export async function logTradeFlag(sellerId, buyerId, reason, flagReason) {
+  try {
+    await __writeTradeFlagLog(sellerId, buyerId, reason, flagReason);
+  } catch (e) { console.warn("[ticaret] flag log yazılamadı:", e); }
+}
 export async function flagAndBanTradePair(sellerId, buyerId, reason) {
+  // [OTO-BAN KALDIRILDI] ban update'leri silindi; sadece log kalıyor.
   const batch = writeBatch(db);
-  batch.update(doc(db, PLAYERS_COL, sellerId), { tradeBanned: true, tradeBanReason: reason, tradeBanAt: Date.now() });
-  batch.update(doc(db, PLAYERS_COL, buyerId), { tradeBanned: true, tradeBanReason: reason, tradeBanAt: Date.now() });
   batch.set(doc(collection(db, TRADE_LOGS_COL)), {
     listingId: null, sellerId, sellerNick: null, buyerId, buyerNick: null,
     item: null, priceGold: null, fairPriceGold: null,
@@ -335,7 +352,7 @@ export async function flagAndBanTradePair(sellerId, buyerId, reason) {
 // Envanterden bir eşyayı Pazar'a listeler (bkz. renderInventoryModal → "🪙 Pazara Çıkar").
 export async function createMarketListing(slot, itemId, priceGold) {
   if (!S.currentPlayerData || !S.currentPlayerId) return;
-  if (S.currentPlayerData.tradeBanned) { alert("Ticaret yasaklısın, yeni bir listeleme açamazsın."); return; }
+  // [TİCARET SERBEST] yasak kontrolü kaldırıldı
   const price = Math.round(Number(priceGold));
   if (!Number.isFinite(price) || price <= 0) { alert("Geçerli bir Altın fiyatı gir."); return; }
   const equippedId = S.currentPlayerData.equipment?.[slot]?.id;
@@ -387,7 +404,7 @@ export function buildResourceListingItem(kind, tier, amount) {
 
 export async function createResourceListing(kind, tier, amount, priceGold) {
   if (!S.currentPlayerData || !S.currentPlayerId) return;
-  if (S.currentPlayerData.tradeBanned) { alert("Ticaret yasaklısın, yeni bir listeleme açamazsın."); return; }
+  // [TİCARET SERBEST] yasak kontrolü kaldırıldı
   const price = Math.round(Number(priceGold));
   if (!Number.isFinite(price) || price <= 0) { alert("Geçerli bir Altın fiyatı gir."); return; }
   const amt = Math.round(Number(amount));
@@ -517,7 +534,7 @@ export async function cancelMarketListing(listingId) {
 // başındaki "OYUNCULAR ARASI PAZAR" yorum bloğu.
 export async function buyMarketListing(listingId) {
   if (!S.currentPlayerData || !S.currentPlayerId) return;
-  if (S.currentPlayerData.tradeBanned) { alert("Ticaret yasaklısın, satın alamazsın."); return; }
+  // [TİCARET SERBEST] yasak kontrolü kaldırıldı
 
   const preSnap = await getDoc(doc(db, MARKET_LISTINGS_COL, listingId));
   if (!preSnap.exists()) { alert("Bu listeleme artık mevcut değil."); return; }
@@ -525,14 +542,15 @@ export async function buyMarketListing(listingId) {
   if (preListing.status !== "active") { alert("Bu listeleme artık aktif değil."); return; }
   if (preListing.sellerId === S.currentPlayerId) { alert("Kendi eşyanı satın alamazsın."); return; }
 
-  // 1) İkili-hız kontrolü — transaction'a hiç girmeden, en ucuz/erken red.
-  const pairAbuse = await checkTradePairVelocity(preListing.sellerId, S.currentPlayerId);
-  if (pairAbuse) {
-    const reason = `Aynı ikili arasında ${Math.round(TRADE_PAIR_WINDOW_MS / 3600000)} saat içinde ${TRADE_PAIR_MAX_TRADES}'ten fazla ticaret (olası altın/eşya aktarım istismarı)`;
-    await flagAndBanTradePair(preListing.sellerId, S.currentPlayerId, reason);
-    alert("Bu satın alma engellendi: sen ve satıcı arasında kısa sürede çok fazla ticaret tespit edildi. Güvenlik nedeniyle ikinize de ticaret yasağı uygulandı.");
-    return;
-  }
+  // 1) İkili-hız kontrolü — [OTO-BAN KALDIRILDI] artık engellemez/banlamaz,
+  // SADECE denetim izine "işaretli" bir kayıt düşer; admin elle bakıp banlar.
+  try {
+    const pairAbuse = await checkTradePairVelocity(preListing.sellerId, S.currentPlayerId);
+    if (pairAbuse) {
+      const reason = `Aynı ikili arasında ${Math.round(TRADE_PAIR_WINDOW_MS / 3600000)} saat içinde ${TRADE_PAIR_MAX_TRADES}'ten fazla ticaret (olası aktarım — İNCELE)`;
+      await logTradeFlag(preListing.sellerId, S.currentPlayerId, reason, "ikili_hiz");
+    }
+  } catch (e) { /* loglama ticareti engellemesin */ }
 
   try {
     const result = await runTransaction(db, async (tx) => {
@@ -550,7 +568,7 @@ export async function buyMarketListing(listingId) {
       if (!sellerSnap.exists() || !buyerSnap.exists()) throw new Error("Oyuncu bulunamadı.");
       const sellerData = sellerSnap.data();
       const buyerData = buyerSnap.data();
-      if (sellerData.tradeBanned || buyerData.tradeBanned) throw new Error("Taraflardan biri ticaret yasaklı.");
+      // [TİCARET SERBEST] taraf-yasağı kontrolü kaldırıldı
       if (getGold(buyerData) < listing.priceGold) throw new Error("Yeterli Altının yok.");
 
       const item = listing.item;
@@ -565,20 +583,15 @@ export async function buyMarketListing(listingId) {
       );
       const logRef = doc(collection(db, TRADE_LOGS_COL));
 
+      // [TİCARET SERBEST] Dengesiz fiyat ticareti ENGELLEMEZ; satış normal
+      // tamamlanır, sadece denetim izine "işaretli" (autoBan yok) kayıt düşer.
       if (isUnfair) {
-        // "Otomatik iade": hiçbir şey commit edilmediği için taşınacak bir şey
-        // yok — trade baştan gerçekleşmiyor (bkz. dosya başındaki tasarım notu).
-        tx.update(listingRef, { status: "reversed", reversedAt: Date.now() });
-        const reason = `Dengesiz fiyatlı ticaret (adil fiyat ~${fairPrice} Altın, listelenen ${listing.priceGold} Altın)`;
-        tx.update(sellerRef, { tradeBanned: true, tradeBanReason: reason, tradeBanAt: Date.now() });
-        tx.update(buyerRef, { tradeBanned: true, tradeBanReason: reason, tradeBanAt: Date.now() });
         tx.set(logRef, {
           listingId, sellerId: listing.sellerId, sellerNick: listing.sellerNick,
           buyerId: S.currentPlayerId, buyerNick: buyerData.nick || "?",
           item, priceGold: listing.priceGold, fairPriceGold: fairPrice,
-          timestamp: Date.now(), flagged: true, flagReason: "dengesiz_fiyat", reversed: true
+          timestamp: Date.now(), flagged: true, flagReason: "dengesiz_fiyat", reversed: false, autoBan: false
         });
-        return { blocked: true, fairPrice };
       }
 
       // Adil ticaret (ya da fiyat kontrolüne tabi olmayan kitap/hurda satışı).
@@ -628,9 +641,7 @@ export async function buyMarketListing(listingId) {
       return { blocked: false };
     });
 
-    if (result.blocked) {
-      alert(`Bu ticaret dengesiz bulundu (adil fiyat ~${result.fairPrice} Altın) ve otomatik olarak engellendi. Güvenlik nedeniyle ikinize de ticaret yasağı uygulandı.`);
-    }
+    // [TİCARET SERBEST] engelleme yok; dengesiz fiyat yalnızca loglanır.
   } catch (e) {
     alert("Satın alma tamamlanamadı: " + e.message);
   }
@@ -651,7 +662,7 @@ export function renderMarketListingsGrid() {
   marketListingsGridEl.innerHTML = listings.map(l => {
     const it = l.item;
     const canAfford = gold >= l.priceGold;
-    const banned = !!S.currentPlayerData?.tradeBanned;
+    const banned = false; // [TİCARET SERBEST]
     const isResource = it.kind === "scrap" || it.kind === "book";
     const rarityClass = isResource ? (it.tier ? `rarity-${it.tier}` : "") : `rarity-${it.rarity}`;
     const headBody = isResource ? `
@@ -678,7 +689,7 @@ export function renderMarketListingsGrid() {
       <div class="inv-item inv-item-v2 ${rarityClass}">
         ${headBody}
         <div class="inv-item-actions">
-          <button class="btn-mini gold-mini" data-buy-listing="${l.id}" ${!canAfford || banned ? "disabled" : ""} title="${banned ? "Ticaret yasaklısın" : ""}">
+          <button class="btn-mini gold-mini" data-buy-listing="${l.id}" ${!canAfford ? "disabled" : ""}>
             💰 Satın Al <span>${l.priceGold} Altın</span>
           </button>
         </div>
