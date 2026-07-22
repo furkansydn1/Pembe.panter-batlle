@@ -462,9 +462,10 @@ export async function claimMapFarmRewards() {
   try { pendingItems = JSON.parse(localStorage.getItem(MAP_ITEMS_KEY) || "null"); } catch (e) { pendingItems = null; }
   const stdItemCount = Math.max(0, Math.floor((pendingItems && pendingItems.std) || 0));
   const rareItemCount = Math.max(0, Math.floor((pendingItems && pendingItems.rare) || 0));
+  const rareBookCount = Math.max(0, Math.floor((pendingItems && pendingItems.rareBook) || 0)); // [KİTAP] Nadir Kitap
 
   if (bookGain <= 0 && scrapGain <= 0 && xpGain <= 0 && deaths <= 0 && goldGain <= 0
-      && stdItemCount <= 0 && rareItemCount <= 0) {
+      && stdItemCount <= 0 && rareItemCount <= 0 && rareBookCount <= 0) {
     localStorage.removeItem(MAP_PENDING_KEY);
     localStorage.removeItem(MAP_ITEMS_KEY);
     return;
@@ -477,9 +478,10 @@ export async function claimMapFarmRewards() {
     gold: Math.max(0, (S.currentPlayerData.gold || 0) + goldGain),
     points: Math.max(0, (S.currentPlayerData.points || 0) - deaths * MAP_FARM_DEATH_PENALTY)
   };
-  if (bookGain > 0) {
+  if (bookGain > 0 || rareBookCount > 0) {
     const newBooks = { ...getBooks(S.currentPlayerData) };
-    newBooks.standart = (newBooks.standart || 0) + bookGain;
+    if (bookGain > 0) newBooks.standart = (newBooks.standart || 0) + bookGain;
+    if (rareBookCount > 0) newBooks.nadir = (newBooks.nadir || 0) + rareBookCount; // [KİTAP] bataklık nadir kitabı
     payload.books = newBooks;
   }
 
@@ -512,13 +514,14 @@ export async function claimMapFarmRewards() {
   await updateDoc(doc(db, PLAYERS_COL, S.currentPlayerId), payload);
   localStorage.removeItem(MAP_PENDING_KEY);
   // Kasa: işlenen düşülür; artan varsa (40 sınırı) sonraki tura kalır.
+  // Nadir kitap ucuz işlenir (sadece sayaç), 40-item sınırına takılmaz → hep tam işlenir.
   const remStd = stdItemCount - processedStd, remRare = rareItemCount - processedRare;
   if (remStd > 0 || remRare > 0) {
-    try { localStorage.setItem(MAP_ITEMS_KEY, JSON.stringify({ std: remStd, rare: remRare, updatedAt: Date.now() })); } catch (e) {}
+    try { localStorage.setItem(MAP_ITEMS_KEY, JSON.stringify({ std: remStd, rare: remRare, rareBook: 0, updatedAt: Date.now() })); } catch (e) {}
   } else {
     localStorage.removeItem(MAP_ITEMS_KEY);
   }
-  console.log(`[MAP köprüsü] Hesaba işlendi: +${bookGain} Sıradan Kitap, +${scrapGain} Hurda, +${goldGain} Altın, +${xpGain} XP, +${processedStd} Sıradan Eşya, +${processedRare} Nadir Eşya, -${deaths * MAP_FARM_DEATH_PENALTY} Puan (${deaths} ölüm)`);
+  console.log(`[MAP köprüsü] Hesaba işlendi: +${bookGain} Sıradan Kitap, +${scrapGain} Hurda, +${goldGain} Altın, +${xpGain} XP, +${processedStd} Sıradan Eşya, +${processedRare} Nadir Eşya, +${rareBookCount} Nadir Kitap, -${deaths * MAP_FARM_DEATH_PENALTY} Puan (${deaths} ölüm)`);
 }
 
 // Oyuncu giriş yaptıktan sonra bir kez bekleyen ödülleri işle; ayrıca

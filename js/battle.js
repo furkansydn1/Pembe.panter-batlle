@@ -766,8 +766,14 @@ export async function runAttack(defenderId) {
       // (OFFROLE_STAT_WEIGHT) hesaba katılıyor, böylece güçlü/dengeli ekipmanlı
       // biri yanlış rolde bile tamamen çaresiz kalmıyor.
       const OFFROLE_STAT_WEIGHT = 0.25;
-      let baseAttack = attacker.attack + (attacker.defense || BASE_DEFENSE) * OFFROLE_STAT_WEIGHT;
-      let baseDefense = defender.defense + (defender.attack || BASE_ATTACK) * OFFROLE_STAT_WEIGHT;
+      // [BUG FIX — "güç 0 gözüküp yeniliyor"] Birincil statların (attacker.attack /
+      // defender.defense) fallback'i EKSİKTİ; yanındaki rol-dışı statta vardı ama
+      // burada yoktu. Bir oyuncunun attack/defense'i o an okunamayıp undefined
+      // gelirse "undefined + sayı = NaN" oluyor, düelloya NaN gidince 0'a düşüyor
+      // ve o kişi 0 güçle dövüşüp otomatik yeniliyordu. Artık ikisi de taban
+      // stata düşüyor (|| hem undefined hem NaN'ı yakalar).
+      let baseAttack = (attacker.attack || BASE_ATTACK) + (attacker.defense || BASE_DEFENSE) * OFFROLE_STAT_WEIGHT;
+      let baseDefense = (defender.defense || BASE_DEFENSE) + (defender.attack || BASE_ATTACK) * OFFROLE_STAT_WEIGHT;
 
       // Lanet: defender bir önceki saldırıdan lanetliyse savunması düşer
       if (defender.curseNextAttack && defender.curseNextAttack.active) {
