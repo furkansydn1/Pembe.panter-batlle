@@ -750,82 +750,77 @@ export async function runAttack(defenderId) {
         return { skipped: true };
       }
 
-      // --- Temel güç hesaplama (yeni, daha adil algoritma) ---
-      // Zar artık sabit bir sayı değil: her taraf KENDİ gücünün ±%15'i kadar
-      // oransal bir şans payı alıyor. Böylece düşük statlı biri yüksek statlıyı
-      // sürekli yenemiyor, ama yakın maçlarda hâlâ ufak bir sürpriz kalıyor.
-      // Ezici bir stat üstünlüğü (1.5 kat +) varsa şansa bakılmaksızın kazanılır.
+      // ============================================================
+      // [v6 SİMETRİK SAVAŞ STATLARI] — "A→B kazanıyor ama B→A'da da B kazanıyor"
+      // tutarsızlığının KÖK SEBEBİ burasıydı ve tamamen değişti.
       //
-      // v1.14 DÜZELTMESİ: Önceden SADECE rol statı (saldıranın saldırısı,
-      // savunanın savunması) hesaba katılıyordu. Bu yüzden örneğin savunması
-      // 20 ama saldırısı sadece 3 olan, yani toplamda ÇOK güçlü ekipmanlı biri
-      // saldırıya geçtiğinde, savunması sadece 5 olan çok daha zayıf ekipmanlı
-      // birine karşı bile otomatik eziliyordu (3, 5*1.5=7.5'in altında kaldığı
-      // için). Bu adil değildi: kişinin toplam ekipman yatırımı görmezden
-      // geliniyordu. Artık her tarafın "rol dışı" statı da küçük bir ağırlıkla
-      // (OFFROLE_STAT_WEIGHT) hesaba katılıyor, böylece güçlü/dengeli ekipmanlı
-      // biri yanlış rolde bile tamamen çaresiz kalmıyor.
-      const OFFROLE_STAT_WEIGHT = 0.25;
-      // [BUG FIX — "güç 0 gözüküp yeniliyor"] Birincil statların (attacker.attack /
-      // defender.defense) fallback'i EKSİKTİ; yanındaki rol-dışı statta vardı ama
-      // burada yoktu. Bir oyuncunun attack/defense'i o an okunamayıp undefined
-      // gelirse "undefined + sayı = NaN" oluyor, düelloya NaN gidince 0'a düşüyor
-      // ve o kişi 0 güçle dövüşüp otomatik yeniliyordu. Artık ikisi de taban
-      // stata düşüyor (|| hem undefined hem NaN'ı yakalar).
-      let baseAttack = (attacker.attack || BASE_ATTACK) + (attacker.defense || BASE_DEFENSE) * OFFROLE_STAT_WEIGHT;
-      let baseDefense = (defender.defense || BASE_DEFENSE) + (defender.attack || BASE_ATTACK) * OFFROLE_STAT_WEIGHT;
+      // ESKİ SORUN: Saldıranın SALDIRISI şişiriliyordu (kendi savunmasının
+      // %25'i "offrole" olarak ekleniyor + olay/eşya çarpanları biniyor) ama
+      // SAVUNMASI ham gidiyordu; savunanın da tam tersi. Yani aynı iki oyuncu
+      // rol değiştirince bambaşka statlarla dövüşüyordu — kim saldırırsa onun
+      // saldırısı şişik olduğu için sonuçlar role göre savruluyor, "güçsüz
+      // bana saldırıp kazanıyor" hissi doğuyordu.
+      //
+      // YENİ KURAL: Her oyuncunun DÖRT statı da (saldırı, savunma, hız, kritik)
+      // ROLDEN BAĞIMSIZ, kendi eşyası + kendi Günün Olayı + kendi pasifleriyle
+      // hesaplanır. A→B ve B→A savaşlarında iki taraf da BİREBİR AYNI statlarla
+      // dövüşür; tek fark ilk vuruş inisiyatifidir (ve o da artık ufak bir
+      // avantaj, bkz. duel-engine DUEL_ATTACKER_TIE_INITIATIVE).
+      // "Offrole" ağırlığı kaldırıldı çünkü sıralı düelloda her iki stat da
+      // zaten gerçek rolünde kullanılıyor — ayrıca eklemek çifte sayımdı.
+      // ============================================================
+      function buildDuelSide(p, ownEvent, sideLog) {
+        // (|| hem undefined hem NaN'ı yakalar — "güç 0" bug'ının kalıcı fix'i)
+        let atk = (p.attack || BASE_ATTACK);
+        let def = (p.defense || BASE_DEFENSE);
+        // Ufak "Keskin/Sağlam" pasifleri: kendi eşyasından, iki stata da
+        const mAtk = getMinorTraitBonusPct(p.equipment, "atk_boost");
+        if (mAtk > 0) atk *= (1 + mAtk / 100);
+        const mDef = getMinorTraitBonusPct(p.equipment, "def_boost");
+        if (mDef > 0) def *= (1 + mDef / 100);
+        // Efsanevi çarpan eşyaları: sahibinin KENDİ statına, rol fark etmeksizin
+        // (savaşta iki taraf da hem vuruyor hem savunuyor)
+        const atkMultItem = getEffect(p.equipment, "attack_multiplier");
+        if (atkMultItem && effectActivates(atkMultItem.effect)) {
+          atk *= 1.15;
+          sideLog.push(`${p.nick}'in ${atkMultItem.name} saldırısını güçlendirdi.`);
+        }
+        const defMultItem = getEffect(p.equipment, "defense_multiplier");
+        if (defMultItem && effectActivates(defMultItem.effect)) {
+          def *= 1.15;
+          sideLog.push(`${p.nick}'in ${defMultItem.name} savunmasını güçlendirdi.`);
+        }
+        // Şanslı savunma zarı: kendi savunmasını 2 kez yuvarlar, iyisini alır
+        const luckyItem = getEffect(p.equipment, "lucky_defense_roll");
+        if (luckyItem && effectActivates(luckyItem.effect)) {
+          const spread = 0.15 * (ownEvent.varianceMult || 1);
+          const rollA = def * ((1 - spread) + Math.random() * (spread * 2));
+          const rollB = def * ((1 - spread) + Math.random() * (spread * 2));
+          def = Math.max(rollA, rollB);
+          sideLog.push(`${p.nick}'in şanslı eşyası savunmasını 2 kez yuvarladı, iyisini seçti.`);
+        }
+        // Günün Olayı (kişisel): kendi attackMult'u kendi saldırısına,
+        // kendi defenseMult'u kendi savunmasına — iki tarafta da aynı kural.
+        atk *= (ownEvent.attackMult || 1);
+        def *= (ownEvent.defenseMult || 1);
+        return { atk, def };
+      }
+
+      const attackerSide = buildDuelSide(attacker, attackerEvent, legendaryLog);
+      const defenderSide = buildDuelSide(defender, defenderEvent, legendaryLog);
 
       // Lanet: defender bir önceki saldırıdan lanetliyse savunması düşer
+      // (tasarım gereği lanet "sıradaki SAVUNMA"ya işler, o yüzden defender'a özel)
       if (defender.curseNextAttack && defender.curseNextAttack.active) {
-        baseDefense *= (1 - defender.curseNextAttack.reduction);
+        defenderSide.def *= (1 - defender.curseNextAttack.reduction);
         const curseItemName = defender.curseNextAttack.itemName || "Lanet";
         legendaryLog.push(`${defender.nick} üzerindeki ${curseItemName} laneti devreye girdi, savunması zayıfladı.`);
       }
 
-      // Kambur zırhı / Kaymağın kalkanı: savunma çarpanı (artık %50 ihtimalle devreye girer)
-      const defMultItem = getEffect(defender.equipment, "defense_multiplier");
-      if (defMultItem && effectActivates(defMultItem.effect)) {
-        baseDefense *= 1.15;
-        legendaryLog.push(`${defender.nick}'in ${defMultItem.name} savunmasını güçlendirdi.`);
-      }
-      // Kıl dönmesi kılıcı / Emrenin yamuk parmak eldiveni / Gıcık komşunun kolyesi: saldırı çarpanı (%50 ihtimalle)
-      const atkMultItem = getEffect(attacker.equipment, "attack_multiplier");
-      if (atkMultItem && effectActivates(atkMultItem.effect)) {
-        baseAttack *= 1.15;
-        legendaryLog.push(`${attacker.nick}'in ${atkMultItem.name} saldırısını güçlendirdi.`);
-      }
+      // Aşağıdaki eski akışla uyum için (critTriggered yolu + diff hesabı):
+      let baseAttack = attackerSide.atk;
 
-      // Standart/Nadir eşyalardaki ufak "Keskin/Sağlam" pasifleri: efsanevi
-      // çarpanların (~%15) çok altında kalan küçük çeşni bonusları (%2-7 arası,
-      // eşya başına). Savaş logunu kalabalıklaştırmamak için sessizce uygulanır.
-      const minorAtkPct = getMinorTraitBonusPct(attacker.equipment, "atk_boost");
-      if (minorAtkPct > 0) baseAttack *= (1 + minorAtkPct / 100);
-      const minorDefPct = getMinorTraitBonusPct(defender.equipment, "def_boost");
-      if (minorDefPct > 0) baseDefense *= (1 + minorDefPct / 100);
-
-      // [V2 Faz 6] Günün olayı artık KİŞİSEL: attacker kendi olayının
-      // attackMult'unu, defender kendi olayının defenseMult'unu getiriyor.
-      baseAttack *= attackerEvent.attackMult;
-      baseDefense *= defenderEvent.defenseMult;
-
-      // --- Savaş Simülasyonu (V2 Faz 5) ---
-      // Eski tek atışlık "dominance ratio + zar" modeli tamamen kaldırıldı.
-      // Artık iki taraf da kendi Saldırı Hızı'na göre bağımsız vuran, Can
-      // barını eriten 3 saniyelik gerçek bir çarpışma simüle ediliyor (bkz.
-      // simulateBattle3s). Attacker'ın atağı hâlâ baseAttack (yukarıda
-      // hesaplanan, curse/çarpan/günün-olayı dahil edilmiş rol statı),
-      // defender'ın savunması hâlâ baseDefense (lucky-defense-roll dahil) —
-      // ama artık karşı taraf da GERÇEKTEN vuruyor: defender kendi ham
-      // Saldırısıyla, attacker kendi ham Savunmasıyla karşılık veriyor.
-      let effectiveDefense = baseDefense;
-      const luckyDefItem = getEffect(defender.equipment, "lucky_defense_roll");
-      if (luckyDefItem && effectActivates(luckyDefItem.effect)) {
-        const spread = 0.15 * defenderEvent.varianceMult;
-        const rollA = baseDefense * ((1 - spread) + Math.random() * (spread * 2));
-        const rollB = baseDefense * ((1 - spread) + Math.random() * (spread * 2));
-        effectiveDefense = Math.max(rollA, rollB);
-        legendaryLog.push(`${defender.nick}'in şanslı eşyası savunmasını 2 kez yuvarladı, iyisini seçti.`);
-      }
+      let effectiveDefense = defenderSide.def;
 
       const critItem = getEffect(attacker.equipment, "crit_instant_win");
       const critTriggered = !!(critItem && Math.random() < 0.1);
@@ -837,13 +832,13 @@ export async function runAttack(defenderId) {
         attackerWins = true;
         legendaryLog.push(`${attacker.nick}'in ${critItem.name} aniden ısırdı, hesaplama boşa gitti ve anında kazandı!`);
       } else {
-        // [V4 SIRALI DÜELLO] Eski 3sn gauge-sim yerine tur-tabanlı sıralı düello.
-        // İlk saldıran (attacker) başlar; statlar (atk/def/hız/kritik/can) doğrudan
-        // sonucu belirler. attackerWins + toplam hasarlar aynı formatta üretilir,
-        // böylece aşağıdaki Elo/puan/griefing/log akışı HİÇ değişmeden çalışır.
+        // [v6 SIRALI DÜELLO — SİMETRİK] İki taraf da buildDuelSide ile hesaplanmış
+        // KENDİ tam statlarıyla dövüşür. A→B ve B→A'da statlar birebir aynıdır;
+        // attackerWins + toplam hasarlar aynı formatta üretildiği için aşağıdaki
+        // Elo/puan/griefing/log akışı HİÇ değişmeden çalışır.
         const duel = simulateDuel(
-          { nick: attacker.nick, attack: baseAttack, defense: attacker.defense || BASE_DEFENSE, speed: attacker.speed || 0, critStat: attacker.critStat || 0, maxHp: attacker.maxHp || BASE_HP },
-          { nick: defender.nick, attack: defender.attack || BASE_ATTACK, defense: effectiveDefense, speed: defender.speed || 0, critStat: defender.critStat || 0, maxHp: defender.maxHp || BASE_HP }
+          { nick: attacker.nick, attack: attackerSide.atk, defense: attackerSide.def, speed: attacker.speed || 0, critStat: attacker.critStat || 0, maxHp: attacker.maxHp || BASE_HP },
+          { nick: defender.nick, attack: defenderSide.atk, defense: effectiveDefense, speed: defender.speed || 0, critStat: defender.critStat || 0, maxHp: defender.maxHp || BASE_HP }
         );
         attackerWins = duel.winner === "attacker";
         // Toplam verilen hasarları taraf bazında topla (puan farkı hesabı için)

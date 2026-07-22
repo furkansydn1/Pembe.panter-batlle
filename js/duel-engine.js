@@ -15,30 +15,52 @@
 // sadece dışa fonksiyon verir. VS ekranı bir sonraki adımda buna bağlanır.
 // ============================================================
 
-export const DUEL_CRIT_MULT = 2.5;      // [V4 DENGE] kritik çarpanı güçlendirildi (1.6→2.5) — kritik statı artık gerçekten değerli
-export const DUEL_DEF_MITIGATION = 0.42;// [V4 DENGE] savunmanın hasar kesmesi düşürüldü (0.6→0.42) — savunma artık aşırı baskın değil
-export const DUEL_MAX_TURNS = 15;       // üst sınır; dolarsa canı az olan kaybeder
-export const DUEL_BASE_CRIT = 0.05;     // taban %5 kritik (herkeste var)
-export const DUEL_SPEED_HALF = 8;       // [V4 DENGE] düşürüldü (25→8) — hız daha erken etki eder, ekstra vuruş değerlenir
-export const DUEL_SPEED_MAX_EXTRA = 0.85;// [DENGE v5] 1.15 → 0.85: olasılık artık %100'ü AŞAMAZ (eski 1.15 çok hızlıda garantili çift vuruş = sömürü). Hız ileride girince dengeli bonus olur.
-export const DUEL_CRIT_PER_POINT = 40;  // [V4 DENGE] her 40 kritik statı = +%100 kritik şansı (eskiden /100'dü, güçlendirildi)
-// İnce ayarlı hasar sabitleri (binlerce maç simülasyonu; 5 statın da kabaca
-// eşit değerde olması hedeflendi — denge sapması ~8.7):
-//   DMG_DIVISOR: savaş uzunluğu. DMG_VARIANCE: ±rastgelelik (küçük farklar
-//   olasılıksal olsun, savaş hep aynı bitmesin).
-export const DUEL_DMG_DIVISOR = 1.6;   // [DENGE v5] 0.95 → 1.6: vuruşlar küçüldü, savaş ~5-9 tur sürüyor (izlenebilir, şak diye bitmiyor)
-export const DUEL_DMG_VARIANCE = 0.20;  // [DENGE v5] ±%35 → ±%20: şans azaltıldı (statlar belirleyici) ama eşit maçlarda heyecan kalıyor
+// ============================================================
+// [DENGE v6 — "GERÇEK SAVAŞ" REVİZYONU] 60.000+ maçlık simülasyonla ayarlandı.
+// Hedefler (kullanıcı isteği): (1) A→B ve B→A savaşları TUTARLI sonuç versin
+// ("kim saldırırsa kazanıyor" bitsin), (2) statlar belirleyici olsun, şans
+// küçük bir sürpriz payı kalsın (Barcelona–Malatyaspor: net güçlüye upset
+// yüzde birlerin altında), (3) kritik nadir ve maç ÇEVİRMEYEN bir bonus
+// olsun, (4) tek atma olmasın — eşit güçler ~8-9 tur dövüşsün.
+//
+// ÖLÇÜLEN EĞRİ (30/30 tabana karşı, 30.000'er maç):
+//   eşit statlar        → saldıran %54 (ilk vuruş ufak avantaj, o kadar)
+//   +3 saldırı          → %70   |  +6 saldırı → %80  |  +10 → %90  |  +15 → %95
+//   40/20 vs 20/40      → iki yönde de %54 (SİMETRİ: build farkı sonucu ÇEVİRMİYOR)
+//   full eşyalı vs çıplak → %100 / %0 (griefing zaten ayrıca cezalandırıyor)
+//   ort. savaş uzunluğu → ~9 tur / ~17 vuruş (erken oyunda da geç oyunda da)
+// ============================================================
+export const DUEL_CRIT_MULT = 1.5;      // [v6] 2.5→1.5: kritik artık "güçlü bir vuruş", maçı tek başına çeviren bir piyango DEĞİL
+export const DUEL_MAX_TURNS = 18;       // [v6] 15→18: yüksek canlı geç-oyun savaşları tur limitine takılmadan doğal bitsin
+export const DUEL_BASE_CRIT = 0.05;     // taban %5 kritik (herkeste var, core-config BASE_CRIT=5 ile senkron)
+export const DUEL_SPEED_HALF = 25;      // [v6] 8→25: MAP (14-hero-stats SPD_HALF_VALUE) ile SENKRON; eşya hızları (3-20) makul bonus verir
+export const DUEL_SPEED_MAX_EXTRA = 0.5;// [v6] 0.85→0.5: ekstra vuruş şansı tavanı — sonsuz hız bile turların en fazla yarısında çift vurur
+export const DUEL_CRIT_PER_POINT = 100; // [v6] 40→100: MAP (14-hero-stats, critStat/100) ile SENKRON; her 1 kritik statı = +%1 şans
+export const DUEL_CRIT_CAP = 0.40;      // [v6] kritik şansı tavanı %40 (taban+eşya dahil)
+// [v6] HASAR FORMÜLÜ DEĞİŞTİ — eski "atk - def*azaltma" (çıkarma) yerine
+// ORAN tabanlı: hasar = 100 * atk/(atk+def) / TEMPO.
+//   Neden: çıkarma formülünde düşük statlı erken oyunda savaşlar 30 vuruş
+//   sürüyor, yüksek statta tek atmaya dönüyordu. Oran formülünde savaş
+//   uzunluğu HER stat ölçeğinde sabit (~17 vuruş), tank def yığsa bile
+//   hasar asla 1'e kilitlenip savaş donmuyor, ve +10 saldırı ile +10
+//   savunma matematiksel olarak birebir eşit değerde (tam simetri).
+export const DUEL_TEMPO = 4.5;          // savaş temposu: büyüdükçe vuruşlar küçülür, savaş uzar (eşit maç ~9 tur)
+export const DUEL_DMG_VARIANCE = 0.25;  // ±%25/vuruş: tur bazında heyecan; TOPLAM sonuçta statlar ezici şekilde belirleyici (bkz. eğri)
+// [v6] İNİSİYATİF: hız eşitse saldıran %60 ihtimalle önce başlar. Eski kural
+// ("saldıran HER ZAMAN önce") tek başına eşit maçta %75 kazanma demekti —
+// "kim saldırırsa kazanıyor" şikayetinin matematiksel kaynağı buydu.
+export const DUEL_ATTACKER_TIE_INITIATIVE = 0.6;
 
 // Bir savaşçının ham verisinden düello statlarını çıkarır.
 // stat isimleri ana oyunla aynı: attack, defense, speed, critStat, maxHp.
 export function toDuelFighter(p, opts = {}) {
-  const atk = Number(p.attack) || 0;
-  const def = Number(p.defense) || 0;
+  const atk = Math.max(1, Number(p.attack) || 1);
+  const def = Math.max(0, Number(p.defense) || 0);
   const spd = Math.max(0, Number(p.speed) || 0);
   const hp = Math.max(1, Math.round(Number(p.maxHp) || 100));
-  // kritik şansı: taban %5 + stat (critStat/CRIT_PER_POINT), %60 tavan
-  const crit = Math.min(0.6, DUEL_BASE_CRIT + Math.max(0, (Number(p.critStat) || 0) / DUEL_CRIT_PER_POINT));
-  // hızdan gelen ekstra-vuruş şansı (azalan getiri)
+  // kritik şansı: taban %5 + stat (critStat/100 — MAP ile aynı ölçek), %40 tavan
+  const crit = Math.min(DUEL_CRIT_CAP, DUEL_BASE_CRIT + Math.max(0, (Number(p.critStat) || 0) / DUEL_CRIT_PER_POINT));
+  // hızdan gelen ekstra-vuruş şansı (azalan getiri, tavan %50)
   const extraHitChance = DUEL_SPEED_MAX_EXTRA * (spd / (spd + DUEL_SPEED_HALF));
   return {
     name: p.nick || opts.name || "Savaşçı",
@@ -48,11 +70,12 @@ export function toDuelFighter(p, opts = {}) {
 }
 
 // Tek bir vuruşun hasarını hesaplar (kritik + varyans dahil).
+// [v6] Oran tabanlı: hasar = 100 * atk/(atk+def) / TEMPO. Eşit statlarda vuruş
+// başına ~%11 can gider (→ ~9 vuruşta ölüm); saldırı/savunma farkı bu oranı
+// doğrudan kaydırır. 100 sabittir (taban can) — böylece eşyadan gelen ekstra
+// can GERÇEK dayanıklılık sağlar (hasar cana göre ölçeklenmez).
 function computeHitDamage(from, to, rng) {
-  // [V4 DENGE] Hasar bölene bölünür (savaşlar birkaç tur sürer) ve ±varyans
-  // eklenir (aynı statlar hep aynı sonucu vermesin — küçük farklar olasılıksal
-  // olur). En az 1 hasar garanti (savaş kilitlenmesin).
-  let base = Math.max(1, (from.atk - to.def * DUEL_DEF_MITIGATION) / DUEL_DMG_DIVISOR);
+  let base = 100 * (from.atk / (from.atk + to.def)) / DUEL_TEMPO;
   base *= (1 - DUEL_DMG_VARIANCE) + rng() * DUEL_DMG_VARIANCE * 2;
   const isCrit = rng() < from.crit;
   const dmg = Math.max(1, Math.round(isCrit ? base * DUEL_CRIT_MULT : base));
@@ -103,11 +126,12 @@ export function simulateDuel(attackerRaw, defenderRaw, opts = {}) {
 
   let turnNo = 1;
   const HARD_CAP = 200; // sonsuz döngü emniyeti (beraberlik uzarsa bile)
-  // İNİSİYATİF: her tur, HIZI YÜKSEK olan önce vurur. Eşit hızda "Saldır"a
-  // basan (attacker) önce vurur — böylece hem hız statı gerçek avantaj sağlar
-  // (önce vuran ilk kanı alır, rakibi öldürürse karşılık bile alamaz) hem de
-  // ilk-saldıran kuralı eşitlikte korunur.
-  const attackerFirst = A.spd >= D.spd;
+  // [v6] İNİSİYATİF: hızı yüksek olan önce vurur. Hızlar EŞİTSE saldıran
+  // %60 ihtimalle önce başlar (DUEL_ATTACKER_TIE_INITIATIVE). Eski "eşitlikte
+  // saldıran HER ZAMAN önce" kuralı, eşit statlı bir maçta saldırana tek
+  // başına ~%75 kazanma veriyordu — "kim saldırırsa o kazanıyor" adaletsizliğinin
+  // ana kaynağı buydu. Şimdi ilk saldıran ufak (%54'lük) bir avantajla yetinir.
+  const attackerFirst = A.spd !== D.spd ? A.spd > D.spd : rng() < DUEL_ATTACKER_TIE_INITIATIVE;
   while (!ko && turnNo <= HARD_CAP) {
     if (attackerFirst) {
       attackPhase(turnNo, "attacker", A, D, "defender");
