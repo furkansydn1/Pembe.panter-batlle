@@ -423,8 +423,21 @@ export function renderInventoryModal() {
   inventoryModalTitle.textContent = `${s.icon} ${s.label} Envanteri`;
 
   const rarityOrder = { efsanevi: 0, nadir: 1, standart: 2 };
-  const items = getSlotInventory(slot).slice().sort((a, b) => rarityOrder[a.rarity] - rarityOrder[b.rarity]);
-  const equippedId = S.currentPlayerData?.equipment?.[slot]?.id;
+  // [v2.4 fix] "Bu slotta eşyan yok" BUG'I:
+  // Bir eşya kuşanılınca envanter dizisinden çıkıp equipment'a taşınır; slotta
+  // yalnızca o eşya varsa envanter dizisi BOŞ kalıyor ve ekran yanlışlıkla
+  // "eşyan yok" diyordu. Çözüm: getSlotInventory (VERİ listesi — yazım güvenli,
+  // kuşanılıyı İÇERMEZ, çoğaltma bug'ı önlenir) çıktısına kuşanılı eşyayı
+  // SADECE EKRAN İÇİN, id ile tekilleştirerek geri ekliyoruz. Firestore'a yazan
+  // hiçbir çağrı bu listeyi kullanmaz (onlar getSlotInventory'yi doğrudan çağırır).
+  const equipped = S.currentPlayerData?.equipment?.[slot] || null;
+  const equippedId = equipped?.id;
+  const dataItems = getSlotInventory(slot);
+  let items = dataItems.slice();
+  if (equipped && !items.some(it => it.id && equippedId && it.id === equippedId)) {
+    items.unshift(equipped); // kuşanılı eşyayı listenin başına (ekranlık)
+  }
+  items.sort((a, b) => rarityOrder[a.rarity] - rarityOrder[b.rarity]);
 
   const dropRatesHtml = renderDropRatesInfoHtml();
 
@@ -467,7 +480,7 @@ export function renderInventoryModal() {
           <button class="btn-mini nadir-mini" data-action="equip" data-id="${it.id}" ${isEquipped || !equipCheck.ok ? "disabled" : ""} title="${equipCheck.ok ? "" : equipCheck.reason}">Kuşan${equipCheck.ok ? "" : ` (🔒 Sv. ${levelReq})`}</button>
           <button class="btn-mini" data-action="scrap" data-id="${it.id}" ${isEquipped ? "disabled" : ""}>Hurdaya Çevir<span>✨ +${computeScrapGainForItem(it)} Hurda</span></button>
           <button class="btn-mini nadir-mini" data-action="upgrade" data-id="${it.id}" ${upgradeCheck.ok ? "" : "disabled"} title="${upgradeCheck.ok ? "" : upgradeCheck.reason}">+ Basma (+${upgradeLevel} → +${upgradeLevel + 1}) · %${Math.round(getUpgradeSuccessChance(upgradeLevel + 1) * 100)} şans<span>✨ ${upCost.hurdaCost} Hurda + ${upCost.bookCost}x ${BOOK_TIER_ICONS[it.rarity]}</span></button>
-          <button class="btn-mini gold-mini" data-action="sell" data-id="${it.id}" ${isEquipped || S.currentPlayerData?.tradeBanned ? "disabled" : ""} title="${S.currentPlayerData?.tradeBanned ? "Ticaret yasaklısın" : "Oyuncular Arası Pazar'a listele"}">🪙 Pazara Çıkar</button>
+          <button class="btn-mini gold-mini" data-action="sell" data-id="${it.id}" ${isEquipped ? "disabled" : ""} title="Oyuncular Arası Pazar'a listele">🪙 Pazara Çıkar</button>
         </div>
         </div>
       </div>`;
