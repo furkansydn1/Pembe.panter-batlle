@@ -20,14 +20,14 @@ export const DUEL_DEF_MITIGATION = 0.42;// [V4 DENGE] savunmanın hasar kesmesi 
 export const DUEL_MAX_TURNS = 15;       // üst sınır; dolarsa canı az olan kaybeder
 export const DUEL_BASE_CRIT = 0.05;     // taban %5 kritik (herkeste var)
 export const DUEL_SPEED_HALF = 8;       // [V4 DENGE] düşürüldü (25→8) — hız daha erken etki eder, ekstra vuruş değerlenir
-export const DUEL_SPEED_MAX_EXTRA = 1.15;// [V4 DENGE] artırıldı (0.6→1.15) — hızlı savaşçı sık sık ikinci vuruş yapar
+export const DUEL_SPEED_MAX_EXTRA = 0.85;// [DENGE v5] 1.15 → 0.85: olasılık artık %100'ü AŞAMAZ (eski 1.15 çok hızlıda garantili çift vuruş = sömürü). Hız ileride girince dengeli bonus olur.
 export const DUEL_CRIT_PER_POINT = 40;  // [V4 DENGE] her 40 kritik statı = +%100 kritik şansı (eskiden /100'dü, güçlendirildi)
 // İnce ayarlı hasar sabitleri (binlerce maç simülasyonu; 5 statın da kabaca
 // eşit değerde olması hedeflendi — denge sapması ~8.7):
 //   DMG_DIVISOR: savaş uzunluğu. DMG_VARIANCE: ±rastgelelik (küçük farklar
 //   olasılıksal olsun, savaş hep aynı bitmesin).
-export const DUEL_DMG_DIVISOR = 0.95;
-export const DUEL_DMG_VARIANCE = 0.35;
+export const DUEL_DMG_DIVISOR = 1.6;   // [DENGE v5] 0.95 → 1.6: vuruşlar küçüldü, savaş ~5-9 tur sürüyor (izlenebilir, şak diye bitmiyor)
+export const DUEL_DMG_VARIANCE = 0.20;  // [DENGE v5] ±%35 → ±%20: şans azaltıldı (statlar belirleyici) ama eşit maçlarda heyecan kalıyor
 
 // Bir savaşçının ham verisinden düello statlarını çıkarır.
 // stat isimleri ana oyunla aynı: attack, defense, speed, critStat, maxHp.
