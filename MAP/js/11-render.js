@@ -179,6 +179,7 @@ function drawEdgeArrows() {
   if (typeof orcs !== "undefined") lists.push(orcs);
   if (typeof soldiers !== "undefined") lists.push(soldiers);
   if (typeof goblins !== "undefined") lists.push(goblins);
+  if (typeof archers !== "undefined") lists.push(archers); // [KALE] okçular da kenar işaretçisi alır
   for (const arr of lists) {
     for (const e of arr) {
       if (e.dead) continue;
@@ -190,7 +191,7 @@ function drawEdgeArrows() {
       ey = Math.max(pad, Math.min(canvas.height - pad, ey));
       ctx.save();
       ctx.translate(ex, ey); ctx.rotate(ang); ctx.globalAlpha = 0.72;
-      ctx.fillStyle = e.type === "goblin" ? "#8fd98f" : e.type === "soldier" ? "#aab4c8" : "#c9a24a";
+      ctx.fillStyle = e.type === "goblin" ? "#8fd98f" : e.type === "soldier" ? "#aab4c8" : e.type === "archer" ? "#6aa8d8" : "#c9a24a"; // [KALE] okçu mavi
       ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(-7, -7); ctx.lineTo(-7, 7); ctx.closePath(); ctx.fill();
       ctx.restore();
     }
