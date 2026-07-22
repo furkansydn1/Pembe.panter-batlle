@@ -42,7 +42,7 @@ export const MAP_LEVEL_LENIENCY = 3;
 // Yeni bir diyar MAP mini-oyununda hazır oldukça bu sayıyı 1 artırman yeterli —
 // kartındaki "🔒 Yakında" kendiliğinden "Diyara Gir"e döner. Şu an: 1=Unutulmuş
 // Orman, 2=Zehirli Bataklık hazır; 3-5 (Yıkık Kale, Gölge Uçurumu, Kâbus Diyarı) yakında.
-export const IMPLEMENTED_MAP_MAX_ORDER = 2;
+export const IMPLEMENTED_MAP_MAX_ORDER = 3;
 export const MAP_TIERS = [
   {
     id: "unutulmus-orman", order: 1, label: "Unutulmuş Orman",
@@ -62,7 +62,7 @@ export const MAP_TIERS = [
   },
   {
     id: "yikik-kale", order: 3, label: "Yıkık Kale",
-    recommendedLevel: 35, energyCost: 12,
+    recommendedLevel: 35, minLevel: 35, energyCost: 12, // [KALE] 35 seviyeyi geçen HERKES girer (hoşgörü yok, kesin sınır)
     mobAtkMult: 1.5, mobDefMult: 1.4,
     bookTier: "efsanevi", bookDropChance: 16, bookDropMin: 1, bookDropMax: 1,
     scrapMin: 5, scrapMax: 9, pointsMin: 7, pointsMax: 11,
@@ -115,7 +115,9 @@ export function canEnterMap(map, playerData) {
     return { ok: false, reason: `Yetersiz enerji (gerekli: ${map.energyCost}, mevcut: ${energy}).` };
   }
   const level = playerData.level || 1;
-  if (level < map.recommendedLevel - MAP_LEVEL_LENIENCY) {
+  // [KALE] minLevel: diyara özel KESİN alt sınır (varsa hoşgörü uygulanmaz).
+  const gateLevel = map.minLevel !== undefined ? map.minLevel : map.recommendedLevel - MAP_LEVEL_LENIENCY;
+  if (level < gateLevel) {
     return { ok: false, reason: `Bu harita için önerilen seviye ${map.recommendedLevel}. Şu anki seviyen: ${level}.` };
   }
   return { ok: true };
@@ -463,9 +465,12 @@ export async function claimMapFarmRewards() {
   const stdItemCount = Math.max(0, Math.floor((pendingItems && pendingItems.std) || 0));
   const rareItemCount = Math.max(0, Math.floor((pendingItems && pendingItems.rare) || 0));
   const rareBookCount = Math.max(0, Math.floor((pendingItems && pendingItems.rareBook) || 0)); // [KİTAP] Nadir Kitap
+  const legItemCount = Math.max(0, Math.floor((pendingItems && pendingItems.leg) || 0));        // [KALE] Efsanevi Eşya
+  const legBookCount = Math.max(0, Math.floor((pendingItems && pendingItems.legBook) || 0));    // [KALE] Efsanevi Kitap
 
   if (bookGain <= 0 && scrapGain <= 0 && xpGain <= 0 && deaths <= 0 && goldGain <= 0
-      && stdItemCount <= 0 && rareItemCount <= 0 && rareBookCount <= 0) {
+      && stdItemCount <= 0 && rareItemCount <= 0 && rareBookCount <= 0
+      && legItemCount <= 0 && legBookCount <= 0) {
     localStorage.removeItem(MAP_PENDING_KEY);
     localStorage.removeItem(MAP_ITEMS_KEY);
     return;
@@ -478,10 +483,11 @@ export async function claimMapFarmRewards() {
     gold: Math.max(0, (S.currentPlayerData.gold || 0) + goldGain),
     points: Math.max(0, (S.currentPlayerData.points || 0) - deaths * MAP_FARM_DEATH_PENALTY)
   };
-  if (bookGain > 0 || rareBookCount > 0) {
+  if (bookGain > 0 || rareBookCount > 0 || legBookCount > 0) {
     const newBooks = { ...getBooks(S.currentPlayerData) };
     if (bookGain > 0) newBooks.standart = (newBooks.standart || 0) + bookGain;
     if (rareBookCount > 0) newBooks.nadir = (newBooks.nadir || 0) + rareBookCount; // [KİTAP] bataklık nadir kitabı
+    if (legBookCount > 0) newBooks.efsanevi = (newBooks.efsanevi || 0) + legBookCount; // [KALE] efsanevi kitap
     payload.books = newBooks;
   }
 
@@ -489,14 +495,15 @@ export async function claimMapFarmRewards() {
   // fabrikadan (isim havuzu, stat, efsun, id — hepsi gerçek). Tek turda en fazla
   // 40 eşya işlenir (Firestore yazım emniyeti); artan olursa kasada bekler,
   // bir sonraki kontrol turunda (2 sn'de bir / odakta) işlenir.
-  const totalItems = Math.min(40, stdItemCount + rareItemCount);
-  const processedRare = Math.min(rareItemCount, totalItems);
-  const processedStd = totalItems - processedRare;
+  const totalItems = Math.min(40, stdItemCount + rareItemCount + legItemCount);
+  const processedLeg = Math.min(legItemCount, totalItems);                 // [KALE] en nadir en önce basılır
+  const processedRare = Math.min(rareItemCount, totalItems - processedLeg);
+  const processedStd = totalItems - processedLeg - processedRare;
   if (totalItems > 0) {
     const invUpdates = {};
     const newNames = [];
     for (let i = 0; i < totalItems; i++) {
-      const rarity = i < processedRare ? "nadir" : "standart";
+      const rarity = i < processedLeg ? "efsanevi" : (i < processedLeg + processedRare ? "nadir" : "standart"); // [KALE]
       const slot = SLOTS[randInt(0, SLOTS.length - 1)].key;
       const item = generateLootItemForRarity(slot, rarity);
       if (!invUpdates[slot]) {
@@ -515,13 +522,13 @@ export async function claimMapFarmRewards() {
   localStorage.removeItem(MAP_PENDING_KEY);
   // Kasa: işlenen düşülür; artan varsa (40 sınırı) sonraki tura kalır.
   // Nadir kitap ucuz işlenir (sadece sayaç), 40-item sınırına takılmaz → hep tam işlenir.
-  const remStd = stdItemCount - processedStd, remRare = rareItemCount - processedRare;
-  if (remStd > 0 || remRare > 0) {
-    try { localStorage.setItem(MAP_ITEMS_KEY, JSON.stringify({ std: remStd, rare: remRare, rareBook: 0, updatedAt: Date.now() })); } catch (e) {}
+  const remStd = stdItemCount - processedStd, remRare = rareItemCount - processedRare, remLeg = legItemCount - processedLeg;
+  if (remStd > 0 || remRare > 0 || remLeg > 0) {
+    try { localStorage.setItem(MAP_ITEMS_KEY, JSON.stringify({ std: remStd, rare: remRare, leg: remLeg, rareBook: 0, legBook: 0, updatedAt: Date.now() })); } catch (e) {}
   } else {
     localStorage.removeItem(MAP_ITEMS_KEY);
   }
-  console.log(`[MAP köprüsü] Hesaba işlendi: +${bookGain} Sıradan Kitap, +${scrapGain} Hurda, +${goldGain} Altın, +${xpGain} XP, +${processedStd} Sıradan Eşya, +${processedRare} Nadir Eşya, +${rareBookCount} Nadir Kitap, -${deaths * MAP_FARM_DEATH_PENALTY} Puan (${deaths} ölüm)`);
+  console.log(`[MAP köprüsü] Hesaba işlendi: +${bookGain} Sıradan Kitap, +${scrapGain} Hurda, +${goldGain} Altın, +${xpGain} XP, +${processedStd} Sıradan Eşya, +${processedRare} Nadir Eşya, +${rareBookCount} Nadir Kitap, +${legBookCount} Efsanevi Kitap, +${processedLeg} Efsanevi Eşya, -${deaths * MAP_FARM_DEATH_PENALTY} Puan (${deaths} ölüm)`);
 }
 
 // Oyuncu giriş yaptıktan sonra bir kez bekleyen ödülleri işle; ayrıca
