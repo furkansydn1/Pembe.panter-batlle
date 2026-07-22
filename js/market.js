@@ -288,11 +288,8 @@ buyKabusBoxBtn.onclick = () => buySpecialBox("kabus");
 
 export function renderTradeBanBanner() {
   if (!tradeBanBannerEl || !S.currentPlayerData) return;
-  // [TİCARET SERBEST] ban banner'ı her zaman gizli
+  // [TİCARET SERBEST] ban banner'ı her zaman gizli — banner ve sebep metni artık hiç gösterilmez.
   tradeBanBannerEl.classList.toggle("hidden", true);
-  if (banned && tradeBanReasonTextEl) {
-    tradeBanReasonTextEl.textContent = S.currentPlayerData.tradeBanReason || "Sebep belirtilmedi.";
-  }
 }
 
 // Bir oyuncunun o an aktif kaç listelemesi var — spam limiti (TRADE_LISTING_MAX_ACTIVE_PER_PLAYER)
