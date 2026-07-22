@@ -303,6 +303,10 @@ export async function performBoxOpen({ forcedRarity = null, costScrap = 0, costG
       const newDiscovered = Array.from(new Set([...(data.discoveredItems || []), item.name]));
       const newScrap = Math.max(0, getScrap(data) - costScrap);
       const newGold = Math.max(0, getGold(data) - costGold);
+      // [BUG FIX] newInvArr burada TANIMSIZDI → ücretsiz kutuda item üretiliyor
+      // ama Firestore yazımı çöküp item düşmüyordu ("birkaç kez basıp yenileyince
+      // geliyor" bunun belirtisiydi). Paralı daldaki (DAL 2) satırın birebir aynısı:
+      const newInvArr = [...getSlotInventory(slot), item];
 
       const updatePayload = {
         ...basePayload,
