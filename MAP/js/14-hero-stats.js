@@ -140,6 +140,7 @@
       if (typeof orcs !== "undefined") for (var i = 0; i < orcs.length; i++) instrumentEnemy(orcs[i]);
       if (typeof soldiers !== "undefined") for (var j = 0; j < soldiers.length; j++) instrumentEnemy(soldiers[j]);
       if (typeof goblins !== "undefined") for (var k = 0; k < goblins.length; k++) instrumentEnemy(goblins[k]);
+      if (typeof archers !== "undefined") for (var m = 0; m < archers.length; m++) instrumentEnemy(archers[m]); // [KALE]
     } catch (e) { /* diziler henüz kurulmadıysa sonraki taramada takılır */ }
   }
   instrumentAll();

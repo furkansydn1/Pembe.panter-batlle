@@ -15,13 +15,19 @@
 //   satır 4 = hasar alma (4 kare)
 //   satır 5 = ölüm       (4 kare)
 // ============================================================
-const ORC_FRAME = 100;
-// Gövde 100'lük karede ~22px — kare büyük çizilir ki orc normal boyutta görünsün.
-const ORC_DISPLAY = 210;        // görünen gövde ~46px genişlik (slime r=22 ile uyumlu)
-const ORC_ROW_IDLE = 0, ORC_ROW_WALK = 1, ORC_ROW_ATK1 = 2, ORC_ROW_ATK2 = 3, ORC_ROW_HURT = 4, ORC_ROW_DEATH = 5;
-const ORC_FRAMES_IDLE = 6, ORC_FRAMES_WALK = 8, ORC_FRAMES_ATK = 6, ORC_FRAMES_HURT = 4, ORC_FRAMES_DEATH = 4;
-// [BİYOM] Reskin: bataklıkta Blood Monster sheet'i yüklenir (düzen orc ile birebir aynı).
+// [BİYOM] Reskin: farklı ızgaralı sheet'ler de otursun diye HÜCRE/BOY/SATIR/KARE
+// bilgileri artık skin'den okunabiliyor (verilmezse orijinal orc değerleri).
 var ORC_SKIN = (typeof ACTIVE_BIOME !== "undefined" && ACTIVE_BIOME.skins && ACTIVE_BIOME.skins.orc) || null;
+function _oskin(k, d) { return ORC_SKIN && ORC_SKIN[k] !== undefined ? ORC_SKIN[k] : d; }
+const ORC_FRAME = _oskin("cell", 100);
+// Gövde 100'lük karede ~22px — kare büyük çizilir ki orc normal boyutta görünsün.
+const ORC_DISPLAY = _oskin("display", 210);   // görünen gövde ~46px genişlik (slime r=22 ile uyumlu)
+const ORC_ROW_IDLE = _oskin("rowIdle", 0), ORC_ROW_WALK = _oskin("rowWalk", 1),
+      ORC_ROW_ATK1 = _oskin("rowAtk1", 2), ORC_ROW_ATK2 = _oskin("rowAtk2", 3),
+      ORC_ROW_HURT = _oskin("rowHurt", 4), ORC_ROW_DEATH = _oskin("rowDeath", 5);
+const ORC_FRAMES_IDLE = _oskin("framesIdle", 6), ORC_FRAMES_WALK = _oskin("framesWalk", 8),
+      ORC_FRAMES_ATK = _oskin("framesAtk", 6), ORC_FRAMES_HURT = _oskin("framesHurt", 4),
+      ORC_FRAMES_DEATH = _oskin("framesDeath", 4);
 
 if (typeof orcImg === "undefined") {
   var orcImg = new Image();

@@ -24,10 +24,12 @@ function loop(now) {
       updateOrcs(dt);
       updateSoldiers(dt);
       updateGoblins(dt);
+      if (typeof updateArchers === "function") updateArchers(dt); // [KALE] okçular + oklar
     }
     updateFloatingTexts(dt);
     updateParticles(dt);
     if (typeof updateDecor === "function") updateDecor(dt); // [BİYOM] mantar konuşma sayaçları
+    if (typeof updateKaleChat === "function") updateKaleChat(dt); // [KALE] canavar konuşma sayaçları
     updateCamera(dt);
   }
   updateWaveManager(dt); // "ana ekran"da da respawn sayacı işlemeye devam etsin
@@ -57,9 +59,12 @@ function loop(now) {
   drawGoblins();
   drawOrcs();
   drawSoldiers();
+  if (typeof drawArchers === "function") drawArchers();  // [KALE]
+  if (typeof drawArrows === "function") drawArrows();    // [KALE] uçan oklar
   drawParticles();
   drawPlayer();
   drawFloatingTexts();
+  if (typeof drawKaleChat === "function") drawKaleChat(); // [KALE] konuşma balonları (dünya katmanı)
   ctx.restore();
 
   // [DİKEY] ---- EKRAN KATMANI: transform sıfır (ekran px) ----

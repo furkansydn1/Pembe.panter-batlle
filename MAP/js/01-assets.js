@@ -80,3 +80,26 @@ const mantarImg = new Image(); let mantarReady = false;
 mantarImg.onload = () => { mantarReady = true; }; mantarImg.src = "assets/map/mantar.png";
 const deadImg = new Image(); let deadImgReady = false;
 deadImg.onload = () => { deadImgReady = true; }; deadImg.src = "assets/enemies/dead-skull.png";
+
+// ---- [BİYOM] YIKIK KALE PROP'LARI ----
+// Engeller: yıkık kale / kuleler / harabe ev / ağaç. Süsler: moloz taşları.
+// Hepsi içeriğe kırpılı (PNG dibi = nesnenin dibi). Dosya yoksa Ready=false
+// kalır, çizim yedek şekle düşer — diğer biyomlar etkilenmez.
+const kaleCastleImg = new Image(); let kaleCastleReady = false;
+kaleCastleImg.onload = () => { kaleCastleReady = true; }; kaleCastleImg.src = "assets/map/kale-castle.png";
+const kaleKuleImg = new Image(); let kaleKuleReady = false;
+kaleKuleImg.onload = () => { kaleKuleReady = true; }; kaleKuleImg.src = "assets/map/kale-kule.png";
+const kaleTowerImg = new Image(); let kaleTowerReady = false;
+kaleTowerImg.onload = () => { kaleTowerReady = true; }; kaleTowerImg.src = "assets/map/kale-tower.png";
+const kaleHouseImg = new Image(); let kaleHouseReady = false;
+kaleHouseImg.onload = () => { kaleHouseReady = true; }; kaleHouseImg.src = "assets/map/kale-house.png";
+const kaleTreeImg = new Image(); let kaleTreeReady = false;
+kaleTreeImg.onload = () => { kaleTreeReady = true; }; kaleTreeImg.src = "assets/map/kale-tree.png";
+const kaleMoloz1Img = new Image(); let kaleMoloz1Ready = false;
+kaleMoloz1Img.onload = () => { kaleMoloz1Ready = true; }; kaleMoloz1Img.src = "assets/map/kale-rock1.png";
+const kaleMoloz2Img = new Image(); let kaleMoloz2Ready = false;
+kaleMoloz2Img.onload = () => { kaleMoloz2Ready = true; }; kaleMoloz2Img.src = "assets/map/kale-rock2.png";
+const kaleMoloz3Img = new Image(); let kaleMoloz3Ready = false;
+kaleMoloz3Img.onload = () => { kaleMoloz3Ready = true; }; kaleMoloz3Img.src = "assets/map/kale-rock3.png";
+const kaleLakeImg = new Image(); let kaleLakeReady = false;
+kaleLakeImg.onload = () => { kaleLakeReady = true; }; kaleLakeImg.src = "assets/map/kale-lake.png"; // [KALE] göl (çimen kıyı + su + kayalar tek görselde)

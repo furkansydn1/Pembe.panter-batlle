@@ -48,6 +48,7 @@ function livingPoints() {
   for (const o of orcs) if (!o.dead) pts.push({ x: o.x, y: o.y });
   for (const s of soldiers) if (!s.dead) pts.push({ x: s.x, y: s.y });
   for (const g of goblins) if (!g.dead) pts.push({ x: g.x, y: g.y });
+  if (typeof archers !== "undefined") for (const a of archers) if (!a.dead) pts.push({ x: a.x, y: a.y }); // [KALE]
   return pts;
 }
 
@@ -81,30 +82,40 @@ function updateWaveManager(dt) {
   respawnExpired(orcs, makeOrc);
   respawnExpired(soldiers, makeSoldier);
   respawnExpired(goblins, makeGoblin);
+  if (typeof archers !== "undefined" && typeof makeArcher === "function") respawnExpired(archers, makeArcher); // [KALE]
 }
 
 // İlk kurulum / toplu dağıtım — 12-main açılışta bunu çağırmaya devam eder.
 function spawnNewWave() {
+  // [KADRO] Biyom kendi kadrosunu getirebilir (kale: soldier yok, 5 okçu var).
+  const R = ACTIVE_BIOME.roster || { orc: ENEMIES_PER_TYPE, soldier: ENEMIES_PER_TYPE, goblin: ENEMIES_PER_TYPE, archer: 0 };
   const points = [];
   orcs = []; soldiers = []; goblins = [];
-  for (let i = 0; i < ENEMIES_PER_TYPE; i++) {
+  if (typeof archers !== "undefined") archers = [];
+  for (let i = 0; i < (R.orc || 0); i++) {
     const p = pickSpawnPoint(points); points.push(p);
     orcs.push(makeOrc(p.x, p.y));
   }
-  for (let i = 0; i < ENEMIES_PER_TYPE; i++) {
+  for (let i = 0; i < (R.soldier || 0); i++) {
     const p = pickSpawnPoint(points); points.push(p);
     soldiers.push(makeSoldier(p.x, p.y));
   }
-  for (let i = 0; i < ENEMIES_PER_TYPE; i++) {
+  for (let i = 0; i < (R.goblin || 0); i++) {
     const p = pickSpawnPoint(points); points.push(p);
     goblins.push(makeGoblin(p.x, p.y));
+  }
+  if ((R.archer || 0) > 0 && typeof makeArcher === "function") {
+    for (let i = 0; i < R.archer; i++) {
+      const p = pickSpawnPoint(points); points.push(p);
+      archers.push(makeArcher(p.x, p.y));
+    }
   }
 }
 
 // Eski sistemden kalan yardımcılar — başka dosyalar referans veriyor
 // olabilir diye korunuyor, davranışta rolleri yok.
 function allEnemiesDead() {
-  return orcs.every(o => o.dead) && soldiers.every(s => s.dead) && goblins.every(g => g.dead);
+  return orcs.every(o => o.dead) && soldiers.every(s => s.dead) && goblins.every(g => g.dead) && (typeof archers === "undefined" || archers.every(a => a.dead));
 }
 function formatCountdown(totalSeconds) {
   const s = Math.max(0, Math.ceil(totalSeconds));

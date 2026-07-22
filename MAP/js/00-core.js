@@ -137,11 +137,78 @@ var BIOMES = {
                  framesIdle: 8, framesWalk: 8, framesAtk: 6 }, // Dövüşçü Goblin (128px ızgara: satır0 saldırı, 3 idle, 4 koşu)
     },
   },
+  castle: {
+    id: "castle", name: "Yıkık Kale",
+    groundTile: "assets/map/kale-tile.png",
+    groundTileSize: 512,
+    groundFlip: false,          // yönlü derz/highlight detayları aynada ters dönmesin
+    borderColor: "rgba(190,160,110,0.40)",
+    tint: "rgba(90,85,75,0.10)",   // hafif toz/kasvet tonu
+    rockSprite: "assets/map/kaya.png",
+    treeSprite: "assets/map/agac.png",
+    footstep: "assets/sfx/kale-adim.wav",   // [BİYOM] taş üstünde adım
+    // [DENGE] Seviye-35+ diyarı: oyuncular bataklık canavarlarını tek vuruyor →
+    // can ÇOK daha yüksek (bataklık 2.0 → kale 8.0; Warrior ~264, Pawn ~400,
+    // Okçu ~320 can — güçlü oyuncuda 3-5 vuruş). Hasar ölçülü artış (1.6 → 2.5):
+    // Warrior vuruşu ~30, Pawn şarjı ~35, ok ~23 — sert ama tek vuruşta eritmez.
+    mobHpMult: 8.0,
+    mobDmgMult: 2.5,
+    // [KADRO] Bu diyarda soldier iskeleti yok; onun yerine 5 OKÇU var (09-wave okur).
+    roster: { orc: 6, soldier: 0, goblin: 6, archer: 5 },
+    loot: {
+      legBookPct: 0.01,     // %1  EFSANEVİ kitap (köprü books.efsanevi'ye işler)
+      bookPct: 0.08,        // %8  NADİR kitap
+      bookTier: "nadir",
+      legItemPct: 0.01,     // %1  EFSANEVİ eşya (köprü gerçek eşya basar)
+      rareItemPct: 0.07,    // %7  NADİR eşya
+      stdItemPct: { orc: 0.025, soldier: 0.025, goblin: 0.025, archer: 0.025 },
+      goldW:  [[6, 35], [7, 30], [8, 20], [9, 10], [10, 5]],  // her kesim 6-10 altın
+      scrapW: [[2, 50], [3, 40], [4, 30], [5, 10]],
+      exp: { orc: [10, 17], soldier: [10, 17], goblin: [10, 17], archer: [10, 17] },
+    },
+    // ENGELLER — TASARIM: kuzeyde SUR HATTI (kale ortada, iki yanında sağlam
+    // kuleler, uçlarda yıkılmış kuleler = surun kopmuş köşeleri). Sağ altta
+    // GÖL (çimen kıyılı; kayalar suyun içinde, ağaçlar kıyı çimeninde).
+    // Sol altta HARABE KÖY (yıkık evler, molozları diplerinde).
+    obstacles: [
+      // — sur hattı (kuzey) —
+      { x: 800,  y: 235, r: 68, type: "castle" },
+      { x: 585,  y: 225, r: 24, type: "kule" },
+      { x: 1015, y: 225, r: 24, type: "kule" },
+      { x: 250,  y: 190, r: 26, type: "tower" },
+      { x: 1350, y: 190, r: 26, type: "tower" },
+      // — göl (sağ alt): merkezi çarpışır, kıyıları yürünür (sığ su hissi) —
+      { x: 1230, y: 760, r: 95, type: "lake" },
+      // — göl kıyısı ağaçları (çimen üstünde) —
+      { x: 1035, y: 690, r: 20, type: "tree2" },
+      { x: 1400, y: 660, r: 20, type: "tree2" },
+      { x: 1105, y: 890, r: 20, type: "tree2" },
+      // — harabe köy (sol alt) —
+      { x: 330,  y: 680, r: 30, type: "house" },
+      { x: 520,  y: 810, r: 30, type: "house" },
+    ],
+    // SÜSLER: yok — su kayaları SADECE gölün içinde yaşar (kale-lake.png'de
+    // gömülü). Zemin sade kalsın: taş avlu + göl + yapılar yeterince okunaklı.
+    decor: [],
+    // CANAVAR RESKİNLERİ: Warrior→orc iskeleti (çift saldırı), Pawn→goblin (şarj),
+    // Archer→06b-archer (menzilli, yeni AI). Hepsi 192px Tiny Swords ızgarası.
+    skins: {
+      orc: { src: "assets/enemies/kale-warrior.png", cell: 192, display: 123,
+             rowIdle: 0, rowWalk: 1, rowAtk1: 2, rowAtk2: 3,
+             rowHurt: 0, rowDeath: 0,           // sheet'te hurt/death yok → idle karesi + flaş/sönme
+             framesIdle: 6, framesWalk: 6, framesAtk: 6, framesHurt: 2, framesDeath: 1 },
+      goblin: { src: "assets/enemies/kale-pawn.png", cell: 192, display: 152,
+                rowIdle: 0, rowWalk: 1, rowAtkSide: 2, rowAtkFront: 2, rowAtkBack: 2,
+                framesIdle: 6, framesWalk: 6, framesAtk: 6 },
+      archer: { src: "assets/enemies/kale-archer.png", cell: 192, display: 139 },
+    },
+  },
 };
 function detectBiome() {
   try {
     var q = new URLSearchParams(location.search);
     var m = (q.get("map") || q.get("biome") || "").toLowerCase();
+    if (m === "3" || /kale|castle|yikik/.test(m)) return "castle"; // Yıkık Kale = order 3
     if (m === "2" || /batak|swamp|zehir|poison/.test(m)) return "swamp"; // ana oyun "Diyara Gir"de ?map=SIRA gönderir (Zehirli Bataklık = 2)
   } catch (e) {}
   return "forest";

@@ -26,7 +26,7 @@
   const SYNC_INTERVAL_MS = 3000;
 
   // Son senkronda sayaçlar ne durumdaydı — fark (delta) bunun üstünden hesaplanır.
-  let last = { book: 0, scrap: 0, xp: 0, deaths: 0, gold: 0, itemStd: 0, itemRare: 0, rareBook: 0 };
+  let last = { book: 0, scrap: 0, xp: 0, deaths: 0, gold: 0, itemStd: 0, itemRare: 0, rareBook: 0, itemLeg: 0, legBook: 0 };
 
   function readCounters() {
     // Sayaçlar 04-economy.js'te top-level let olarak tanımlı; tüm klasik
@@ -40,7 +40,9 @@
       gold: typeof sessionRare === "number" ? sessionRare : 0,            // "Altın" sayacı
       itemStd: typeof sessionStandardItem === "number" ? sessionStandardItem : 0, // Sıradan Eşya
       itemRare: typeof sessionRareItem === "number" ? sessionRareItem : 0,        // Nadir Eşya
-      rareBook: typeof sessionRareBook === "number" ? sessionRareBook : 0         // [KİTAP] Nadir Kitap
+      rareBook: typeof sessionRareBook === "number" ? sessionRareBook : 0,        // [KİTAP] Nadir Kitap
+      itemLeg: typeof sessionLegendaryItem === "number" ? sessionLegendaryItem : 0, // [KALE] Efsanevi Eşya
+      legBook: typeof sessionLegBook === "number" ? sessionLegBook : 0             // [KALE] Efsanevi Kitap
     };
   }
 
@@ -54,10 +56,13 @@
       gold: cur.gold - last.gold,
       itemStd: cur.itemStd - last.itemStd,
       itemRare: cur.itemRare - last.itemRare,
-      rareBook: cur.rareBook - last.rareBook
+      rareBook: cur.rareBook - last.rareBook,
+      itemLeg: cur.itemLeg - last.itemLeg,
+      legBook: cur.legBook - last.legBook
     };
     if (delta.book <= 0 && delta.scrap <= 0 && delta.xp <= 0 && delta.deaths <= 0 && delta.gold <= 0
-        && delta.itemStd <= 0 && delta.itemRare <= 0 && delta.rareBook <= 0) return;
+        && delta.itemStd <= 0 && delta.itemRare <= 0 && delta.rareBook <= 0
+        && delta.itemLeg <= 0 && delta.legBook <= 0) return;
 
     let pending = {};
     try { pending = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { pending = {}; }
@@ -74,6 +79,8 @@
     pendItems.std = (pendItems.std || 0) + Math.max(0, delta.itemStd);
     pendItems.rare = (pendItems.rare || 0) + Math.max(0, delta.itemRare);
     pendItems.rareBook = (pendItems.rareBook || 0) + Math.max(0, delta.rareBook); // [KİTAP] Nadir Kitap
+    pendItems.leg = (pendItems.leg || 0) + Math.max(0, delta.itemLeg);            // [KALE] Efsanevi Eşya
+    pendItems.legBook = (pendItems.legBook || 0) + Math.max(0, delta.legBook);    // [KALE] Efsanevi Kitap
     pendItems.updatedAt = Date.now();
 
     try {

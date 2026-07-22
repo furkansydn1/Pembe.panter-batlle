@@ -70,6 +70,20 @@ function drawObstacles() {
     const sx = o.x - camera.x, sy = o.y - camera.y;
     if (sx < -120 || sx > VIEW_W + 120 || sy < -160 || sy > VIEW_H + 120) continue;
 
+    // [KALE] GÖL: dikey prop değil, yere yatık su birikintisi — gölgesiz,
+    // çarpışma merkezine ORTALANIR (taban hizalama uygulanmaz).
+    if (o.type === "lake") {
+      if (kaleLakeReady) {
+        const w = o.r * 4.2;
+        const h = w * (kaleLakeImg.height / kaleLakeImg.width);
+        ctx.drawImage(kaleLakeImg, sx - w / 2, sy - h / 2, w, h);
+      } else {
+        ctx.beginPath(); ctx.ellipse(sx, sy, o.r * 1.6, o.r, 0, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(71,171,169,0.8)"; ctx.fill();
+      }
+      continue;
+    }
+
     // gölge (yere oturma hissi) — kayada sprite genişliğine uyacak şekilde geniş
     const shadowRx = (o.type === "rock" && rockImgReady) ? o.r * 1.4 : o.r * 0.9;
     ctx.beginPath();
@@ -77,7 +91,25 @@ function drawObstacles() {
     ctx.fillStyle = "rgba(0,0,0,0.35)";
     ctx.fill();
 
-    if (o.type === "pumpkin" || o.type === "sign") {
+    if (o.type === "castle" || o.type === "kule" || o.type === "tower" || o.type === "house" || o.type === "tree2") {
+      // [BİYOM] Yıkık Kale engelleri: sprite tabanı çarpışma noktasına oturur.
+      const KP = {
+        castle: [kaleCastleReady ? kaleCastleImg : null, 3.3],
+        kule:   [kaleKuleReady ? kaleKuleImg : null, 2.2],
+        tower:  [kaleTowerReady ? kaleTowerImg : null, 2.7],
+        house:  [kaleHouseReady ? kaleHouseImg : null, 2.7],
+        tree2:  [kaleTreeReady ? kaleTreeImg : null, 2.3],
+      }[o.type];
+      const im = KP[0];
+      if (im) {
+        const w = o.r * KP[1];
+        const h = w * (im.height / im.width);
+        ctx.drawImage(im, sx - w / 2, sy + o.r * 0.55 - h, w, h);
+      } else {
+        ctx.beginPath(); ctx.arc(sx, sy, o.r, 0, Math.PI * 2);
+        ctx.fillStyle = "#8a8478"; ctx.fill();
+      }
+    } else if (o.type === "pumpkin" || o.type === "sign") {
       // [BİYOM] Bataklık engelleri: çürük balkabağı + kurukafalı tabela.
       // Tabela uzun sprite (64x128) — tabanı çarpışma noktasına oturur, üstü taşar.
       const im = o.type === "pumpkin" ? (balkabagiReady ? balkabagiImg : null)
@@ -170,7 +202,7 @@ function drawEdgeArrows() {
 // zehir tonundan önce çağrılır. Görsel yüklenmediyse sessizce atlanır.
 // Süs görselleri artık İÇERİĞE KIRPILI (saydam kenar yok) → PNG'nin dibi =
 // nesnenin dibi. Bu yüzden tabanı doğrudan d.y hizasına oturtuyoruz + gölge.
-const DECOR_W = { kemik1: 30, kemik2: 22, mantar: 48 }; // ekran genişliği (world); mantar büyütüldü
+const DECOR_W = { kemik1: 30, kemik2: 22, mantar: 48, moloz1: 18, moloz2: 26, moloz3: 36 }; // [KALE] moloz taşları // ekran genişliği (world); mantar büyütüldü
 function drawDecor() {
   const list = ACTIVE_BIOME.decor;
   if (!list) return;
@@ -181,6 +213,9 @@ function drawDecor() {
     if (d.type === "kemik1" && kemik1Ready) im = kemik1Img;
     else if (d.type === "kemik2" && kemik2Ready) im = kemik2Img;
     else if (d.type === "mantar" && mantarReady) im = mantarImg;
+    else if (d.type === "moloz1" && kaleMoloz1Ready) im = kaleMoloz1Img;   // [KALE]
+    else if (d.type === "moloz2" && kaleMoloz2Ready) im = kaleMoloz2Img;
+    else if (d.type === "moloz3" && kaleMoloz3Ready) im = kaleMoloz3Img;
     if (!im) continue;
     const w = DECOR_W[d.type] || 28;
     const h = w * (im.height / im.width);
@@ -249,4 +284,96 @@ function drawMantarBubble(cx, topY, text, lifeT) {
   ctx.fillText(text, cx, by + 14, 150);
   ctx.restore();
   ctx.textAlign = "left";
+}
+
+// ============================================================
+// [KALE] CANAVAR KONUŞMA BALONLARI — sadece Yıkık Kale'de.
+// Her canlı canavar kendi sayacını işletir; 12-24 sn'de bir, oyuncuya
+// yakınsa (ekran civarı) havuzdan bir laf söyler, 3.2 sn ekranda kalır.
+// Aynı anda en fazla 2 balon (spam olmasın, okunabilsin).
+// ============================================================
+const KALE_LINES = [
+  "Efendimiz Çingene Batu adına savaşıyoruz.",
+  "Dua edin menisküsüm yırtık",
+  "Benim adım Emre, Uğur abiyi yalamaktan başka bişi yapmam",
+  "Kendine faça atan bize neler yapar.",
+  "Sen saplantılı ve takıntılı birine benziyosun umarım benide kafayı takmazsın.",
+  "ooo Fati Ahmet abimizin kardeşi gelmiş.",
+  "Size ölmekten özdede gibi belim büküldü.",
+  "Bi saniye vurma bana bişi sorcam, Veysi kendini lider mi sanıyo cidden.",
+  "Karanın kulaklıkları alıp gelicem bekle burda.",
+  "Bugün Cemalden hamburger yedim bakalım nasıl öldürceksin beni.",
+];
+function kaleChatList() {
+  const all = [];
+  if (typeof orcs !== "undefined") for (const e of orcs) all.push(e);
+  if (typeof goblins !== "undefined") for (const e of goblins) all.push(e);
+  if (typeof archers !== "undefined") for (const e of archers) all.push(e);
+  return all;
+}
+function updateKaleChat(dt) {
+  if (ACTIVE_BIOME.id !== "castle") return;
+  let active = 0;
+  const all = kaleChatList();
+  for (const e of all) if (!e.dead && e._chatT > 0) active++;
+  for (const e of all) {
+    if (e.dead) { e._chatT = 0; continue; }
+    if (e._chatNext === undefined) e._chatNext = 4 + Math.random() * 16; // ilk laf gecikmesi
+    if (e._chatT > 0) e._chatT -= dt;
+    e._chatNext -= dt;
+    if (e._chatNext <= 0) {
+      e._chatNext = 12 + Math.random() * 12; // sonraki lafa 12-24 sn
+      // sadece oyuncunun görebileceği mesafede + balon limiti doluysa pas geç
+      if (active < 2 && Math.hypot(e.x - player.x, e.y - player.y) < 480) {
+        e._chatLine = KALE_LINES[(Math.random() * KALE_LINES.length) | 0];
+        e._chatT = 3.2;
+        active++;
+      }
+    }
+  }
+}
+// Kelime kaydırmalı balon (mantar balonundan farkı: uzun cümle 2-3 satıra bölünür)
+function drawKaleBubble(cx, topY, text, lifeT) {
+  const alpha = Math.min(1, lifeT / 0.4);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.font = '600 10px -apple-system, "Segoe UI", Roboto, sans-serif';
+  ctx.textAlign = "center";
+  const maxW = 165;
+  const words = text.split(" ");
+  const lines = [];
+  let cur = "";
+  for (const w of words) {
+    const t = cur ? cur + " " + w : w;
+    if (ctx.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; }
+    else cur = t;
+  }
+  if (cur) lines.push(cur);
+  const lh = 12, padX = 7, padY = 5;
+  let bw = 0;
+  for (const l of lines) bw = Math.max(bw, ctx.measureText(l).width);
+  bw += padX * 2;
+  const bh = lines.length * lh + padY * 2;
+  const bx = cx - bw / 2, by = topY - bh;
+  ctx.fillStyle = "rgba(18,19,25,0.92)";
+  ctx.strokeStyle = "rgba(216,178,106,0.6)";  // kale kum tonu çerçeve
+  ctx.lineWidth = 1;
+  if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 6); ctx.fill(); ctx.stroke(); }
+  else { ctx.fillRect(bx, by, bw, bh); ctx.strokeRect(bx, by, bw, bh); }
+  ctx.beginPath();
+  ctx.moveTo(cx - 4, by + bh); ctx.lineTo(cx + 4, by + bh); ctx.lineTo(cx, by + bh + 5);
+  ctx.closePath(); ctx.fillStyle = "rgba(18,19,25,0.92)"; ctx.fill();
+  ctx.fillStyle = "#f0e6c8";
+  for (let i = 0; i < lines.length; i++) ctx.fillText(lines[i], cx, by + padY + 9 + i * lh);
+  ctx.restore();
+  ctx.textAlign = "left";
+}
+function drawKaleChat() {
+  if (ACTIVE_BIOME.id !== "castle") return;
+  for (const e of kaleChatList()) {
+    if (e.dead || !(e._chatT > 0)) continue;
+    const sx = e.x - camera.x, sy = e.y - camera.y;
+    if (sx < -120 || sx > VIEW_W + 120 || sy < -100 || sy > VIEW_H + 100) continue;
+    drawKaleBubble(sx, sy - 42, e._chatLine, e._chatT);
+  }
 }
