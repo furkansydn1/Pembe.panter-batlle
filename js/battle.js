@@ -1101,6 +1101,10 @@ export async function runAttack(defenderId) {
       return {
         skipped: false,
         attackerWins, attackPower: Math.round(attackPower), defensePower: Math.round(defensePower),
+        // [FIX] Gerçek STAT gücü (atk+def+can/10+kritik+hız) — ekranda "Güç" olarak
+        // bunu gösteriyoruz; verdiği hasar değil. Hiç vuramadan ölen bile artık
+        // "Güç: 0" görmez, gerçek karakter gücünü görür (asla 0 olmaz).
+        attackerPower: Math.round(attackerTotalPower), defenderPower: Math.round(defenderTotalPower),
         message: mainMessage, legendaryLog, battleSim
       };
     });
@@ -1158,7 +1162,7 @@ export function showResultModal(result) {
     // özet + eşya efektleri (legendaryLog) kalıyor.
     resultContent.innerHTML = `
       <div class="result-title ${won ? "win" : "lose"}">${won ? "🏆 Kazandın!" : "💀 Kaybettin!"}</div>
-      <p class="result-line">Senin Gücün: ${result.attackPower} &nbsp;|&nbsp; Rakip Gücü: ${result.defensePower}</p>
+      <p class="result-line">Senin Gücün: ${result.attackerPower ?? result.attackPower} &nbsp;|&nbsp; Rakip Gücü: ${result.defenderPower ?? result.defensePower}</p>
       ${result.legendaryLog.length ? `<div class="result-passive">${result.legendaryLog.map(x => `• ${x}`).join("<br>")}</div>` : ""}
     `;
   }
