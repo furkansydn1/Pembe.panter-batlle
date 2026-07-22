@@ -538,7 +538,14 @@ export function applyUpgradeToItem(item) {
 // ekranı" gerektirmiyor.
 export async function upgradeItem(slot, itemId) {
   if (!S.currentPlayerData) return null;
-  const target = getSlotInventory(slot).find(it => it.id === itemId);
+  // [BUG FIX] Kuşanılı eşya envanter dizisinde DEĞİL (equipment'ta) — bu yüzden
+  // getSlotInventory'de bulunamıyordu ve kuşanılı eşyaya "+Basma"da "bulunamadı"
+  // hatası çıkıyordu. Önce envanterde ara, yoksa kuşanılı slota düş. Fonksiyonun
+  // devamı (isEquipped → equipment güncelleme) zaten kuşanılıyı yükseltmeyi destekliyor.
+  let target = getSlotInventory(slot).find(it => it.id === itemId);
+  if (!target && S.currentPlayerData.equipment?.[slot]?.id === itemId) {
+    target = S.currentPlayerData.equipment[slot];
+  }
   if (!target) { alert("Eşya bulunamadı."); return null; }
   const check = canUpgradeItem(target, S.currentPlayerData);
   if (!check.ok) { alert(check.reason); return null; }
