@@ -1,5 +1,5 @@
 import { loadPlayersOnce } from "./auth-ui.js";
-import { XP_PER_QUEST_DAILY, XP_PER_QUEST_MONTHLY, XP_PER_QUEST_WEEKLY, getScrap } from "./core-config.js";
+import { getGold, getScrap } from "./core-config.js";
 import { bagGridEl, itemPopup, itemPopupInner, monthlyQuestsListEl, questsListEl, weeklyQuestsListEl } from "./dom.js";
 import { pick, pickSlotWeighted, randInt, rollDailyMarketItems } from "./events-badges.js";
 import { PLAYERS_COL, collection, db, doc, getDoc, getDocs, runTransaction, updateDoc } from "./firebase-setup.js";
@@ -14,15 +14,16 @@ import { QUEST_TEMPLATES } from "./worldboss.js";
 // ============================================================
 // HAFTALIK LİDERLİK TABLOSU
 // Her hafta Pazar 00:00'da (bir sonraki Pazar 00:00'a kadar) o haftanın
-// liderlik tablosu kapanır: 1. olan oyuncuya hurda + garanti nadir eşya
-// verilir ve haftalık şampiyonluk sayacı +1 olur, ardından HERKESİN puanı
-// sıfırlanır ve yeni hafta 0'dan başlar. Paylaşımlı tek bir gameMeta
-// dokümanı (weeklyLeaderboard) hangi haftanın işlendiğini tutar; hangi
-// client önce fark ederse sıfırlamayı o yapar, diğerleri "zaten işlendi"
-// deyip pas geçer (Kelle Avcısı ilanıyla aynı desen).
+// liderlik tablosu kapanır: 1. olan oyuncuya 1000 EXP + 1000 Altın +
+// garanti 1 efsanevi eşya verilir ve haftalık şampiyonluk sayacı +1 olur,
+// ardından HERKESİN puanı sıfırlanır ve yeni hafta 0'dan başlar. Paylaşımlı
+// tek bir gameMeta dokümanı (weeklyLeaderboard) hangi haftanın işlendiğini
+// tutar; hangi client önce fark ederse sıfırlamayı o yapar, diğerleri
+// "zaten işlendi" deyip pas geçer (Kelle Avcısı ilanıyla aynı desen).
 // ============================================================
 export const WEEKLY_LEADERBOARD_DOC_ID = "weeklyLeaderboard";
-export const WEEKLY_CHAMPION_HURDA_REWARD = 25;
+export const WEEKLY_CHAMPION_EXP_REWARD = 1000;
+export const WEEKLY_CHAMPION_GOLD_REWARD = 1000;
 
 // ============================================================
 // 1.LİK AVI
@@ -52,10 +53,12 @@ export const TARGET_LOCK_COOLDOWN_ATTACKS = 3;
 // düşük ihtimalle 1 Sıradan Kitap da veriyor; hurda/puan aralıkları da
 // UPGRADE_HURDA_BASE_COST/HURDA_COST_RARE_BOX ile orantılı şekilde hafifçe
 // yükseltildi (zorlaştıkça ödül daha dik artıyor).
+// [v2.2] Her tier'a EXP + Altın eklendi. Günlük görevler ortalama ~100 EXP
+// verecek şekilde ölçeklendi (kolay daha az, zor daha çok).
 export const QUEST_TIER_REWARDS = {
-  kolay: { scrapMin: 1, scrapMax: 2, pointsMin: 1, pointsMax: 2, itemChance: 0 },
-  orta: { scrapMin: 3, scrapMax: 5, pointsMin: 3, pointsMax: 6, itemChance: 0 },
-  zor: { scrapMin: 6, scrapMax: 9, pointsMin: 7, pointsMax: 12, itemChance: 0 }
+  kolay: { scrapMin: 1, scrapMax: 2, pointsMin: 1, pointsMax: 2, itemChance: 0, expMin: 60, expMax: 80, goldMin: 40, goldMax: 60 },
+  orta: { scrapMin: 3, scrapMax: 5, pointsMin: 3, pointsMax: 6, itemChance: 0, expMin: 100, expMax: 130, goldMin: 80, goldMax: 110 },
+  zor: { scrapMin: 6, scrapMax: 9, pointsMin: 7, pointsMax: 12, itemChance: 0, expMin: 150, expMax: 190, goldMin: 130, goldMax: 170 }
 };
 export const QUEST_TIER_LABELS = { kolay: "Kolay", orta: "Orta", zor: "Zor", efsanevi: "Efsanevi" };
 
@@ -74,18 +77,26 @@ export const QUEST_TIER_LABELS = { kolay: "Kolay", orta: "Orta", zor: "Zor", efs
 // materyal ihtiyacına (efsanevi/kabus tier Kitap) erken-orta oyun için makul
 // bir kaynak sağlıyor. Hurda/puan aralıkları da V2 fiyatlarına (Market'teki
 // Nadir Sandık 3000 Altın, upgrade maliyetleri vb.) göre hafifçe yükseltildi.
+// [v2.2] Her tier'a EXP + Altın eklendi. Haftalık görevler ortalama ~500
+// EXP verecek şekilde ölçeklendi.
 export const WEEKLY_TIER_REWARDS = {
-  orta: { scrapMin: 10, scrapMax: 15, pointsMin: 12, pointsMax: 18, itemChance: 0 },
-  zor: { scrapMin: 18, scrapMax: 26, pointsMin: 22, pointsMax: 32, itemChance: 0 }
+  orta: { scrapMin: 10, scrapMax: 15, pointsMin: 12, pointsMax: 18, itemChance: 0, expMin: 400, expMax: 450, goldMin: 350, goldMax: 420 },
+  zor: { scrapMin: 18, scrapMax: 26, pointsMin: 22, pointsMax: 32, itemChance: 0, expMin: 550, expMax: 650, goldMin: 480, goldMax: 580 }
 };
 // [V2 Faz 6] Aylık: en zor ("efsanevi" tier, ayın TEK garanti Efsanevi eşya
 // ödülü) artık ayrıca garanti 1 Mitik Kitap da veriyor — Mitik eşya
 // yükseltmenin (UPGRADE_HURDA_BASE_COST.mitik = 40 Hurda + Mitik Kitap)
 // TEK öngörülebilir/garanti kaynağı bu görev oluyor bilerek; Dünya Boss'u
 // (Faz 6, aynı fazda eklendi) düşük ihtimalli/şansa bağlı ikinci kaynak.
+// [v2.2] Her tier'a EXP + Altın eklendi. "efsanevi" tier'ın (MONTHLY_HARD_TEMPLATE,
+// ayın tek en zor görevi) `legendary:true` olması gerçekten garanti bir
+// EFSANEVİ (legendary) eşya vermesini sağlar — önceden `rareItem:true` sadece
+// "nadir" tier eşya veriyordu, yorum "efsanevi eşya" dese de kod öyle
+// değildi; artık düzeltildi. Diğer aylık görev ("zor" tier) efsanevi eşya
+// vermez, sadece exp/altın/hurda/puan verir.
 export const MONTHLY_TIER_REWARDS = {
-  zor: { scrapMin: 34, scrapMax: 48, pointsMin: 40, pointsMax: 58, itemChance: 0 },
-  efsanevi: { scrapMin: 42, scrapMax: 62, pointsMin: 48, pointsMax: 68, itemChance: 0, rareItem: true }
+  zor: { scrapMin: 34, scrapMax: 48, pointsMin: 40, pointsMax: 58, itemChance: 0, expMin: 700, expMax: 900, goldMin: 650, goldMax: 850 },
+  efsanevi: { scrapMin: 42, scrapMax: 62, pointsMin: 48, pointsMax: 68, itemChance: 0, legendary: true, expMin: 1000, expMax: 1500, goldMin: 1000, goldMax: 1300 }
 };
 
 // Hedefler oyunun gerçek temposuna göre kasıtlı olarak zorlaştırıldı: kutu 4 saatte
@@ -119,7 +130,10 @@ export function rollQuestRewardGeneric(table, tier) {
   return {
     scrap: randInt(r.scrapMin, r.scrapMax),
     points: randInt(r.pointsMin, r.pointsMax),
-    // rareItem (aylık en zor görev) → garanti nadir eşya; yoksa itemChance'a bak
+    exp: randInt(r.expMin, r.expMax),
+    gold: randInt(r.goldMin, r.goldMax),
+    // rareItem (eski, artık kullanılmıyor) → garanti nadir eşya; legendary (aylık en zor
+    // görev) → garanti EFSANEVİ eşya; yoksa itemChance'a bak
     item: r.rareItem ? true : (!r.legendary && Math.random() < r.itemChance),
     legendary: !!r.legendary,
     bookTier: rewardBook ? r.bookTier : null,
@@ -134,7 +148,8 @@ export function buildPeriodQuest(template, idx, rewardTable, prefix) {
   return {
     id: `${prefix}${idx}_${template.type}`, type: template.type, tier: template.tier, icon: template.icon,
     label, target: template.target, progress: 0, completed: false, claimed: false,
-    rewardScrap: reward.scrap, rewardPoints: reward.points, rewardItem: reward.item, rewardLegendary: reward.legendary,
+    rewardScrap: reward.scrap, rewardPoints: reward.points, rewardExp: reward.exp, rewardGold: reward.gold,
+    rewardItem: reward.item, rewardLegendary: reward.legendary,
     rewardBookTier: reward.bookTier, rewardBookAmount: reward.bookAmount
   };
 }
@@ -178,8 +193,10 @@ export function shuffleArr(arr) { return [...arr].sort(() => Math.random() - 0.5
 // [V2 Faz 6] Ödül tabloları (WEEKLY_TIER_REWARDS/MONTHLY_TIER_REWARDS, Kitap
 // ödülü eklendi) değiştiği için versiyon "v2" → "v3" yükseltildi; aksi halde
 // mevcut oyuncular eski (kitapsız) ödüllerini korurdu.
-export const WEEKLY_QUEST_VERSION = "v4";
-export const MONTHLY_QUEST_VERSION = "v4";
+// [v2.2] Exp/Altın ödülleri + aylık en zor görevin garanti efsanevi eşya
+// vermesi eklendiği için "v4" → "v5" yükseltildi.
+export const WEEKLY_QUEST_VERSION = "v5";
+export const MONTHLY_QUEST_VERSION = "v5";
 
 export async function ensureWeeklyQuestsForThisWeek(data) {
   const wk = `${weekIdStr()}#${WEEKLY_QUEST_VERSION}`;
@@ -269,11 +286,15 @@ export async function ensureWeeklyLeaderboardReset() {
       const hasWinner = (winner.data.points || 0) > 0;
 
       if (hasWinner) {
-        const itemGrant = buildItemGrantPayloadGeneric(winner.data, "nadir");
+        const itemGrant = buildItemGrantPayloadGeneric(winner.data, "efsanevi");
         delete itemGrant._grantedItem;
+        const xpResult = applyXpGain(winner.data, WEEKLY_CHAMPION_EXP_REWARD);
         tx.update(winner.ref, {
           ...itemGrant,
-          scrap: getScrap(winner.data) + WEEKLY_CHAMPION_HURDA_REWARD,
+          gold: getGold(winner.data) + WEEKLY_CHAMPION_GOLD_REWARD,
+          level: xpResult.level,
+          xp: xpResult.xp,
+          statPoints: xpResult.statPoints,
           weeklyChampionCount: (winner.data.weeklyChampionCount || 0) + 1,
           points: 0
         });
@@ -307,6 +328,8 @@ export function rollQuestReward(tier) {
   return {
     scrap: randInt(r.scrapMin, r.scrapMax),
     points: randInt(r.pointsMin, r.pointsMax),
+    exp: randInt(r.expMin, r.expMax),
+    gold: randInt(r.goldMin, r.goldMax),
     item: Math.random() < r.itemChance,
     bookTier: rewardBook ? r.bookTier : null,
     bookAmount: rewardBook ? 1 : 0
@@ -324,7 +347,8 @@ export function buildQuestFromTemplate(template, idx, otherPlayers) {
     return {
       id: `q${idx}_${template.type}`, type: template.type, tier: template.tier, icon: template.icon,
       label, target: template.target, progress: 0, completed: false, claimed: false,
-      rewardScrap: reward.scrap, rewardPoints: reward.points, rewardItem: reward.item,
+      rewardScrap: reward.scrap, rewardPoints: reward.points, rewardExp: reward.exp, rewardGold: reward.gold,
+      rewardItem: reward.item,
       rewardBookTier: reward.bookTier, rewardBookAmount: reward.bookAmount,
       targetPlayerId: t.id, targetPlayerName: t.nick
     };
@@ -338,7 +362,8 @@ export function buildQuestFromTemplate(template, idx, otherPlayers) {
     progress: template.autoComplete ? template.target : 0,
     completed: !!template.autoComplete,
     claimed: false,
-    rewardScrap: reward.scrap, rewardPoints: reward.points, rewardItem: reward.item,
+    rewardScrap: reward.scrap, rewardPoints: reward.points, rewardExp: reward.exp, rewardGold: reward.gold,
+    rewardItem: reward.item,
     rewardBookTier: reward.bookTier, rewardBookAmount: reward.bookAmount,
     targetPlayerId: null, targetPlayerName: null
   };
@@ -484,7 +509,7 @@ export function questCardHtml(q) {
         <div class="quest-progress-track"><div class="quest-progress-fill" style="width:${pct}%"></div></div>
         <div class="quest-bottom">
           <span class="quest-progress-text">${q.progress || 0}/${q.target}</span>
-          <span class="quest-reward">✨${q.rewardScrap} · ⭐${q.rewardPoints}${q.rewardItem ? " · 🔷 Nadir Eşya" : ""}${q.rewardLegendary ? " · 🌟 Efsanevi Eşya" : ""}${q.rewardBookTier ? ` · ${BOOK_TIER_ICONS[q.rewardBookTier]} ${q.rewardBookAmount > 1 ? q.rewardBookAmount + "x " : ""}${BOOK_TIER_NAMES[q.rewardBookTier]}` : ""}</span>
+          <span class="quest-reward">🧪${q.rewardExp || 0} XP · 🪙${q.rewardGold || 0} · ✨${q.rewardScrap} · ⭐${q.rewardPoints}${q.rewardItem ? " · 🔷 Nadir Eşya" : ""}${q.rewardLegendary ? " · 🌟 Efsanevi Eşya" : ""}${q.rewardBookTier ? ` · ${BOOK_TIER_ICONS[q.rewardBookTier]} ${q.rewardBookAmount > 1 ? q.rewardBookAmount + "x " : ""}${BOOK_TIER_NAMES[q.rewardBookTier]}` : ""}</span>
           ${q.claimed
             ? `<span class="quest-claimed-tag">✅ Alındı</span>`
             : `<button class="btn-mini nadir-mini quest-claim-btn" data-id="${q.id}" ${readyToClaim ? "" : "disabled"}>Ödülü Al</button>`}
@@ -519,14 +544,13 @@ export async function claimQuest(period, questId) {
 
   document.querySelectorAll(".quest-claim-btn").forEach(b => b.disabled = true);
 
-  // [V2 Faz 3] Görev ödülü XP: periyoda göre (günlük/haftalık/aylık) artan miktarda.
-  const questXpAmount = period === "monthlyQuests" ? XP_PER_QUEST_MONTHLY
-    : period === "weeklyQuests" ? XP_PER_QUEST_WEEKLY
-    : XP_PER_QUEST_DAILY;
-  const questXpResult = applyXpGain(S.currentPlayerData, questXpAmount);
+  // [v2.2] Görev ödülü XP + Altın artık her görevde ayrı ayrı, zorluk tier'ına
+  // göre üretiliyor (bkz. QUEST_TIER_REWARDS/WEEKLY_TIER_REWARDS/MONTHLY_TIER_REWARDS).
+  const questXpResult = applyXpGain(S.currentPlayerData, quest.rewardExp || 0);
 
   let payload = {
     scrap: getScrap(S.currentPlayerData) + (quest.rewardScrap || 0),
+    gold: getGold(S.currentPlayerData) + (quest.rewardGold || 0),
     points: (S.currentPlayerData.points || 0) + (quest.rewardPoints || 0),
     level: questXpResult.level,
     xp: questXpResult.xp,

@@ -156,8 +156,8 @@ export function renderWeeklyLeaderboardInfo() {
   const champion = S.weeklyLeaderboardMeta?.lastWinnerName;
   const championPts = S.weeklyLeaderboardMeta?.lastWinnerPoints;
   weeklyLeaderboardInfoEl.innerHTML = `
-    ${champion ? `<div class="wl-champion">🏆 Geçen haftanın şampiyonu: <b>${champion}</b> (${championPts} puan) — ödül olarak hurda + garanti nadir eşya kazandı!</div>` : ""}
-    <div class="wl-countdown">⏳ Liderlik tablosu her Pazar 00:00'da sıfırlanır, 1. olan hurda + garanti nadir eşya kazanır. Kalan süre: <b>${formatRemaining(msLeft)}</b></div>
+    ${champion ? `<div class="wl-champion">🏆 Geçen haftanın şampiyonu: <b>${champion}</b> (${championPts} puan) — ödül olarak 1000 EXP + 1000 Altın + garanti 1 Efsanevi Eşya kazandı!</div>` : ""}
+    <div class="wl-countdown">⏳ Liderlik tablosu her Pazar 00:00'da sıfırlanır, 1. olan 1000 EXP + 1000 Altın + garanti 1 Efsanevi Eşya kazanır. Kalan süre: <b>${formatRemaining(msLeft)}</b></div>
   `;
 }
 setInterval(renderWeeklyLeaderboardInfo, 60000);
