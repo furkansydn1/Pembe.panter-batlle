@@ -39,13 +39,16 @@ export const META_COL = "gameMeta";
 export const BOUNTY_DOC_ID = "bounty";
 // [V2 Faz 6] V2 ekonomisine göre alt sınır eklendi. Kelle Avcısı TAMAMEN
 // oyuncular arası (peer-funded) bir sistem — ilan sahibi kendi hurdasını
-// koyar, tavan zaten o oyuncunun bakiyesiyle doğal olarak sınırlanıyor, ayrı
-// bir üst sınıra gerek yok. Ama alt sınır hiç yoktu (sadece "amount < 1"
-// kontrolü): aynı anda sadece TEK bir aktif ilan olabildiği için (paylaşımlı
-// gameMeta/bounty dokümanı) 1 hurdalık anlamsız bir ilan, herkesin ortak
-// kullandığı o tek slotu değersizce işgal edebiliyordu. Eşik, yeni
-// WEEKLY_TIER_REWARDS.orta.scrapMin (18) ile aynı mertebeye çekildi.
+// koyar, tavan zaten o oyuncunun bakiyesiyle doğal olarak sınırlanıyordu. Ama
+// alt sınır hiç yoktu (sadece "amount < 1" kontrolü): aynı anda sadece TEK
+// bir aktif ilan olabildiği için (paylaşımlı gameMeta/bounty dokümanı) 1
+// hurdalık anlamsız bir ilan, herkesin ortak kullandığı o tek slotu
+// değersizce işgal edebiliyordu. Eşik, yeni WEEKLY_TIER_REWARDS.orta.scrapMin
+// (18) ile aynı mertebeye çekildi.
 export const BOUNTY_MIN_AMOUNT = 15;
+// [v2.2] Üst sınır eklendi: tek ortak ilan slotunun çok zengin bir oyuncu
+// tarafından aşırı yüksek bir ödülle uzun süre "kilitlenmesini" önlemek için.
+export const BOUNTY_MAX_AMOUNT = 100;
 
 
 
@@ -237,6 +240,9 @@ export function renderBountyForm() {
   if (!bountyTargetSelect || !S.currentPlayerId) return;
   const options = S.allPlayers.filter(p => p.id !== S.currentPlayerId);
   bountyTargetSelect.innerHTML = options.map(p => `<option value="${p.id}">${p.nick}</option>`).join("");
+  if (bountyAmountInput) {
+    bountyAmountInput.max = String(BOUNTY_MAX_AMOUNT);
+  }
 }
 
 export function renderBounty() {
@@ -262,6 +268,7 @@ if (placeBountyBtn) {
 
     if (!targetPlayer) { bountyStatus.textContent = "Bir hedef seç."; return; }
     if (!amount || amount < BOUNTY_MIN_AMOUNT) { bountyStatus.textContent = `En az ${BOUNTY_MIN_AMOUNT} hurda koymalısın.`; return; }
+    if (amount > BOUNTY_MAX_AMOUNT) { bountyStatus.textContent = `En fazla ${BOUNTY_MAX_AMOUNT} hurda koyabilirsin.`; return; }
     if (getScrap(S.currentPlayerData) < amount) { bountyStatus.textContent = "Yeterli hurdan yok."; return; }
     if (S.currentBounty && S.currentBounty.active) { bountyStatus.textContent = "Zaten aktif bir ödül ilanı var."; return; }
 
@@ -283,6 +290,7 @@ if (placeBountyBtn) {
         const freshPlayer = playerSnap.data();
         if (freshBounty && freshBounty.active) throw new Error("Zaten aktif bir ödül ilanı var.");
         if (amount < BOUNTY_MIN_AMOUNT) throw new Error(`En az ${BOUNTY_MIN_AMOUNT} hurda koymalısın.`);
+        if (amount > BOUNTY_MAX_AMOUNT) throw new Error(`En fazla ${BOUNTY_MAX_AMOUNT} hurda koyabilirsin.`);
         if (getScrap(freshPlayer) < amount) throw new Error("Yeterli hurdan yok.");
 
         tx.update(playerRef, { scrap: getScrap(freshPlayer) - amount });
@@ -299,7 +307,7 @@ if (placeBountyBtn) {
       bountyStatus.textContent = "Ödül ilan edildi!";
       bountyAmountInput.value = "";
     } catch (e) {
-      bountyStatus.textContent = (e.message === "Zaten aktif bir ödül ilanı var." || e.message === "Yeterli hurdan yok." || e.message === `En az ${BOUNTY_MIN_AMOUNT} hurda koymalısın.`)
+      bountyStatus.textContent = (e.message === "Zaten aktif bir ödül ilanı var." || e.message === "Yeterli hurdan yok." || e.message === `En az ${BOUNTY_MIN_AMOUNT} hurda koymalısın.` || e.message === `En fazla ${BOUNTY_MAX_AMOUNT} hurda koyabilirsin.`)
         ? e.message
         : ("Bir hata oldu: " + e.message);
     } finally {
