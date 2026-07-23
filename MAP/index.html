@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Pembe Panterler — Unutulmuş Orman</title>
-<link rel="stylesheet" href="css/style.css?v=16">
+<link rel="stylesheet" href="css/style.css?v=17">
 </head>
 <body>
 
@@ -81,6 +81,17 @@
       <input id="zoomSlider" type="range" min="300" max="580" value="400">
       <div class="settings-val" id="zoomVal">Orta</div>
       <div class="settings-hint">Kaydır — herkes kendi keyfine göre yakınlaştırır. Tercihin kaydedilir.</div>
+
+      <div class="settings-divider"></div>
+
+      <div class="settings-title">Efekt Sesi</div>
+      <div class="sfx-row">
+        <button id="sfxMuteBtn" type="button" aria-label="Sesi kapat/aç">🔊</button>
+        <input id="sfxVolumeSlider" type="range" min="0" max="100" value="100">
+      </div>
+      <div class="settings-val" id="sfxVolumeVal">%100</div>
+      <div class="settings-hint">Kılıç/adım/ölüm sesleri. Kısarsan veya kapatırsan tercihin kaydedilir.</div>
+
       <button id="settingsClose">Kapat</button>
     </div>
   </div>
@@ -110,24 +121,24 @@
 <!-- SIRALAMA ÖNEMLİ: dosyalar yukarıdan aşağı bu sırayla yüklenir, sırayı bozma!
      13-account-bridge: kazançları ana oyuna taşır · 14-hero-stats: hesap
      statlarını haritaya uygular · 15-hud: HUD canlandırma (bar, seviye, isim). -->
-<script src="js/00-core.js?v=16"></script>
-<script src="js/01-assets.js?v=16"></script>
-<script src="js/02-world.js?v=16"></script>
-<script src="js/03-player.js?v=16"></script>
-<script src="js/04-economy.js?v=16"></script>
-<script src="js/05-effects.js?v=16"></script>
-<script src="js/06-orc.js?v=16"></script>
-<script src="js/07-soldier.js?v=16"></script>
-<script src="js/08-goblin.js?v=16"></script>
-<script src="js/06b-archer.js?v=16"></script>
-<script src="js/09-wave.js?v=16"></script>
-<script src="js/10-input.js?v=16"></script>
-<script src="js/11-render.js?v=16"></script>
-<script src="js/13-account-bridge.js?v=16"></script>
-<script src="js/14-hero-stats.js?v=16"></script>
-<script src="js/12-main.js?v=16"></script>
-<script src="js/15-hud.js?v=16"></script>
-<script src="js/16-settings.js?v=16"></script>
+<script src="js/00-core.js?v=17"></script>
+<script src="js/01-assets.js?v=17"></script>
+<script src="js/02-world.js?v=17"></script>
+<script src="js/03-player.js?v=17"></script>
+<script src="js/04-economy.js?v=17"></script>
+<script src="js/05-effects.js?v=17"></script>
+<script src="js/06-orc.js?v=17"></script>
+<script src="js/07-soldier.js?v=17"></script>
+<script src="js/08-goblin.js?v=17"></script>
+<script src="js/06b-archer.js?v=17"></script>
+<script src="js/09-wave.js?v=17"></script>
+<script src="js/10-input.js?v=17"></script>
+<script src="js/11-render.js?v=17"></script>
+<script src="js/13-account-bridge.js?v=17"></script>
+<script src="js/14-hero-stats.js?v=17"></script>
+<script src="js/12-main.js?v=17"></script>
+<script src="js/15-hud.js?v=17"></script>
+<script src="js/16-settings.js?v=17"></script>
 
 <!-- ============ MOBİL: TAM EKRAN + YATAY KİLİT (v2 — inatçı sürüm) ============
 ESKİ SORUN: { once:true } yüzünden ilk deneme reddedilirse bir daha ASLA
