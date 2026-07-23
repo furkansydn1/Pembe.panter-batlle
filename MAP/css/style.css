@@ -43,7 +43,7 @@ canvas{
 /* ============================================================
    ORTAK PLAKA — koyu cam + gravür köşe çentikleri
    ============================================================ */
-.char-frame, .resource-panel, .fps-badge, .clear-panel{
+.hud-panel, .fps-badge, .clear-panel{
   background: linear-gradient(180deg, rgba(26,27,34,.95), rgba(18,19,25,.95)); /* FPS FIX: blur kaldırıldı, opaklık artırıldı (cam his korundu) */
   border: 1px solid var(--etch);
   border-radius: 7px;
@@ -54,12 +54,12 @@ canvas{
      üstünde saniyede 60 kez blur hesabı mobilde ana FPS katiliydi. */
   position:relative;
 }
-.char-frame::before, .resource-panel::before{
-  content:""; position:absolute; top:-3px; left:-3px; width:9px; height:9px;
+.hud-panel::before{
+  content:""; position:absolute; top:-3px; left:-3px; width:8px; height:8px;
   border-top:1px solid var(--gold); border-left:1px solid var(--gold); opacity:.55;
 }
-.char-frame::after, .resource-panel::after{
-  content:""; position:absolute; bottom:-3px; right:-3px; width:9px; height:9px;
+.hud-panel::after{
+  content:""; position:absolute; bottom:-3px; right:-3px; width:8px; height:8px;
   border-bottom:1px solid var(--gold); border-right:1px solid var(--gold); opacity:.55;
 }
 
@@ -77,80 +77,65 @@ canvas{
 #backToGameBtn:hover{ border-color:var(--gold); }
 
 /* ============================================================
-   SOL ÜST — KAHRAMAN PLAKASI
+   HUD PANELİ — tek parça (kahraman satırı üstte, kaynak satırı altta)
+   v3: eski char-frame + resource-panel ikilisi tek kompakt panelde
+   birleşti, ikonlar kaldırıldı, panel boyu ~%55 küçüldü.
    ============================================================ */
-.char-frame{
+.hud-panel{
   position:absolute;
-  top:calc(10px + env(safe-area-inset-top, 0px));
-  left:calc(10px + env(safe-area-inset-left, 0px));
-  display:flex; align-items:center; gap:11px;
-  padding:8px 14px 8px 9px;
+  top:calc(8px + env(safe-area-inset-top, 0px));
+  left:calc(7px + env(safe-area-inset-left, 0px));
+  right:calc(7px + env(safe-area-inset-right, 0px));
+  padding:5px 8px;
   pointer-events:none;
 }
+.hud-top{ display:flex; align-items:center; gap:6px; }
 .seal{
-  width:38px; height:38px; flex:none;
+  width:20px; height:20px; flex:none;
   border-radius:50%;
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-  line-height:1; gap:1px;
+  display:flex; align-items:center; justify-content:center;
   background: radial-gradient(circle at 35% 30%, #2a2d38, #14161d 70%);
   border:1px solid var(--etch);
-  box-shadow: inset 0 0 8px rgba(0,0,0,.65), 0 0 10px rgba(216,178,106,.12);
-}
-.seal small{
-  font-family:var(--utility); font-size:6.5px; letter-spacing:.2em; color:var(--ash);
+  box-shadow: inset 0 0 6px rgba(0,0,0,.65), 0 0 8px rgba(216,178,106,.12);
 }
 .seal span{
-  font-family:var(--serif); font-size:15px; color:var(--gold);
+  font-family:var(--serif); font-size:9px; color:var(--gold);
 }
-.char-bars{ display:flex; flex-direction:column; gap:5px; min-width:186px; }
+.char-bars{ display:flex; flex-direction:column; gap:2px; flex:1; min-width:0; }
 .char-name-row{
-  display:flex; justify-content:space-between; align-items:baseline; gap:14px;
+  display:flex; justify-content:space-between; align-items:baseline; gap:10px;
 }
 .char-name{
-  font-family:var(--serif); font-size:12px; letter-spacing:.08em;
-  color:var(--bone);
+  font-family:var(--serif); font-size:9px; letter-spacing:.05em;
+  color:var(--bone); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
 .char-points{
-  font-family:var(--utility); font-size:8px; letter-spacing:.18em; color:var(--ash);
+  font-family:var(--utility); font-size:6.5px; letter-spacing:.1em; color:var(--ash);
+  flex:none;
 }
 .char-points b{
-  font-family:var(--serif); font-size:12px; letter-spacing:0;
-  color:var(--gold); margin-left:3px; font-weight:400;
+  font-family:var(--serif); font-size:9px; letter-spacing:0;
+  color:var(--gold); margin-left:2px; font-weight:400;
 }
 
 /* ---------- CAN BARI ---------- */
 .bar{
-  position:relative; height:15px; overflow:hidden;
-  border-radius:5px;
+  position:relative; height:5px; overflow:hidden;
+  border-radius:3px;
   background: rgba(0,0,0,.55);
   border:1px solid rgba(255,255,255,.08);
-  box-shadow: inset 0 1px 4px rgba(0,0,0,.8);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.8);
 }
 .bar-fill{
   position:absolute; inset:0 auto 0 0;
-  border-radius:5px;
+  border-radius:3px;
   background: linear-gradient(90deg, var(--blood-2), var(--blood-1));
-  box-shadow: 0 0 8px rgba(217,75,63,.45);
+  box-shadow: 0 0 6px rgba(217,75,63,.45);
   transition: width .25s ease;
 }
-.hp-bar::after{
-  content:""; position:absolute; inset:0; pointer-events:none;
-  background: repeating-linear-gradient(90deg,
-    transparent 0, transparent calc(25% - 1px),
-    rgba(0,0,0,.35) calc(25% - 1px), rgba(0,0,0,.35) 25%);
-}
-.bar-text{
-  position:absolute; inset:0; z-index:2;
-  display:flex; align-items:center; justify-content:center; gap:3px;
-  color:var(--bone); text-shadow: 0 1px 2px rgba(0,0,0,.95);
-  font-family:var(--serif); font-size:10px;
-}
-.bar-text small{
-  font-family:var(--utility); font-size:7px; letter-spacing:.2em; color:var(--ash);
-  margin-right:2px;
-}
-.bar-text b{ font-weight:400; }
-.bar-sep{ opacity:.45; margin:0 1px; }
+/* Sayısal CAN/EXP okuması kaldırıldı (kompakt HUD) — hpLabel/expCurLabel
+   vb. hâlâ DOM'da ve JS'ten güncelleniyor, sadece görsel olarak gizli. */
+.bar-text{ display:none; }
 
 /* düşük can uyarısı (15-hud.js .low sınıfını ekler) */
 .hp-bar.low .bar-fill{ animation: hpPulse .8s ease-in-out infinite; }
@@ -160,14 +145,12 @@ canvas{
 }
 
 /* ---------- EXP BARI (seviye ilerlemesi — altın ışıma) ---------- */
-.exp-bar{ height:10px; }
+.exp-bar{ height:3px; }
 .exp-bar .bar-fill{
   background: linear-gradient(90deg, var(--gold-deep), var(--gold));
-  box-shadow: 0 0 8px rgba(216,178,106,.4);
+  box-shadow: 0 0 6px rgba(216,178,106,.4);
   transition: width .45s ease;
 }
-.exp-bar .bar-text{ font-size:8px; }
-.exp-bar .bar-text small{ font-size:6.5px; }
 .exp-bar.full .bar-fill{ animation: expGleam 1.6s ease-in-out infinite; }
 @keyframes expGleam{
   0%,100%{ filter:brightness(1); }
@@ -175,32 +158,25 @@ canvas{
 }
 
 /* ============================================================
-   SAĞ ÜST — KAYNAK DEFTERİ (Altın · Kitap · Hurda · EXP)
+   KAYNAK SATIRI (Altın · Kitap · Hurda · Nadir · Sıradan)
+   İkonlar kaldırıldı — sadece rakam + küçük metin etiket.
    ============================================================ */
-.resource-panel{
-  position:absolute;
-  top:calc(10px + env(safe-area-inset-top, 0px));
-  right:calc(10px + env(safe-area-inset-right, 0px));
-  display:flex; align-items:stretch;
-  padding:6px 4px;
-  pointer-events:none;
+.hud-resources{
+  display:flex; justify-content:space-between;
+  margin-top:4px; padding-top:3px;
+  border-top:1px solid var(--etch-dim);
 }
 .res-cell{
   display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:2px; padding:2px 11px; min-width:46px;
-}
-.res-cell + .res-cell{ border-left:1px solid var(--etch-dim); }
-.res-cell svg{
-  width:13px; height:13px;
-  stroke:var(--gold); fill:none; stroke-width:1.5;
-  stroke-linecap:round; stroke-linejoin:round; opacity:.9;
+  flex:1;
 }
 .res-cell b{
-  font-family:var(--serif); font-weight:400; font-size:14px; line-height:1;
+  display:block;
+  font-family:var(--serif); font-weight:400; font-size:9px; line-height:1;
   color:var(--bone); font-variant-numeric: tabular-nums;
 }
 .res-cell small{
-  font-family:var(--utility); font-size:7px; letter-spacing:.2em; color:var(--ash);
+  font-family:var(--utility); font-size:5.5px; letter-spacing:.06em; color:var(--ash);
 }
 
 /* değer değişince altın "pıt" (15-hud.js .bump ekler) */
@@ -355,16 +331,14 @@ canvas{
 
 /* dar ekranlar */
 @media (max-width: 640px){
-  .char-bars{ min-width:140px; }
-  .res-cell{ padding:2px 8px; min-width:38px; }
-  .res-cell b{ font-size:12px; }
   .fps-badge{ display:none; }
 }
 
 /* ============================================================
    [DİKEY ENTEGRASYON] PORTRAIT DÜZEN + AUTO-ATTACK + AYAR PANELİ
-   Orijinal HUD (char-frame / resource-panel / bar id'leri) korunur —
-   sadece dikey ekrana güzelce oturması için yeniden konumlandırılır.
+   v3: hud-panel zaten tam genişlik + safe-area ile geliyor, ayrı bir
+   yeniden-konumlandırmaya gerek kalmadı. Sadece FPS rozeti panel altına
+   kayıyor (panel küçüldüğü için değer düştü: 104px → 46px).
    ============================================================ */
 #gameWrap{ position:fixed; inset:0; width:100vw; height:100vh; }
 canvas{
@@ -374,25 +348,8 @@ canvas{
   background:#141018;
 }
 
-/* --- Üst şerit: kahraman plakası tam genişlik, barlar esner --- */
-.char-frame{
-  left:calc(8px + env(safe-area-inset-left, 0px));
-  right:calc(8px + env(safe-area-inset-right, 0px));
-  top:calc(8px + env(safe-area-inset-top, 0px));
-  padding:7px 12px 7px 8px;
-}
-.char-bars{ min-width:0; flex:1; }
-
-/* --- Kaynak defteri: plakanın hemen altında, sağa yaslı --- */
-.resource-panel{
-  top:calc(60px + env(safe-area-inset-top, 0px));
-  right:calc(8px + env(safe-area-inset-right, 0px));
-  padding:5px 3px;
-}
-.res-cell{ padding:2px 9px; min-width:40px; }
-
 /* --- FPS rozeti: sol üst köşeye (alt köşe joystick alanıyla çakışmasın) --- */
-.fps-badge{ bottom:auto; top:calc(104px + env(safe-area-inset-top, 0px)); left:calc(8px + env(safe-area-inset-left,0px)); }
+.fps-badge{ bottom:auto; top:calc(46px + env(safe-area-inset-top, 0px)); left:calc(8px + env(safe-area-inset-left,0px)); }
 
 /* --- İpucu kutusu biraz yukarı (safe-area) --- */
 .hint-box{ bottom:calc(10px + env(safe-area-inset-bottom, 0px)); }
@@ -499,13 +456,13 @@ canvas{
   left:calc(8px + env(safe-area-inset-left, 0px));
   transform:none;               /* ortalama iptal */
   z-index:60;                   /* HUD plakasının üstünde */
-  width:40px; height:40px; padding:0;
+  width:30px; height:30px; padding:0;
   display:flex; align-items:center; justify-content:center;
-  font-size:20px; line-height:1;
+  font-size:15px; line-height:1;
   background:radial-gradient(circle at 35% 30%, #2a2d38, #14161d 75%);
   box-shadow:0 4px 12px rgba(0,0,0,.55);
 }
-/* HUD plakasını butona yer açacak kadar sağa kaydır (çakışmasın) */
-.char-frame{
-  left:calc(56px + env(safe-area-inset-left, 0px));
+/* HUD panelini butona yer açacak kadar sağa kaydır (çakışmasın) */
+.hud-panel{
+  left:calc(42px + env(safe-area-inset-left, 0px));
 }
