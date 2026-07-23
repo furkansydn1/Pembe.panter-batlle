@@ -453,6 +453,36 @@ canvas{
 #zoomSlider::-moz-range-thumb{ width:26px; height:26px; border:none; border-radius:50%; background:var(--gold); }
 .settings-val{ margin-top:12px; font-family:var(--serif); color:var(--bone); font-size:15px; }
 .settings-hint{ margin-top:8px; font-size:9.5px; letter-spacing:.06em; color:var(--ash); line-height:1.5; }
+
+/* --- Ayarlar panelindeki bölümler arası ince ayraç --- */
+.settings-divider{
+  height:1px; margin:18px 0;
+  background:linear-gradient(90deg, transparent, var(--etch), transparent);
+}
+
+/* --- Efekt Sesi: mute düğmesi + kısma çubuğu --- */
+.sfx-row{ display:flex; align-items:center; gap:12px; }
+#sfxMuteBtn{
+  flex:0 0 auto; width:38px; height:38px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  background:radial-gradient(circle at 35% 30%, #2a2d38, #14161d 75%);
+  color:var(--gold); border:1px solid var(--etch); font-size:16px;
+  box-shadow:0 3px 10px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.06);
+}
+#sfxMuteBtn:active{ transform:translateY(1px); }
+#sfxMuteBtn.muted{ color:var(--ash); }
+#sfxVolumeSlider{
+  flex:1 1 auto;
+  -webkit-appearance:none; appearance:none; height:6px; border-radius:4px;
+  background:#2a2c36; outline:none;
+}
+#sfxVolumeSlider::-webkit-slider-thumb{
+  -webkit-appearance:none; width:22px; height:22px; border-radius:50%;
+  background:var(--gold); border:2px solid rgba(255,255,255,.2);
+  box-shadow:0 2px 6px rgba(0,0,0,.5);
+}
+#sfxVolumeSlider::-moz-range-thumb{ width:22px; height:22px; border:none; border-radius:50%; background:var(--gold); }
+
 #settingsClose{
   margin-top:20px; padding:12px 32px; border:none; border-radius:8px;
   background:var(--gold); color:#1a1206; font-weight:700; font-size:14px; letter-spacing:.04em;
