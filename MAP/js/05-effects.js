@@ -48,6 +48,62 @@ const SFX_PATHS = {
 };
 let audioCtx = null;
 const sfxBuffers = {};
+
+// ---------- SES SEVİYESİ / SESSİZE ALMA (oyuncu tercihi, kalıcı) ----------
+// DİKKAT: yukarıdaki JUICE.sfx bir GELİŞTİRİCİ anahtarı (FPS testi için tüm
+// sesleri komple keser). Buradaki sfxVolume/sfxMuted ise OYUNCUNUN ayarlar
+// panelinden kendi seçtiği ses tercihi — MAP kendi localStorage'ında tutar,
+// Ana Oyun'un soundOn ayarından bağımsızdır (iki alt sistem ayrı çalışıyor).
+const SFX_VOLUME_KEY = "ppbMapSfxVolume";
+const SFX_MUTED_KEY = "ppbMapSfxMuted";
+const _savedSfxVol = parseFloat(localStorage.getItem(SFX_VOLUME_KEY));
+JUICE.sfxVolume = Number.isFinite(_savedSfxVol) ? Math.min(1, Math.max(0, _savedSfxVol)) : 1;
+JUICE.sfxMuted = localStorage.getItem(SFX_MUTED_KEY) === "1";
+
+function setSfxVolume(v) {
+  JUICE.sfxVolume = Math.min(1, Math.max(0, v));
+  localStorage.setItem(SFX_VOLUME_KEY, String(JUICE.sfxVolume));
+}
+function setSfxMuted(m) {
+  JUICE.sfxMuted = !!m;
+  localStorage.setItem(SFX_MUTED_KEY, JUICE.sfxMuted ? "1" : "0");
+}
+
+// Ayarlar panelindeki mute düğmesi + slider'ı bağlar. Panel bu sayfada yoksa
+// (ör. ileride başka bir HTML'e taşınırsa) sessizce çıkar, hata vermez.
+function initSfxSettingsUI() {
+  const btn = document.getElementById("sfxMuteBtn");
+  const slider = document.getElementById("sfxVolumeSlider");
+  const label = document.getElementById("sfxVolumeVal");
+  if (!btn || !slider || !label) return;
+
+  function refreshUI() {
+    const silent = JUICE.sfxMuted || JUICE.sfxVolume <= 0;
+    btn.textContent = silent ? "🔇" : "🔊";
+    btn.classList.toggle("muted", silent);
+    slider.value = Math.round(JUICE.sfxVolume * 100);
+    label.textContent = JUICE.sfxMuted ? "Kapalı" : `%${Math.round(JUICE.sfxVolume * 100)}`;
+  }
+
+  slider.addEventListener("input", () => {
+    setSfxVolume(slider.value / 100);
+    if (JUICE.sfxMuted && JUICE.sfxVolume > 0) setSfxMuted(false); // kaydırınca otomatik sesi aç
+    refreshUI();
+  });
+
+  btn.addEventListener("click", () => {
+    setSfxMuted(!JUICE.sfxMuted);
+    refreshUI();
+  });
+
+  refreshUI();
+}
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initSfxSettingsUI);
+} else {
+  initSfxSettingsUI(); // DOM zaten hazırsa (script body sonunda) direkt çağır
+}
+
 function initAudio() {
   if (audioCtx) return;
   const AC = window.AudioContext || window.webkitAudioContext;
@@ -68,12 +124,13 @@ window.addEventListener("mousedown", initAudio, { once: true });
 
 function playSfx(name, { volume = 1, pitch = 1, pitchVar = 0 } = {}) {
   if (!audioCtx || !sfxBuffers[name]) return;
+  if (JUICE.sfxMuted || JUICE.sfxVolume <= 0) return; // oyuncu sessize almış/kısmış
   if (audioCtx.state === "suspended") audioCtx.resume();
   const src = audioCtx.createBufferSource();
   src.buffer = sfxBuffers[name];
   src.playbackRate.value = Math.max(0.5, pitch + (Math.random() - 0.5) * 2 * pitchVar);
   const gain = audioCtx.createGain();
-  gain.gain.value = volume;
+  gain.gain.value = volume * JUICE.sfxVolume;
   src.connect(gain);
   gain.connect(audioCtx.destination);
   src.start();
