@@ -9,6 +9,67 @@ import { createMarketListing } from "./market.js";
 import { S } from "./state.js";
 
 // ============================================================
+// [FIX v11] TOPLU STAT ONARIMI — adminResyncAllStats()
+// ------------------------------------------------------------
+// resyncStatsFromEquipment() sadece GİRİŞ YAPAN oyuncunun kendi dokümanını
+// onarır. Ama savaşta karşına çıkan rakiplerin statları da doğru olmalı;
+// aksi hâlde uzun süredir girmemiş bir oyuncu, üzerinde efsanevi can eşyaları
+// olduğu hâlde 100 can / 0 kritik ile savaşır (senin "canı 100 gözükenler"
+// dediğin durum). Bu fonksiyon TÜM oyuncuların statlarını, ekipmanlarından
+// yeniden hesaplayıp düzeltir — kimsenin giriş yapmasını beklemeden.
+//
+// KULLANIM (F12 → Console):
+//   adminResyncAllStats()       → SADECE RAPOR. Hiçbir şey yazmaz, kimde
+//                                 ne kadar sapma var onu listeler.
+//   adminResyncAllStats(true)   → GERÇEKTEN YAZAR. Rapordaki düzeltmeleri
+//                                 canlı veritabanına uygular.
+//
+// Önce raporu çalıştır, listeyi gör, sonra true ile uygula. Sadece eşya/stat
+// alanları düzeltilir — puan, altın, envanter, Elo gibi hiçbir şeye dokunmaz.
+// ============================================================
+export async function adminResyncAllStats(uygula = false) {
+  const players = S.allPlayers || [];
+  if (!players.length) { console.log("Oyuncu listesi boş — oyun tam yüklenmemiş olabilir."); return; }
+
+  const bozuk = [];
+  for (const p of players) {
+    const stats = computeStatsFromEquipment(p.equipment || emptyEquipment(), p.statAllocated);
+    const patch = {};
+    if (p.attack !== stats.attack) patch.attack = stats.attack;
+    if (p.defense !== stats.defense) patch.defense = stats.defense;
+    if (p.speed !== stats.speed) patch.speed = stats.speed;
+    if (p.critStat !== stats.critStat) patch.critStat = stats.critStat;
+    if (p.maxHp !== stats.maxHp) patch.maxHp = stats.maxHp;
+    if (Object.keys(patch).length) bozuk.push({ id: p.id, nick: p.nick, eski: { atk: p.attack, def: p.defense, can: p.maxHp, hiz: p.speed, krit: p.critStat }, yeni: patch });
+  }
+
+  if (!bozuk.length) { console.log("Herkesin statları zaten doğru, yapılacak bir şey yok."); return; }
+
+  console.log(`${bozuk.length} oyuncuda düzeltilecek stat var:`);
+  for (const b of bozuk) {
+    console.log(`  ${b.nick}: can ${b.eski.can ?? "(yok)"} → ${b.yeni.maxHp ?? b.eski.can}` +
+                `, kritik ${b.eski.krit ?? "(yok)"} → ${b.yeni.critStat ?? b.eski.krit}` +
+                `, hız ${b.eski.hiz ?? "(yok)"} → ${b.yeni.speed ?? b.eski.hiz}`);
+  }
+
+  if (!uygula) {
+    console.log("");
+    console.log("Bu SADECE RAPOR — hiçbir şey yazılmadı.");
+    console.log("Uygulamak için: adminResyncAllStats(true)");
+    return bozuk;
+  }
+
+  let ok = 0, hata = 0;
+  for (const b of bozuk) {
+    try { await updateDoc(doc(db, PLAYERS_COL, b.id), b.yeni); ok++; }
+    catch (e) { hata++; console.error(`  ${b.nick} yazılamadı:`, e.message); }
+  }
+  console.log(`Bitti. Düzeltilen: ${ok}, başarısız: ${hata}.`);
+  return { ok, hata };
+}
+if (typeof window !== "undefined") window.adminResyncAllStats = adminResyncAllStats;
+
+// ============================================================
 // [FIX v9] STAT TEŞHİS ARACI — konsolda `statDebug()` yaz.
 // ------------------------------------------------------------
 // "Üzerimde 2 tane can eşyası var ama canım 133" gibi bir uyuşmazlıkta,
