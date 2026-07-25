@@ -200,6 +200,53 @@ export function rawTotalPower(p) {
        + (p.speed ?? 0);
 }
 
+// ============================================================
+// [v13] ZAFER ŞANSI TAHMİNİ
+// ------------------------------------------------------------
+// "Toplam güç: 332 (seninki 250)" satırı oyuncuya hiçbir şey anlatmıyordu —
+// 332 ile 250 arasındaki farkın maça nasıl yansıdığını kimse kafadan
+// hesaplayamaz. Artık gerçek düello motoru arka planda birkaç yüz kez
+// çalıştırılıp "bu adamı %16 ihtimalle yenersin" diye somut bir sayı
+// gösteriliyor. Tahmin, savaşta kullanılan motorun BİREBİR kendisiyle
+// üretiliyor; denge sabitleri değişirse bu yüzde de kendiliğinden değişir.
+//
+// Statlar her değiştiğinde (eşya kuşanma, seviye, rakibin gelişmesi) yeniden
+// hesaplanır — önbellek anahtarı iki tarafın tüm statlarından oluşur, yani
+// bir stat kımıldadığı anda önbellek kendiliğinden geçersizleşir.
+// ============================================================
+const WIN_CHANCE_SAMPLES = 240;      // ±%3 hassasiyet; daha yükseği gözle fark edilmez
+const _winChanceCache = new Map();
+
+export function estimateWinChance(me, opp) {
+  if (!me || !opp) return 50;
+  const sig = [me.attack, me.defense, me.maxHp, me.critStat, me.speed, "|",
+               opp.attack, opp.defense, opp.maxHp, opp.critStat, opp.speed].join(",");
+  if (_winChanceCache.has(sig)) return _winChanceCache.get(sig);
+
+  const A = { nick: "", attack: me.attack ?? BASE_ATTACK, defense: me.defense ?? BASE_DEFENSE,
+              maxHp: me.maxHp ?? BASE_HP, critStat: me.critStat ?? 0, speed: me.speed ?? 0 };
+  const B = { nick: "", attack: opp.attack ?? BASE_ATTACK, defense: opp.defense ?? BASE_DEFENSE,
+              maxHp: opp.maxHp ?? BASE_HP, critStat: opp.critStat ?? 0, speed: opp.speed ?? 0 };
+  let wins = 0;
+  for (let i = 0; i < WIN_CHANCE_SAMPLES; i++) {
+    if (simulateDuel(A, B).winner === "attacker") wins++;
+  }
+  const pct = Math.round((wins / WIN_CHANCE_SAMPLES) * 100);
+  // Önbellek sonsuz büyümesin (10 oyunculuk bir oyunda zaten dolmaz, yine de emniyet).
+  if (_winChanceCache.size > 200) _winChanceCache.clear();
+  _winChanceCache.set(sig, pct);
+  return pct;
+}
+
+// Zafer şansına göre renk/etiket. Oyuncu tabloya bakmadan, renkten anlasın.
+function winChanceStyle(pct) {
+  if (pct >= 75) return { c: "#4dd68a", label: "Rahat geçer" };
+  if (pct >= 55) return { c: "#8fd66a", label: "Avantajlısın" };
+  if (pct >= 45) return { c: "#ffcc4d", label: "Başa baş" };
+  if (pct >= 25) return { c: "#ff9d4d", label: "Zor maç" };
+  return { c: "#ff5c6c", label: "Neredeyse imkansız" };
+}
+
 export function renderAttackTargets() {
   if (!S.currentPlayerData) return;
   const able = canAttackNow() && !S.attackInProgress;
@@ -217,28 +264,60 @@ export function renderAttackTargets() {
     attackStatus.textContent = "Saldırı hakkın hazır, birini seç! (Kullanmazsan bu pencere kapanır, bir daha kullanamazsın.)";
   }
 
-  const targets = S.allPlayers.filter(p => p.id !== S.currentPlayerId);
+  const me = S.currentPlayerData;
   const throneId = S.allPlayers.length && (S.allPlayers[0].points || 0) > 0 ? S.allPlayers[0].id : null;
   const bountyTargetId = S.currentBounty && S.currentBounty.active ? S.currentBounty.targetId : null;
 
-  attackTargetsEl.innerHTML = targets.map(p => {
+  // Zafer şansına göre sırala: en dengeli/kazanılabilir maçlar üstte.
+  const targets = S.allPlayers
+    .filter(p => p.id !== S.currentPlayerId)
+    .map(p => ({ p, win: estimateWinChance(me, p) }))
+    .sort((a, b) => a.win - b.win);
+
+  attackTargetsEl.innerHTML = targets.map(({ p, win }) => {
     const cooldownLeft = cooldowns[p.id] || 0;
     const isLocked = cooldownLeft > 0;
     const canHitThis = able && !isLocked;
-    const isCurrentStreakTarget = !isLocked && p.id === S.currentPlayerData.lastAttackedId && (S.currentPlayerData.attackStreakOnTarget || 0) > 0;
-    const badge = isLocked
-      ? `<span class="target-streak-badge locked">🔒 ${cooldownLeft} savaş</span>`
-      : isCurrentStreakTarget
-        ? `<span class="target-streak-badge">${S.currentPlayerData.attackStreakOnTarget}/${MAX_CONSECUTIVE_ATTACKS_ON_TARGET}</span>`
-        : "";
-    const throneBadge = p.id === throneId ? `<span class="throne-crown" title="Yenersen +${THRONE_BONUS_POINTS} bonus puan">👑</span>` : "";
-    const bountyBadge = p.id === bountyTargetId ? `<span class="target-streak-badge bounty-badge">💀 ${S.currentBounty.amount} hurda</span>` : "";
+    const isCurrentStreakTarget = !isLocked && p.id === me.lastAttackedId && (me.attackStreakOnTarget || 0) > 0;
+    const tier = getLeagueTier(getElo(p));
+    const st = winChanceStyle(win);
+
+    const badges = [
+      p.id === throneId ? `<span class="tgt-badge throne" title="Yenersen +${THRONE_BONUS_POINTS} bonus puan">👑 Taht</span>` : "",
+      p.id === bountyTargetId ? `<span class="tgt-badge bounty">💀 ${S.currentBounty.amount}</span>` : "",
+      isLocked ? `<span class="tgt-badge locked">🔒 ${cooldownLeft} savaş</span>` : "",
+      isCurrentStreakTarget ? `<span class="tgt-badge streak">${me.attackStreakOnTarget}/${MAX_CONSECUTIVE_ATTACKS_ON_TARGET}</span>` : "",
+    ].join("");
+
     return `
-    <div class="attack-target-row ${isLocked ? "locked" : ""}">
-      <div class="name">${throneBadge}${p.nick} ${badge}${bountyBadge}</div>
-      <div class="stats">⚔️${p.attack ?? BASE_ATTACK} 🛡️${p.defense ?? BASE_DEFENSE} ❤️${p.maxHp ?? BASE_HP} 🎯%${critChancePctFromStat(p.critStat)} ⚡%${extraHitPctFromSpeed(p.speed)} · ${p.points ?? 0}⭐</div>
-      <div class="stats" style="opacity:.75;">Toplam güç: <b>${Math.round(rawTotalPower(p))}</b> (seninki ${Math.round(rawTotalPower(S.currentPlayerData))})</div>
-      <button data-id="${p.id}" ${canHitThis ? "" : "disabled"} style="${canHitThis ? "" : "opacity:.35;cursor:not-allowed;"}">${isLocked ? "Kilitli" : "Saldır"}</button>
+    <div class="tgt-card ${isLocked ? "locked" : ""}" style="--tgt-c:${st.c}; --tier-c:${tier.color};">
+      <div class="tgt-top">
+        <div class="tgt-id">
+          <span class="tgt-name">${p.nick}</span>
+          <span class="tgt-tier">${tier.icon} ${tier.label} · Sv.${p.level ?? 1}</span>
+        </div>
+        ${badges ? `<div class="tgt-badges">${badges}</div>` : ""}
+      </div>
+
+      <div class="tgt-odds">
+        <div class="tgt-odds-head">
+          <span class="tgt-odds-label">Zafer şansın</span>
+          <span class="tgt-odds-pct">%${win}</span>
+        </div>
+        <div class="tgt-odds-track"><div class="tgt-odds-fill" style="width:${Math.max(2, win)}%"></div></div>
+        <span class="tgt-odds-verdict">${st.label}</span>
+      </div>
+
+      <div class="tgt-bottom">
+        <div class="tgt-stats">
+          <span title="Saldırı">⚔️ ${p.attack ?? BASE_ATTACK}</span>
+          <span title="Savunma">🛡️ ${p.defense ?? BASE_DEFENSE}</span>
+          <span title="Can">❤️ ${p.maxHp ?? BASE_HP}</span>
+          <span title="Kritik şansı">🎯 %${critChancePctFromStat(p.critStat)}</span>
+          <span title="Ekstra vuruş şansı">⚡ %${extraHitPctFromSpeed(p.speed)}</span>
+        </div>
+        <button class="tgt-attack" data-id="${p.id}" ${canHitThis ? "" : "disabled"}>${isLocked ? "Kilitli" : "SALDIR"}</button>
+      </div>
     </div>`;
   }).join("");
 
