@@ -1,8 +1,8 @@
 import { showResultModal } from "./battle.js";
-import { getScrap } from "./core-config.js";
+import { getGold, getScrap } from "./core-config.js";
 import { IS_LOW_POWER, bountyActive, bountyAmountEl, bountyAmountInput, bountyForm, bountyPlacer, bountyStatus, bountyTargetName, bountyTargetSelect, luckyWheel, oracleAmountInput, oracleAmountLabel, oracleForm, oraclePending, oracleStatus, oracleTargetLabel, oracleTargetSelect, placeBountyBtn, placeOracleBtn, spinWheelBtn, wheelBgGlow, wheelOuter, wheelPanelEl, wheelScene, wheelShockwaveEl, wheelStatus } from "./dom.js";
 import { PLAYERS_COL, db, doc, runTransaction, updateDoc } from "./firebase-setup.js";
-import { getMinorTraitBonusPct } from "./item-systems.js";
+import { applyXpGain, getMinorTraitBonusPct } from "./item-systems.js";
 import { dateStr, formatRemaining } from "./map.js";
 import { incrementQuestProgress } from "./quests.js";
 import { S } from "./state.js";
@@ -20,13 +20,25 @@ export const WHEEL_COOLDOWN_MS = 12 * 60 * 60 * 1000; // 12 saatte 1 çevirme
 // kısa satıra bölündü ve rozet sabit bir maksimum genişlikte tutulduğu için
 // taşma tamamen ortadan kalktı. scrap/points/weight/type/id alanları ve ödül
 // mantığı BİREBİR aynı kaldı, sadece görsel metadata eklendi.
+// [v2.2 GÜNCELLEME] Çark 12 saatte bir çevriliyor — eski ödüller (5-25 hurda,
+// 3-15 puan) o bekleyişe değmiyordu. Artık ALTIN ve EXP de veriyor ve tüm
+// miktarlar ciddi şekilde yükseltildi.
+//
+// Segment sayısı 6'da BIRAKILDI (WHEEL_SEGMENT_ANGLE ve çarkın CSS geometrisi
+// buna bağlı — segment eklersen/çıkarırsan gradient de kayar, dikkat).
+// Her segmentte artık 4 ödül alanı da var (scrap/gold/xp/points); kullanılmayan
+// alanlar 0 — spinTheWheel hepsini tek tip işliyor, yeni tür eklemek kolay olsun diye.
+//
+// Ağırlıklar toplamı 100. Çevirme başına beklenti: ~156 altın, ~19 EXP, ~5 puan,
+// ~11 hurda. Günde 2 çevirme = ~310 altın. Sandığın (~260/gün) hafif üstünde,
+// 12 saatlik bekleyişe değecek seviyede ama ekonomiyi patlatmıyor.
 export const WHEEL_SEGMENTS = [
-  { id: "scrap_small", label: "+5 Hurda", val: "+5", lbl: "HURDA", type: "scrap", scrap: 5, points: 0, weight: 28, color: "#1a2530", glow: "#8ba3b8" },
-  { id: "points_small", label: "+3 Puan", val: "+3", lbl: "PUAN", type: "points", scrap: 0, points: 3, weight: 22, color: "#0d2b1d", glow: "var(--green)" },
-  { id: "scrap_medium", label: "+12 Hurda", val: "+12", lbl: "HURDA", type: "scrap", scrap: 12, points: 0, weight: 20, color: "#101e40", glow: "var(--blue)" },
-  { id: "points_medium", label: "+6 Puan", val: "+6", lbl: "PUAN", type: "points", scrap: 0, points: 6, weight: 12, color: "#3a0b2e", glow: "var(--accent)" },
-  { id: "scrap_big", label: "+25 Hurda", val: "+25", lbl: "HURDA", type: "scrap", scrap: 25, points: 0, weight: 12, color: "#3b2a05", glow: "var(--gold)" },
-  { id: "jackpot", label: "JACKPOT! +15 Puan +20 Hurda", val: "JACKPOT", lbl: "+15⭐ +20✨", type: "combo", scrap: 20, points: 15, weight: 6, color: "#000000", glow: "#ff2a2a" }
+  { id: "scrap_small",   label: "+20 Hurda",  val: "+20",     lbl: "HURDA", type: "scrap",  scrap: 20, gold: 0,   xp: 0,   points: 0,  weight: 24, color: "#1a2530", glow: "#8ba3b8" },
+  { id: "gold_small",    label: "+150 Altın", val: "+150",    lbl: "ALTIN", type: "gold",   scrap: 0,  gold: 150, xp: 0,   points: 0,  weight: 22, color: "#2b2205", glow: "var(--gold)" },
+  { id: "xp_medium",     label: "+60 EXP",    val: "+60",     lbl: "EXP",   type: "xp",     scrap: 0,  gold: 0,   xp: 60,  points: 0,  weight: 18, color: "#101e40", glow: "var(--blue)" },
+  { id: "points_medium", label: "+15 Puan",   val: "+15",     lbl: "PUAN",  type: "points", scrap: 0,  gold: 0,   xp: 0,   points: 15, weight: 14, color: "#0d2b1d", glow: "var(--green)" },
+  { id: "gold_big",      label: "+400 Altın", val: "+400",    lbl: "ALTIN", type: "gold",   scrap: 0,  gold: 400, xp: 0,   points: 0,  weight: 12, color: "#3a0b2e", glow: "var(--accent)" },
+  { id: "jackpot",       label: "JACKPOT! +750 Altın, +120 EXP, +30 Puan, +60 Hurda", val: "JACKPOT", lbl: "+750🪙 +120⚡", type: "combo", scrap: 60, gold: 750, xp: 120, points: 30, weight: 10, color: "#000000", glow: "#ff2a2a" }
 ];
 export const WHEEL_SEGMENT_ANGLE = 360 / WHEEL_SEGMENTS.length;
 
@@ -209,20 +221,31 @@ export async function spinTheWheel() {
   }
   explodeWheelEmbers(seg.glow, IS_LOW_POWER ? (seg.id === "jackpot" ? 22 : 10) : (seg.id === "jackpot" ? 46 : 22));
 
-  await updateDoc(doc(db, PLAYERS_COL, S.currentPlayerId), {
+  // [v2.2] Ödül yazımı artık 4 kaynağı da tek seferde işliyor. Segmentte
+  // olmayan/0 olan alanlar zararsız (0 eklenir). EXP varsa applyXpGain ile
+  // seviye atlaması da merkezi olarak hesaplanır — çarktan seviye atlanabilir.
+  const wheelPayload = {
     lastWheelSpinTime: Date.now(),
-    scrap: getScrap(S.currentPlayerData) + seg.scrap,
-    points: (S.currentPlayerData.points || 0) + seg.points,
+    scrap: getScrap(S.currentPlayerData) + (seg.scrap || 0),
+    gold: getGold(S.currentPlayerData) + (seg.gold || 0),
+    points: (S.currentPlayerData.points || 0) + (seg.points || 0),
     ...(seg.type === "combo" ? { wheelJackpotsTotal: (S.currentPlayerData.wheelJackpotsTotal || 0) + 1 } : {})
-  });
+  };
+  if (seg.xp > 0) {
+    const xpResult = applyXpGain(S.currentPlayerData, seg.xp);
+    wheelPayload.level = xpResult.level;
+    wheelPayload.xp = xpResult.xp;
+    wheelPayload.statPoints = xpResult.statPoints;
+  }
+  await updateDoc(doc(db, PLAYERS_COL, S.currentPlayerId), wheelPayload);
 
   wheelStatus.innerHTML = seg.type === "combo"
-    ? `<span style="color:${seg.glow}; text-shadow:0 0 8px ${seg.glow};">🔥 JACKPOT! +${seg.points} puan ve +${seg.scrap} hurda kazandın!</span>`
+    ? `<span style="color:${seg.glow}; text-shadow:0 0 8px ${seg.glow};">🔥 JACKPOT! +${seg.gold} altın, +${seg.xp} EXP, +${seg.points} puan ve +${seg.scrap} hurda kazandın!</span>`
     : `<span style="color:${seg.glow};">${seg.label} kazandın!</span>`;
 
   // Ödülün büyüklüğüne göre farklı sonuç sesi: jackpot'ta efsanevi fanfar
   if (seg.type === "combo") sfxOpenLegendary();
-  else if (seg.scrap >= 12 || seg.points >= 6) sfxOpenRare();
+  else if ((seg.gold || 0) >= 400 || (seg.xp || 0) >= 60 || (seg.points || 0) >= 15) sfxOpenRare();
   else sfxOpenStandart();
 
   setTimeout(() => {

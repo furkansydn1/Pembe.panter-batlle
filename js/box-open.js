@@ -214,11 +214,24 @@ export function spawnSparks(rarity) {
 // bu sandık pity ladder'ının bir parçası değil; pity sadece paralı sandıklarda
 // (forcedRarity yoksa rollRarity() çağrılan dalda) işliyor.
 // ============================================================
+// [v2.2 GÜNCELLEME] Miktarlar yükseltildi + iki yeni ödül türü (Puan, EXP) eklendi.
+// Yeni tablo (toplam yine tam %100):
+//   %1  Nadir eşya
+//   %44 Sıradan eşya
+//   %25 90-260 Altın     (eskiden %29 / 30-100  → ortalama ~3x)
+//   %15 15-40  Hurda     (eskiden %20 / 5-15    → ortalama ~2.7x)
+//   %9  4-12   Puan      (YENİ)
+//   %6  25-70  EXP       (YENİ — sandığın zaten verdiği sabit 4 EXP'in ÜSTÜNE)
+// Sandık 4 saatte bir açıldığı için günde ~6 açılış eder; altın beklentisi
+// günde ~260 altına çıkıyor (eskiden ~113). Eşya çıkma şansı %51'den %45'e
+// düştü ama nadir şansı (%1) BİLEREK aynı bırakıldı — eşya ekonomisi bozulmasın.
 export const FREE_BOX_OUTCOME_TABLE = [
   { type: "item", rarity: "nadir", chance: 0.01 },
-  { type: "item", rarity: "standart", chance: 0.50 },
-  { type: "gold", min: 30, max: 100, chance: 0.29 },
-  { type: "scrap", min: 5, max: 15, chance: 0.20 }
+  { type: "item", rarity: "standart", chance: 0.44 },
+  { type: "gold", min: 90, max: 260, chance: 0.25 },
+  { type: "scrap", min: 15, max: 40, chance: 0.15 },
+  { type: "points", min: 4, max: 12, chance: 0.09 },
+  { type: "xp", min: 25, max: 70, chance: 0.06 }
 ];
 
 function rollFreeBoxOutcome() {
@@ -354,16 +367,40 @@ export async function performBoxOpen({ forcedRarity = null, costScrap = 0, costG
 
       const amount = randInt(outcome.min, outcome.max);
       const isGold = outcome.type === "gold";
-      const newScrap = Math.max(0, getScrap(data) - costScrap) + (isGold ? 0 : amount);
+      const isScrap = outcome.type === "scrap";
+      const isPoints = outcome.type === "points";
+      const isXp = outcome.type === "xp";
+
+      const newScrap = Math.max(0, getScrap(data) - costScrap) + (isScrap ? amount : 0);
       const newGold = Math.max(0, getGold(data) - costGold) + (isGold ? amount : 0);
 
       const updatePayload = { ...basePayload, scrap: newScrap, gold: newGold };
+
+      if (isPoints) updatePayload.points = (data.points || 0) + amount;
+
+      // EXP ödülü: sandığın HER açılışta verdiği sabit XP (basePayload içindeki
+      // boxXpResult) zaten hesaplandı. Bonus EXP onun ÜSTÜNE binmeli, bu yüzden
+      // applyXpGain'i boxXpResult'ın çıktısıyla güncellenmiş "sanal data" üzerinde
+      // ikinci kez çağırıyoruz — yoksa ilk XP yutulur ve seviye atlama kaçar.
+      if (isXp) {
+        const bonusXpResult = applyXpGain(
+          { ...data, level: boxXpResult.level, xp: boxXpResult.xp, statPoints: boxXpResult.statPoints },
+          amount
+        );
+        updatePayload.level = bonusXpResult.level;
+        updatePayload.xp = bonusXpResult.xp;
+        updatePayload.statPoints = bonusXpResult.statPoints;
+      }
+
       await updateDoc(doc(db, PLAYERS_COL, S.currentPlayerId), updatePayload);
+
+      const rewardIcon = isGold ? "🪙" : isScrap ? "🔩" : isPoints ? "⭐" : "⚡";
+      const rewardName = isGold ? "Altın" : isScrap ? "Hurda" : isPoints ? "Puan" : "EXP";
 
       itemPopupInner.className = "item-popup-inner rarity-standart";
       itemPopupInner.innerHTML = `
-        <div class="item-popup-icon" style="font-size:40px">${isGold ? "🪙" : "🔩"}</div>
-        <div class="item-popup-name rarity-standart">+${amount} ${isGold ? "Altın" : "Hurda"}</div>
+        <div class="item-popup-icon" style="font-size:40px">${rewardIcon}</div>
+        <div class="item-popup-name rarity-standart">+${amount} ${rewardName}</div>
       `;
       itemPopup.classList.remove("hidden");
     }

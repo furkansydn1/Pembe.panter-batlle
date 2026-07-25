@@ -111,11 +111,25 @@ export const ENERGY_REGEN_MS_PER_POINT = 3 * 60 * 1000; // her 3 dakikada +1 ene
 // sahip görev kartları. Zorluk arttıkça hurda/enerji oranı hafifçe iyileşiyor (sabır
 // ödüllendiriliyor) ama enerji 100 ile sınırlı olduğu için ekonomi bozulmuyor, herkes
 // hızlıca her şeye sahip olamıyor.
+// [v2.2] İki değişiklik:
+//   1) İSİMLER: "Fadeless" (sönmeyen/solmayan) karanlık temasına oturtuldu —
+//      gölgede sinsice başlayıp yasak bir ayine tırmanan bir merdiven.
+//      ⚠️ id'ler BİLEREK aynı bırakıldı: Firestore'daki eski oyuncu kayıtlarında ve
+//      görev sayaçlarında bu id'ler geçiyor olabilir, sadece görünen ad değişti.
+//   2) EXP: Artık her görev hurdanın yanında ciddi miktarda EXP de veriyor.
+//      Enerji tavanı 100, dolum 3dk/puan (saatte 20, günde ~480 enerji).
+//      Enerji/EXP verimi: 1.0 → 1.5 → 2.57 → 3.0 (sabır belirgin ödüllendiriliyor).
+//      ⚠️ DENGE UYARISI: Günlük tüm enerji en verimli görevde harcanırsa ~1400 EXP
+//      eder. Seviye eğrisi (LEVEL_XP_BASE 40, GROWTH 1.18) buna göre: seviye 20'ye
+//      kadar günde birkaç seviye atlanır, sonra eğri yakalar. Enerji artık ana XP
+//      kaynağı — savaş (15) / sandık (4) / günlük görev (10) yanında baskın.
+//      Bilerek böyleyse sorun yok; hızlı gelirse SADECE aşağıdaki xp/bonusXp
+//      değerlerini düşür, başka hiçbir yeri değiştirme.
 export const ENERGY_TASKS = [
-  { id: "gasp", name: "Gasp Et", icon: "👛", cost: 10, scrapMin: 1, scrapMax: 3, bonusChance: 0.08, bonusScrap: 6 },
-  { id: "zorbala", name: "Arkadaşını Zorbala", icon: "😈", cost: 20, scrapMin: 4, scrapMax: 7, bonusChance: 0.08, bonusScrap: 10 },
-  { id: "kafautule", name: "Hafız Döv", icon: "🗣️", cost: 35, scrapMin: 8, scrapMax: 11, bonusChance: 0.10, bonusScrap: 15 },
-  { id: "manipule", name: "Umumi Mastürbasyon", icon: "🕶️", cost: 50, scrapMin: 12, scrapMax: 16, bonusChance: 0.12, bonusScrap: 22 }
+  { id: "gasp",      name: "Gölge Avı",      icon: "🕯️", cost: 10, scrapMin: 1,  scrapMax: 3,  xp: 10,  bonusChance: 0.08, bonusScrap: 6,  bonusXp: 6 },
+  { id: "zorbala",   name: "Kan Vergisi",    icon: "🩸", cost: 20, scrapMin: 4,  scrapMax: 7,  xp: 30,  bonusChance: 0.08, bonusScrap: 10, bonusXp: 18 },
+  { id: "kafautule", name: "Mezar Talanı",   icon: "💀", cost: 35, scrapMin: 8,  scrapMax: 11, xp: 90,  bonusChance: 0.10, bonusScrap: 15, bonusXp: 50 },
+  { id: "manipule",  name: "Sönmeyen Ayin",  icon: "🌑", cost: 50, scrapMin: 12, scrapMax: 16, xp: 150, bonusChance: 0.12, bonusScrap: 22, bonusXp: 90 }
 ];
 
 // Temel şans oranları (yüzde). Nadir %9, Efsanevi %3.

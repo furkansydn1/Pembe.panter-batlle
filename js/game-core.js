@@ -6,7 +6,7 @@ import { myHpEl, myCritEl, mySpdEl, myHpWarEl, myCritWarEl, mySpdWarEl, myHpEnvE
 import { BADGES, ensurePersonalDailyEventForToday, getTodaysEvent, randInt } from "./events-badges.js";
 import { LOG_COL, MARKET_LISTINGS_COL, PLAYERS_COL, TRADE_LOGS_COL, collection, db, doc, getDoc, limit, onSnapshot, orderBy, query, updateDoc } from "./firebase-setup.js";
 import { autoUnequipOverleveledItems, cleanupGhostEquippedItems, dedupeDuplicateInventoryItems, renderCollection, renderInventoryModal, resyncStatsFromEquipment } from "./inventory.js";
-import { BOOK_TIER_ICONS, BOOK_TIER_NAMES, RARITY_ORDER, computeStatsFromEquipment, getBooks, xpNeededForLevel } from "./item-systems.js";
+import { BOOK_TIER_ICONS, BOOK_TIER_NAMES, RARITY_ORDER, applyXpGain, computeStatsFromEquipment, getBooks, xpNeededForLevel } from "./item-systems.js";
 // [FIX v7] Kritik/Hız yüzdeleri düello motorunun KENDİ formülünden okunur;
 // arayüzde ikinci bir formül tutmuyoruz ki senkron kaçmasın.
 import { critChancePctFromStat, extraHitPctFromSpeed } from "./duel-engine.js";
@@ -534,7 +534,7 @@ export function renderEnergyTasks(current) {
   energyTasksRow.innerHTML = ENERGY_TASKS.map(t => `
     <button type="button" class="btn-mini nadir-mini energy-task-btn" data-task="${t.id}" ${current < t.cost ? "disabled" : ""}>
       ${t.icon} ${t.name}
-      <span>${t.cost} enerji · ~${t.scrapMin}-${t.scrapMax} hurda</span>
+      <span>${t.cost} enerji · ~${t.scrapMin}-${t.scrapMax} hurda · +${t.xp} EXP</span>
     </button>
   `).join("");
 
@@ -553,6 +553,13 @@ export async function useEnergyAction(taskId) {
   energyTasksRow.querySelectorAll("button").forEach(b => b.disabled = true);
   const bonus = Math.random() < task.bonusChance;
   const scrapGain = bonus ? task.bonusScrap : randInt(task.scrapMin, task.scrapMax);
+  // [v2.2] Görevler artık EXP de veriyor. Miktarlar core-config.js → ENERGY_TASKS
+  // içinde (xp / bonusXp), zorlukla kademeli. Şanslı buluşta ekstra EXP de gelir.
+  // applyXpGain seviye atlamasını (ve stat puanını) merkezi olarak hesaplar —
+  // birden fazla seviye tek seferde atlanabilir, level-up animasyonunu da
+  // onSnapshot'taki lastKnownLevel karşılaştırması otomatik tetikler.
+  const xpGain = (task.xp || 0) + (bonus ? (task.bonusXp || 0) : 0);
+  const xpResult = applyXpGain(S.currentPlayerData, xpGain);
 
   const newQuests = incrementQuestProgress(S.currentPlayerData.dailyQuests, "energy_task", 1);
   const newWeeklyQuests = incrementQuestProgress(S.currentPlayerData.weeklyQuests, "energy_task", 1);
@@ -562,14 +569,17 @@ export async function useEnergyAction(taskId) {
     energy: current - task.cost,
     lastEnergyUpdate: Date.now(),
     scrap: getScrap(S.currentPlayerData) + scrapGain,
+    level: xpResult.level,
+    xp: xpResult.xp,
+    statPoints: xpResult.statPoints,
     ...(newQuests !== S.currentPlayerData.dailyQuests ? { dailyQuests: newQuests } : {}),
     ...(newWeeklyQuests !== S.currentPlayerData.weeklyQuests ? { weeklyQuests: newWeeklyQuests } : {}),
     ...(newMonthlyQuests !== S.currentPlayerData.monthlyQuests ? { monthlyQuests: newMonthlyQuests } : {})
   });
 
   energyStatus.textContent = bonus
-    ? `🎉 ${task.name} sırasında şanslı buluş! +${scrapGain} hurda kazandın!`
-    : `${task.name}: +${scrapGain} hurda kazandın.`;
+    ? `🎉 ${task.name} sırasında şanslı buluş! +${scrapGain} hurda, +${xpGain} EXP kazandın!`
+    : `${task.name}: +${scrapGain} hurda, +${xpGain} EXP kazandın.`;
   setTimeout(renderEnergy, 1800);
 }
 setInterval(renderEnergy, 30000);
