@@ -424,3 +424,42 @@
 .stat-alloc-btn.def-alloc{ background: linear-gradient(180deg, #3fa8d6, var(--blue)); box-shadow: 0 4px 0 var(--blue-dark); }
 .stat-alloc-btn.def-alloc:active{ box-shadow: 0 1px 0 var(--blue-dark); }
 
+
+/* ============================================================
+   [FIX v7] CAN / KRİTİK / HIZ — YENİ STAT RENKLERİ
+   ------------------------------------------------------------
+   Bu üç stat savaşta zaten çalışıyordu ama arayüzde hiç
+   gösterilmiyordu (HTML elementi bile yoktu). Artık üç panelde de
+   (karakter / savaş / envanter) chip olarak, eşya kartlarında da
+   pill olarak çıkıyor — bu yüzden renk varyantları eklendi.
+
+   Renkler kasıtlı olarak mevcut palete çakışmayacak şekilde seçildi:
+   --red saldırıya, --blue savunmaya, --gold puana zaten ayrılmış
+   durumda, bu yüzden can/kritik/hız kendi tonlarını kullanıyor.
+   ============================================================ */
+
+/* --- Profil stat chip'leri (.stat-summary içinde) --- */
+.stat-chip.hp b   { color: #fca5a5; font-weight:900; }
+.stat-chip.crit b { color: #fb923c; font-weight:900; }
+.stat-chip.spd b  { color: #7dd3fc; font-weight:900; }
+
+/* --- Envanter eşya kartı rozetleri (.inv-item-stat-pills içinde) ---
+   Temel .inv-stat-pill kuralı 06-envanter-rozetler.css'te tanımlı ve o
+   dosya bundan SONRA yükleniyor; ama buradaki seçiciler iki sınıflı
+   (.inv-stat-pill.hp) olduğu için özgüllüğü daha yüksek — sıra fark
+   etmeksizin geçerli kalır, o dosyaya dokunmaya gerek yok. */
+.inv-stat-pill.hp{
+  background: rgba(248,113,113,.14);
+  color: #fca5a5;
+  border: 1px solid rgba(248,113,113,.30);
+}
+.inv-stat-pill.crit{
+  background: rgba(251,146,60,.14);
+  color: #fb923c;
+  border: 1px solid rgba(251,146,60,.30);
+}
+.inv-stat-pill.spd{
+  background: rgba(56,189,248,.14);
+  color: #7dd3fc;
+  border: 1px solid rgba(56,189,248,.30);
+}
