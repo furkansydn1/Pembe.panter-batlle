@@ -570,29 +570,36 @@ export function renderInventoryModal() {
   const rarityOrder = { efsanevi: 0, nadir: 1, standart: 2 };
   const equippedId = S.currentPlayerData?.equipment?.[slot]?.id;
 
-  // [FIX v8-a] YABANCI SLOT FİLTRESİ — "kalkana basınca başka şeyler çıkıyor".
-  // Her eşya kendi `slot` alanını taşır. Geçmişte bir eşyanın YANLIŞ slotun
-  // dizisine yazılmış olması mümkün (eski kutu/market akışlarından kalma).
-  // O durumda kalkan listesinde kask görünür ve liste "karışmış" gibi durur.
-  // Burada sadece GÖSTERİM filtreleniyor — veri silinmiyor, sadece yanlış
-  // yerdeki eşya o listede çizilmiyor ve konsola tek satır uyarı düşüyor.
+  // [FIX v10] SLOT FİLTRESİ GERİ ALINDI.
+  // v8'de "yanlış slottaki eşyayı gizle" filtresi eklemiştim. Gerçek veriyi
+  // görmeden yazdığım bu filtre, `slot` alanı beklediğimden farklı yazılmış
+  // eşyaları da gizledi ve oyuncunun eşyaları kaybolmuş gibi göründü.
+  // ARTIK HİÇBİR EŞYA GİZLENMİYOR. Şüpheli bir kayıt varsa sadece konsola
+  // uyarı düşer, eşya yine de listede çizilir. Gizleme ancak veriyi
+  // gördükten sonra, gerekliyse yapılır.
   const rawItems = getSlotInventory(slot);
   const foreign = rawItems.filter(it => it.slot && it.slot !== slot);
   if (foreign.length) {
-    console.warn(`[Envanter] "${slot}" listesinde ${foreign.length} yabancı eşya var, gizlendi:`,
-      foreign.map(it => `${it.name} (slot: ${it.slot})`));
+    console.warn(`[Envanter] "${slot}" listesinde slot alanı farklı ${foreign.length} eşya var (GİZLENMEDİ, sadece bilgi):`,
+      foreign.map(it => `${it.name} → slot: ${it.slot}`));
   }
 
-  // [FIX v8-b] TEKİLLEŞTİRME — her eşya listede SADECE BİR KEZ.
-  // Aynı id'den birden fazla kart çizilmesini kesin olarak engeller.
-  // (dedupeDuplicateInventoryItems verideki kopyaları temizliyor; bu ise
-  // ekranın her koşulda temiz kalmasını garanti eden ikinci bir emniyet.)
+  // [FIX v10] KUŞANILI EŞYA ARTIK LİSTENİN BAŞINDA.
+  // Önceki hâlde kuşanılı eşya envanter listesine hiç konmuyordu (bilerek).
+  // Ama slota basınca "üzerimdekini göremiyorum, üstelik Kuşan yazıyor"
+  // sonucunu doğuruyordu. Artık kuşanılı eşya HER ZAMAN ilk kart olarak
+  // gösteriliyor, "✅ KUŞANILI" rozetiyle ve Kuşan butonu kapalı hâlde.
+  const equippedItem = S.currentPlayerData?.equipment?.[slot] || null;
+
+  // Tekilleştirme: sadece GERÇEK bir id varsa kopya sayılır. (Eski hâlde
+  // id'si olmayan eşyalar birbirini eleyebiliyordu — o yüzden id kontrolü var.)
   const seenIds = new Set();
-  const items = rawItems
-    .filter(it => !it.slot || it.slot === slot)
-    .filter(it => { if (seenIds.has(it.id)) return false; seenIds.add(it.id); return true; })
-    .slice()
+  const rest = rawItems
+    .filter(it => !(equippedItem && it.id && equippedItem.id && it.id === equippedItem.id))
+    .filter(it => { if (!it.id) return true; if (seenIds.has(it.id)) return false; seenIds.add(it.id); return true; })
     .sort((a, b) => rarityOrder[a.rarity] - rarityOrder[b.rarity]);
+
+  const items = equippedItem ? [equippedItem, ...rest] : rest;
 
   const dropRatesHtml = renderDropRatesInfoHtml();
 
@@ -626,7 +633,11 @@ export function renderInventoryModal() {
     </div>${dotsHtml}` : `<div class="inv-pager"><span class="inv-page-info">Tek eşyan var</span></div>`;
 
   inventoryList.innerHTML = dropRatesHtml + pagerHtml + pageItems.map(it => {
-    const isEquipped = it.id === equippedId;
+    // [FIX v10] Kuşanılı tespiti sağlamlaştırıldı: id yoksa nesne kimliğinden
+    // de anlıyoruz. Eski hâl sadece id'ye bakıyordu; id'si olmayan eski bir
+    // eşya takılıyken "KUŞANILI" rozeti çıkmıyor, üstüne "Kuşan" butonu
+    // aktif görünüyordu ("üzerimdekine basınca Kuşan yazıyor" şikayeti).
+    const isEquipped = it === equippedItem || (!!it.id && it.id === equippedId);
     const statLabel = SLOT_MAP[it.slot]?.type === "atk" ? "Saldırı" : "Savunma";
     const upgradeLevel = it.upgradeLevel || 0;
     const upgradeCheck = canUpgradeItem(it, S.currentPlayerData);
