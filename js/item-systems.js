@@ -724,8 +724,13 @@ export function computeStatsFromEquipment(equipment, statAllocated) {
   for (const s of SLOTS) {
     const item = equipment?.[s.key];
     if (item) {
-      atk += item.atk || 0; def += item.def || 0;
-      spd += item.spd || 0; crit += item.crit || 0; hp += item.hp || 0;
+      // [FIX v9] Number(...) ile zorluyoruz. Firestore'dan bir alan metin
+      // olarak dönerse (eski/elle düzenlenmiş kayıtlarda olabiliyor)
+      // `hp += "33"` sessizce string birleştirmesine dönüşüp tüm toplamı
+      // bozuyordu. Number() + `|| 0` hem metni sayıya çevirir hem de
+      // çevrilemeyen değeri 0 sayar — toplam her koşulda sayı kalır.
+      atk += Number(item.atk) || 0; def += Number(item.def) || 0;
+      spd += Number(item.spd) || 0; crit += Number(item.crit) || 0; hp += Number(item.hp) || 0;
     }
   }
   atk += statAllocated?.attack || 0;

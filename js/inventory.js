@@ -9,6 +9,71 @@ import { createMarketListing } from "./market.js";
 import { S } from "./state.js";
 
 // ============================================================
+// [FIX v9] STAT TEŞHİS ARACI — konsolda `statDebug()` yaz.
+// ------------------------------------------------------------
+// "Üzerimde 2 tane can eşyası var ama canım 133" gibi bir uyuşmazlıkta,
+// tahmin yürütmek yerine tam dökümü basar: her slotta ne takılı, o eşya
+// kaç can/hız/kritik veriyor, toplam ne çıkıyor ve Firestore'da yazan
+// değerle uyuşuyor mu. Uyuşmazlık varsa hangi slotun sorunlu olduğunu
+// doğrudan söyler.
+// ============================================================
+export function statDebug() {
+  const data = S.currentPlayerData;
+  if (!data) { console.log("Oyuncu verisi yok — önce giriş yap."); return; }
+  const eq = data.equipment || {};
+  const rows = [];
+  let sumHp = 0, sumSpd = 0, sumCrit = 0, sumAtk = 0, sumDef = 0;
+
+  for (const sl of SLOTS) {
+    const it = eq[sl.key];
+    if (!it) { rows.push({ slot: sl.key, esya: "— boş —" }); continue; }
+    // Number(...) ile bakıyoruz: alan metin ("33") olarak kaydedilmişse
+    // toplama sessizce katılmaz, bu döküm onu yakalar.
+    const hp = Number(it.hp) || 0, spd = Number(it.spd) || 0, crit = Number(it.crit) || 0;
+    sumHp += hp; sumSpd += spd; sumCrit += crit;
+    sumAtk += Number(it.atk) || 0; sumDef += Number(it.def) || 0;
+    rows.push({
+      slot: sl.key, esya: it.name, atk: it.atk, def: it.def,
+      can: hp, hiz: spd, kritik: crit,
+      "hp tipi": typeof it.hp, "slot alani": it.slot,
+    });
+  }
+  console.table(rows);
+
+  const beklenenHp = 100 + sumHp;
+  console.log("--- TOPLAM (kuşanılı eşyalardan) ---");
+  console.log("can bonusu:", sumHp, "| hız:", sumSpd, "| kritik:", sumCrit);
+  console.log("beklenen maxHp:", beklenenHp, "| Firestore'da yazan:", data.maxHp);
+  console.log("beklenen speed:", sumSpd, "| yazan:", data.speed);
+  console.log("beklenen critStat:", sumCrit, "| yazan:", data.critStat);
+
+  if (data.maxHp !== beklenenHp) {
+    console.warn("UYUŞMAZLIK VAR. Yukarıdaki tabloda 'can' sütunu 0 ama sen o eşyada can bonusu GÖRÜYORSAN, sorun equipment kopyasının eksik olmasıdır.");
+  } else {
+    console.log("Uyuşuyor — kuşanılı eşyalardan gelen toplam bu kadar.");
+  }
+
+  // Envanterdeki (kuşanılı OLMAYAN) can/hız/kritik eşyaları da göster:
+  // çoğu zaman "2 tane var" denen eşyalardan biri aslında envanterdedir.
+  const bench = [];
+  for (const sl of SLOTS) {
+    for (const it of (data.inventory?.[sl.key] || [])) {
+      if (eq[sl.key] && it.id && it.id === eq[sl.key].id) continue;
+      if (it.hp || it.spd || it.crit) {
+        bench.push({ slot: sl.key, esya: it.name, can: it.hp || 0, hiz: it.spd || 0, kritik: it.crit || 0, durum: "ENVANTERDE (takılı değil)" });
+      }
+    }
+  }
+  if (bench.length) {
+    console.log("--- Envanterde duran, takılı OLMAYAN bonuslu eşyalar ---");
+    console.table(bench);
+  }
+  return { sumHp, sumSpd, sumCrit, sumAtk, sumDef, beklenenHp, yazanHp: data.maxHp };
+}
+// Konsoldan doğrudan çağırabilmek için (giriş yapmaya gerek yok, sadece oyun açık olsun).
+if (typeof window !== "undefined") window.statDebug = statDebug;
+
+// ============================================================
 // [FIX v7] GİZLİ BONUS STATLARIN GÖSTERİMİ
 // ------------------------------------------------------------
 // SORUN: rollBonusStat() her eşyaya %25 ihtimalle Hız / Kritik / Can
@@ -391,6 +456,7 @@ export async function disenchantItem(slot, itemId) {
 
 export function openInventoryModal(slot) {
   S.currentInventorySlot = slot;
+  S.invPage = 0; // [FIX v8] Yeni slot açılınca hep 1. sayfadan başla
   renderInventoryModal();
   inventoryModal.classList.remove("hidden");
 }
@@ -422,6 +488,11 @@ export function renderDropRatesInfoHtml() {
 // bu sadece ek/alternatif bir giriş yöntemi — masaüstünde mouse ile
 // hiçbir şey değişmiyor (touch event'leri fare tıklamalarını etkilemez).
 // ============================================================
+// [FIX v9] Envanter artık EKRANDA TEK EŞYA gösteriyor: kalkana basınca tüm
+// kalkanlar alt alta dizilmiyor, teker teker geziliyor. 1 = tek eşya/ekran.
+// (İstersen 2-3 yapabilirsin, gezinme şeridi kendiliğinden uyum sağlar.)
+export const INV_ITEMS_PER_PAGE = 1;
+
 export const INV_SWIPE_THRESHOLD_PX = 70;
 export const INV_SWIPE_MAX_DRAG_PX = 110;
 
@@ -497,8 +568,31 @@ export function renderInventoryModal() {
   inventoryModalTitle.textContent = `${s.icon} ${s.label} Envanteri`;
 
   const rarityOrder = { efsanevi: 0, nadir: 1, standart: 2 };
-  const items = getSlotInventory(slot).slice().sort((a, b) => rarityOrder[a.rarity] - rarityOrder[b.rarity]);
   const equippedId = S.currentPlayerData?.equipment?.[slot]?.id;
+
+  // [FIX v8-a] YABANCI SLOT FİLTRESİ — "kalkana basınca başka şeyler çıkıyor".
+  // Her eşya kendi `slot` alanını taşır. Geçmişte bir eşyanın YANLIŞ slotun
+  // dizisine yazılmış olması mümkün (eski kutu/market akışlarından kalma).
+  // O durumda kalkan listesinde kask görünür ve liste "karışmış" gibi durur.
+  // Burada sadece GÖSTERİM filtreleniyor — veri silinmiyor, sadece yanlış
+  // yerdeki eşya o listede çizilmiyor ve konsola tek satır uyarı düşüyor.
+  const rawItems = getSlotInventory(slot);
+  const foreign = rawItems.filter(it => it.slot && it.slot !== slot);
+  if (foreign.length) {
+    console.warn(`[Envanter] "${slot}" listesinde ${foreign.length} yabancı eşya var, gizlendi:`,
+      foreign.map(it => `${it.name} (slot: ${it.slot})`));
+  }
+
+  // [FIX v8-b] TEKİLLEŞTİRME — her eşya listede SADECE BİR KEZ.
+  // Aynı id'den birden fazla kart çizilmesini kesin olarak engeller.
+  // (dedupeDuplicateInventoryItems verideki kopyaları temizliyor; bu ise
+  // ekranın her koşulda temiz kalmasını garanti eden ikinci bir emniyet.)
+  const seenIds = new Set();
+  const items = rawItems
+    .filter(it => !it.slot || it.slot === slot)
+    .filter(it => { if (seenIds.has(it.id)) return false; seenIds.add(it.id); return true; })
+    .slice()
+    .sort((a, b) => rarityOrder[a.rarity] - rarityOrder[b.rarity]);
 
   const dropRatesHtml = renderDropRatesInfoHtml();
 
@@ -507,7 +601,31 @@ export function renderInventoryModal() {
     return;
   }
 
-  inventoryList.innerHTML = dropRatesHtml + items.map(it => {
+  // [FIX v8-c] SAYFALAMA — liste tek blokta uzayıp içinden çıkılmaz hâle
+  // geliyordu. Artık sayfa sayfa geziliyor.
+  const totalPages = Math.max(1, Math.ceil(items.length / INV_ITEMS_PER_PAGE));
+  // Eşya hurdaya çevrilip sayfa sayısı azalırsa boş sayfada kalmayı önler.
+  const page = Math.min(Math.max(0, S.invPage || 0), totalPages - 1);
+  S.invPage = page;
+  const pageItems = items.slice(page * INV_ITEMS_PER_PAGE, (page + 1) * INV_ITEMS_PER_PAGE);
+
+  // [FIX v9] Eşya gezgini: tek eşya ekranda, oklarla diğerlerine geçilir.
+  // Altta her eşya için bir nokta var (nadirliğine göre renkli) — kaçıncı
+  // eşyada olduğun bir bakışta görünsün ve doğrudan tıklanabilsin diye.
+  const dotsHtml = totalPages > 1
+    ? `<div class="inv-dots">` + items.map((it, i) =>
+        `<button class="inv-dot rarity-${it.rarity} ${i === page ? "active" : ""}" data-page="${i}" title="${it.name}"></button>`
+      ).join("") + `</div>`
+    : "";
+
+  const pagerHtml = totalPages > 1 ? `
+    <div class="inv-pager">
+      <button class="btn-mini inv-page-btn" data-page="${page - 1}" ${page === 0 ? "disabled" : ""}>‹</button>
+      <span class="inv-page-info"><b>${page + 1}</b>. eşya / ${items.length}</span>
+      <button class="btn-mini inv-page-btn" data-page="${page + 1}" ${page >= totalPages - 1 ? "disabled" : ""}>›</button>
+    </div>${dotsHtml}` : `<div class="inv-pager"><span class="inv-page-info">Tek eşyan var</span></div>`;
+
+  inventoryList.innerHTML = dropRatesHtml + pagerHtml + pageItems.map(it => {
     const isEquipped = it.id === equippedId;
     const statLabel = SLOT_MAP[it.slot]?.type === "atk" ? "Saldırı" : "Savunma";
     const upgradeLevel = it.upgradeLevel || 0;
@@ -523,7 +641,7 @@ export function renderInventoryModal() {
         <div class="inv-swipe-hint inv-swipe-hint-left">✨ Hurdaya Çevir</div>` : ""}
         <div class="inv-swipe-content">
         <div class="inv-item-head">
-          <div class="inv-item-icon-badge rarity-${it.rarity}">${itemIconSvg(it.slot, it.rarity, 26)}</div>
+          <div class="inv-item-icon-badge rarity-${it.rarity}">${itemIconSvg(it.slot, it.rarity, 18)}</div>
           <div class="inv-item-head-body">
             <span class="inv-item-name">${it.name}${upgradeLevel ? ` <b class="update-badge done">+${upgradeLevel}${upgradeLevel >= MAX_UPGRADE_LEVEL ? " MAKS" : ""}</b>` : ""}</span>
             <span class="inv-item-rarity-tag rarity-${it.rarity}">${RARITY_LABELS_TR[it.rarity]} · ${RARITY_CHANCE_LABELS[it.rarity]} şans · 🔒 Sv. ${levelReq}+</span>
@@ -547,6 +665,15 @@ export function renderInventoryModal() {
         </div>
       </div>`;
   }).join("");
+
+  // [FIX v8] Sayfa gezinme butonları
+  inventoryList.querySelectorAll("button.inv-page-btn, button.inv-dot").forEach(btn => {
+    btn.onclick = () => {
+      S.invPage = Number(btn.getAttribute("data-page")) || 0;
+      renderInventoryModal();
+      inventoryList.scrollTop = 0; // yeni sayfa hep baştan görünsün
+    };
+  });
 
   inventoryList.querySelectorAll("button[data-action]").forEach(btn => {
     btn.onclick = async () => {

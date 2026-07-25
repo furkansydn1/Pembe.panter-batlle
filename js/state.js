@@ -14,6 +14,7 @@ export const S = {
   weeklyLeaderboardMeta: null,
   attackInProgress: false,
   currentInventorySlot: null,
+  invPage: 0, // [FIX v8] Envanter modalında açık olan sayfa (0 tabanlı)
   lastKnownLevel: null,
   levelUpHideTimer: null,
   oracleResolving: false,
