@@ -463,3 +463,45 @@
   color: #7dd3fc;
   border: 1px solid rgba(56,189,248,.30);
 }
+
+/* ============================================================
+   [FIX v8] ENVANTER SAYFALAMA ŞERİDİ
+   ------------------------------------------------------------
+   Envanter tek blokta uzayıp içinden çıkılmaz hâle geliyordu.
+   Artık sayfa sayfa geziliyor; bu şerit listenin en üstünde,
+   nadirlik şansı bilgisinin hemen altında duruyor.
+   ============================================================ */
+.inv-pager{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:8px; margin: 6px 0 10px;
+  padding: 6px 8px;
+  background: rgba(255,255,255,.03);
+  border:1px solid rgba(255,255,255,.07);
+  border-radius: 10px;
+}
+.inv-page-info{ font-size:.72rem; color: var(--text-dim); font-weight:700; }
+.inv-page-info b{ color: var(--text); }
+.inv-pager .inv-page-btn{ flex:0 0 auto; padding:5px 10px; font-size:.72rem; }
+.inv-pager .inv-page-btn:disabled{ opacity:.3; cursor:not-allowed; }
+
+/* ============================================================
+   [FIX v9] EŞYA GEZGİNİ NOKTALARI
+   Envanter artık ekranda tek eşya gösteriyor; altındaki noktalar
+   kaçıncı eşyada olduğunu gösterir ve doğrudan tıklanabilir.
+   ============================================================ */
+.inv-dots{
+  display:flex; justify-content:center; align-items:center;
+  gap:6px; flex-wrap:wrap; margin: -4px 0 10px;
+}
+.inv-dot{
+  width:8px; height:8px; padding:0; border-radius:999px;
+  background: rgba(255,255,255,.18);
+  border:1px solid rgba(255,255,255,.12);
+  cursor:pointer; transition: transform .12s ease, background .12s ease;
+}
+.inv-dot:hover{ transform: scale(1.35); }
+.inv-dot.active{ width:20px; background: var(--text); }
+.inv-dot.rarity-nadir{ background: rgba(77,155,255,.55); }
+.inv-dot.rarity-efsanevi{ background: rgba(255,204,77,.6); }
+.inv-dot.rarity-nadir.active{ background: var(--blue); }
+.inv-dot.rarity-efsanevi.active{ background: var(--gold); }
