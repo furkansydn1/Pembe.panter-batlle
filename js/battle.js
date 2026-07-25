@@ -777,7 +777,7 @@ export async function runAttack(defenderId) {
       // ROLDEN BAĞIMSIZ, kendi eşyası + kendi Günün Olayı + kendi pasifleriyle
       // hesaplanır. A→B ve B→A savaşlarında iki taraf da BİREBİR AYNI statlarla
       // dövüşür; tek fark ilk vuruş inisiyatifidir (ve o da artık ufak bir
-      // avantaj, bkz. duel-engine DUEL_ATTACKER_TIE_INITIATIVE).
+      // avantaj, bkz. duel-engine DUEL_INITIATIVE_K).
       // "Offrole" ağırlığı kaldırıldı çünkü sıralı düelloda her iki stat da
       // zaten gerçek rolünde kullanılıyor — ayrıca eklemek çifte sayımdı.
       // ============================================================

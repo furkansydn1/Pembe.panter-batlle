@@ -30,26 +30,47 @@
 //   full eşyalı vs çıplak → %100 / %0 (griefing zaten ayrıca cezalandırıyor)
 //   ort. savaş uzunluğu → ~9 tur / ~17 vuruş (erken oyunda da geç oyunda da)
 // ============================================================
-export const DUEL_CRIT_MULT = 1.5;      // [v6] 2.5→1.5: kritik artık "güçlü bir vuruş", maçı tek başına çeviren bir piyango DEĞİL
-export const DUEL_MAX_TURNS = 18;       // [v6] 15→18: yüksek canlı geç-oyun savaşları tur limitine takılmadan doğal bitsin
-export const DUEL_BASE_CRIT = 0.05;     // taban %5 kritik (herkeste var, core-config BASE_CRIT=5 ile senkron)
-export const DUEL_SPEED_HALF = 25;      // [v6] 8→25: MAP (14-hero-stats SPD_HALF_VALUE) ile SENKRON; eşya hızları (3-20) makul bonus verir
-export const DUEL_SPEED_MAX_EXTRA = 0.5;// [v6] 0.85→0.5: ekstra vuruş şansı tavanı — sonsuz hız bile turların en fazla yarısında çift vurur
-export const DUEL_CRIT_PER_POINT = 100; // [v6] 40→100: MAP (14-hero-stats, critStat/100) ile SENKRON; her 1 kritik statı = +%1 şans
-export const DUEL_CRIT_CAP = 0.40;      // [v6] kritik şansı tavanı %40 (taban+eşya dahil)
-// [v6] HASAR FORMÜLÜ DEĞİŞTİ — eski "atk - def*azaltma" (çıkarma) yerine
-// ORAN tabanlı: hasar = 100 * atk/(atk+def) / TEMPO.
-//   Neden: çıkarma formülünde düşük statlı erken oyunda savaşlar 30 vuruş
-//   sürüyor, yüksek statta tek atmaya dönüyordu. Oran formülünde savaş
-//   uzunluğu HER stat ölçeğinde sabit (~17 vuruş), tank def yığsa bile
-//   hasar asla 1'e kilitlenip savaş donmuyor, ve +10 saldırı ile +10
-//   savunma matematiksel olarak birebir eşit değerde (tam simetri).
-export const DUEL_TEMPO = 4.5;          // savaş temposu: büyüdükçe vuruşlar küçülür, savaş uzar (eşit maç ~9 tur)
-export const DUEL_DMG_VARIANCE = 0.25;  // ±%25/vuruş: tur bazında heyecan; TOPLAM sonuçta statlar ezici şekilde belirleyici (bkz. eğri)
-// [v6] İNİSİYATİF: hız eşitse saldıran %60 ihtimalle önce başlar. Eski kural
-// ("saldıran HER ZAMAN önce") tek başına eşit maçta %75 kazanma demekti —
-// "kim saldırırsa kazanıyor" şikayetinin matematiksel kaynağı buydu.
-export const DUEL_ATTACKER_TIE_INITIATIVE = 0.6;
+export const DUEL_CRIT_MULT = 1.5;
+export const DUEL_MAX_TURNS = 14;
+export const DUEL_BASE_CRIT = 0.05;
+export const DUEL_CRIT_CAP = 0.40;
+export const DUEL_CRIT_PER_POINT = 60;   // [v12] 100→60: kritik diğer statlarla aynı değere geldi
+export const DUEL_SPEED_HALF = 45;       // [v12] 25→45: hızın getirisi yumuşatıldı
+export const DUEL_SPEED_MAX_EXTRA = 0.4; // [v12] 0.5→0.4
+export const DUEL_TEMPO = 4.5;
+export const DUEL_DMG_VARIANCE = 0.9;    // [v12] 0.25→0.9: her vuruş çok değişken ama ~17 vuruşta ortalanır
+
+// [v12] CAN ÖLÇEĞİ — dengenin can ayağı.
+// ESKİ SORUN: hasar formülündeki taban sayı 100'dü ve oyuncunun taban canı da
+// 100'dü. Eşyadan gelen +72 can, doğrudan +%72 dayanıklılık demekti. Saldırı ve
+// savunma ise atk/(atk+def) oranıyla eziliyordu: 50 saldırı + 45 savunma
+// üstünlüğü sadece +%37 hasar getiriyordu. Sonuç: piyangodan 2 can eşyası
+// çıkaran, 10 seviye üstündeki bir oyuncuyu düzenli yeniyordu.
+//
+// ÇÖZÜM: Düello İÇİNDE can ölçeği 500'e taşınıyor. Eşyadan gelen can miktarı
+// AYNEN korunuyor (172 can → 500 + 72 = 572), sadece tabana oranı küçülüyor:
+// +72 can artık %72 değil %14 dayanıklılık. Hasar tabanı da 500 olduğu için
+// savaş uzunluğu değişmiyor (~9 tur).
+//
+// ÖNEMLİ: Bu dönüşüm SADECE bu dosyanın içinde yapılır. Firestore'daki maxHp
+// alanına, item-systems.js'teki BASE_HP'ye ve MAP'in can hesabına HİÇ
+// dokunulmaz — yani veri taşıma (migration) gerekmez, MAP dengesi bozulmaz.
+export const DUEL_HP_BASE = 500;      // düellodaki taban can
+export const DUEL_HP_LEGACY_BASE = 100; // oyun verisindeki taban can (item-systems BASE_HP)
+
+// [v12] MUTLAK SALDIRI ÖLÇEĞİ — dengenin saldırı ayağı.
+// Saf oran formülü (atk/(atk+def)) sadece senin saldırınla rakibin savunmasının
+// BİRBİRİNE oranını görüyordu; mutlak büyüklüğü hiç umursamıyordu. Bu yüzden
+// her yönden güçlü bir oyuncu, üstünlüğünün karşılığını alamıyordu. Artık
+// hasar, saldırının mutlak büyüklüğüyle de (yumuşak bir üsle) ölçekleniyor.
+export const DUEL_ATK_REF = 150;   // "ortalama" saldırı — bunun üstü bonus, altı ceza
+export const DUEL_ATK_POWER = 0.4; // yumuşatma üssü (1 = tam ölçekleme, 0 = eski hâl)
+
+// [v12] İNİSİYATİF ARTIK OLASILIKSAL.
+// Eski kural "hızı yüksek olan HER ZAMAN önce vurur"du; ~9 turluk bir maçta
+// bu tek başına ezici bir üstünlüktü (ölçüm: +10 hız = %94 kazanma). Artık hız
+// farkı sadece ilk vuruş İHTİMALİNİ kaydırıyor, garanti vermiyor.
+export const DUEL_INITIATIVE_K = 20;
 
 // ============================================================
 // [FIX v7] ARAYÜZ İÇİN TEK KAYNAK YARDIMCILARI
@@ -79,7 +100,10 @@ export function toDuelFighter(p, opts = {}) {
   const atk = Math.max(1, Number(p.attack) || 1);
   const def = Math.max(0, Number(p.defense) || 0);
   const spd = Math.max(0, Number(p.speed) || 0);
-  const hp = Math.max(1, Math.round(Number(p.maxHp) || 100));
+  // [v12] Can, düello ölçeğine taşınır: eşyadan gelen fazlalık aynen korunur,
+  // sadece taban büyütülür. (172 → 500 + 72 = 572)
+  const rawHp = Math.max(1, Math.round(Number(p.maxHp) || DUEL_HP_LEGACY_BASE));
+  const hp = Math.max(1, DUEL_HP_BASE + (rawHp - DUEL_HP_LEGACY_BASE));
   // kritik şansı: taban %5 + stat (critStat/100 — MAP ile aynı ölçek), %40 tavan
   const crit = Math.min(DUEL_CRIT_CAP, DUEL_BASE_CRIT + Math.max(0, (Number(p.critStat) || 0) / DUEL_CRIT_PER_POINT));
   // hızdan gelen ekstra-vuruş şansı (azalan getiri, tavan %50)
@@ -97,7 +121,11 @@ export function toDuelFighter(p, opts = {}) {
 // doğrudan kaydırır. 100 sabittir (taban can) — böylece eşyadan gelen ekstra
 // can GERÇEK dayanıklılık sağlar (hasar cana göre ölçeklenmez).
 function computeHitDamage(from, to, rng) {
-  let base = 100 * (from.atk / (from.atk + to.def)) / DUEL_TEMPO;
+  // [v12] hasar = CAN_ÖLÇEĞİ × oran × mutlak-saldırı-ölçeği / tempo
+  let base = DUEL_HP_BASE
+    * (from.atk / (from.atk + to.def))
+    * Math.pow(from.atk / DUEL_ATK_REF, DUEL_ATK_POWER)
+    / DUEL_TEMPO;
   base *= (1 - DUEL_DMG_VARIANCE) + rng() * DUEL_DMG_VARIANCE * 2;
   const isCrit = rng() < from.crit;
   const dmg = Math.max(1, Math.round(isCrit ? base * DUEL_CRIT_MULT : base));
@@ -149,11 +177,14 @@ export function simulateDuel(attackerRaw, defenderRaw, opts = {}) {
   let turnNo = 1;
   const HARD_CAP = 200; // sonsuz döngü emniyeti (beraberlik uzarsa bile)
   // [v6] İNİSİYATİF: hızı yüksek olan önce vurur. Hızlar EŞİTSE saldıran
-  // %60 ihtimalle önce başlar (DUEL_ATTACKER_TIE_INITIATIVE). Eski "eşitlikte
+  // [v12] ilk vuruş artık hız farkına göre OLASILIKSAL. Eski "eşitlikte
   // saldıran HER ZAMAN önce" kuralı, eşit statlı bir maçta saldırana tek
   // başına ~%75 kazanma veriyordu — "kim saldırırsa o kazanıyor" adaletsizliğinin
   // ana kaynağı buydu. Şimdi ilk saldıran ufak (%54'lük) bir avantajla yetinir.
-  const attackerFirst = A.spd !== D.spd ? A.spd > D.spd : rng() < DUEL_ATTACKER_TIE_INITIATIVE;
+  // [v12] Olasılıksal inisiyatif: hız farkı ilk vuruş ŞANSINI kaydırır.
+  // Eşit hızda %50/%50 — yani aynı statlı iki oyuncu için savaş tam adil.
+  const pAttackerFirst = 0.5 + 0.5 * ((A.spd - D.spd) / (A.spd + D.spd + DUEL_INITIATIVE_K));
+  const attackerFirst = rng() < pAttackerFirst;
   while (!ko && turnNo <= HARD_CAP) {
     if (attackerFirst) {
       attackPhase(turnNo, "attacker", A, D, "defender");
