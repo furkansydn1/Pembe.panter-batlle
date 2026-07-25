@@ -153,8 +153,8 @@ var BIOMES = {
     // Warrior vuruşu ~30, Pawn şarjı ~35, ok ~23 — sert ama tek vuruşta eritmez.
     mobHpMult: 8.0,
     mobDmgMult: 2.5,
-    // [KADRO] Bu diyarda soldier iskeleti yok; onun yerine 5 OKÇU var (09-wave okur).
-    roster: { orc: 6, soldier: 0, goblin: 6, archer: 5 },
+    // [KADRO] Bu diyarda soldier iskeleti yok; onun yerine 7 OKÇU var (09-wave okur).
+    roster: { orc: 8, soldier: 0, goblin: 8, archer: 7 },
     loot: {
       legBookPct: 0.01,     // %1  EFSANEVİ kitap (köprü books.efsanevi'ye işler)
       bookPct: 0.08,        // %8  NADİR kitap

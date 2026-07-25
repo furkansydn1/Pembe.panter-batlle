@@ -8,8 +8,9 @@
 // Canavar dosyaları ölümde deathT sayacını zaten işletiyor (deathT += dt);
 // burası o sayaca bakarak süresi dolan ölüyü taze bir canavarla değiştirir.
 // ============================================================
-const RESPAWN_DELAY = 10;     // saniye — her canavar ölümünden bu kadar sonra döner
-const ENEMIES_PER_TYPE = 6;   // spawnNewWave hâlâ ilk kurulumda kullanılır
+const RESPAWN_DELAY = 5;      // saniye — her canavar ölümünden bu kadar sonra döner
+const ENEMIES_PER_TYPE = 8;   // spawnNewWave hâlâ ilk kurulumda kullanılır
+                              // (roster'ı olmayan biyomlarda geçerli: orman + bataklık)
 const SPAWN_MARGIN = 130;     // harita kenarına bu kadar yaklaşmasın
 const MIN_SPAWN_DIST = 150;   // spawn noktaları birbirine bu mesafeden yakın olmasın
 
