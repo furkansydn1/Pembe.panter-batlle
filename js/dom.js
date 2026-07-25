@@ -64,6 +64,18 @@ export const myDefenseWarEl = document.getElementById("myDefenseWar");
 export const myPointsWarEl = document.getElementById("myPointsWar");
 export const myScrapWarEl = document.getElementById("myScrapWar");
 export const myAttackEnvEl = document.getElementById("myAttackEnv");
+
+// [FIX v7] Can / Kritik / Hız statlarının ekran referansları. Bu üç stat
+// savaşta ÇALIŞIYORDU ama profilde hiç gösterilmiyordu (element bile yoktu).
+export const myHpEl = document.getElementById("myHp");
+export const myCritEl = document.getElementById("myCrit");
+export const mySpdEl = document.getElementById("mySpd");
+export const myHpWarEl = document.getElementById("myHpWar");
+export const myCritWarEl = document.getElementById("myCritWar");
+export const mySpdWarEl = document.getElementById("mySpdWar");
+export const myHpEnvEl = document.getElementById("myHpEnv");
+export const myCritEnvEl = document.getElementById("myCritEnv");
+export const mySpdEnvEl = document.getElementById("mySpdEnv");
 export const myDefenseEnvEl = document.getElementById("myDefenseEnv");
 export const myPointsEnvEl = document.getElementById("myPointsEnv");
 export const myScrapEnvEl = document.getElementById("myScrapEnv");

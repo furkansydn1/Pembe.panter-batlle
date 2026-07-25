@@ -329,7 +329,7 @@ export async function performBoxOpen({ forcedRarity = null, costScrap = 0, costG
       itemPopupInner.innerHTML = `
         <div class="item-popup-icon">${itemIconSvg(item.slot, item.rarity, 52)}</div>
         <div class="item-popup-name rarity-${item.rarity}">${item.name}</div>
-        <div class="item-popup-stats">⚔️ +${item.atk} &nbsp; 🛡️ +${item.def} &nbsp; · ${item.rarity.toUpperCase()} (${RARITY_CHANCE_LABELS[item.rarity]} şans)</div>
+        <div class="item-popup-stats">⚔️ +${item.atk} &nbsp; 🛡️ +${item.def}${item.hp ? ` &nbsp; ❤️ +${item.hp} Can` : ""}${item.spd ? ` &nbsp; ⚡ +${item.spd} Hız` : ""}${item.crit ? ` &nbsp; 🎯 +${item.crit} Kritik` : ""} &nbsp; · ${item.rarity.toUpperCase()} (${RARITY_CHANCE_LABELS[item.rarity]} şans)</div>
         ${item.enchantPct ? `<div class="item-popup-passive" style="color:var(--accent-2)">✨ Efsun: +%${item.enchantPct} ${SLOT_MAP[item.slot].type === "atk" ? "Saldırı" : "Savunma"}</div>` : ""}
         ${getLiveEffectDesc(item) ? `<div class="item-popup-passive">✨ ${getLiveEffectDesc(item)}</div>` : ""}
         ${item.minorTrait ? `<div class="item-popup-passive minor-passive">${item.minorTrait.icon} ${item.minorTrait.name}: ${item.minorTrait.desc}</div>` : ""}
@@ -425,7 +425,7 @@ export async function performBoxOpen({ forcedRarity = null, costScrap = 0, costG
   itemPopupInner.innerHTML = `
     <div class="item-popup-icon">${itemIconSvg(item.slot, item.rarity, 52)}</div>
     <div class="item-popup-name rarity-${item.rarity}">${item.name}</div>
-    <div class="item-popup-stats">⚔️ +${item.atk} &nbsp; 🛡️ +${item.def} &nbsp; · ${item.rarity.toUpperCase()} (${RARITY_CHANCE_LABELS[item.rarity]} şans)</div>
+    <div class="item-popup-stats">⚔️ +${item.atk} &nbsp; 🛡️ +${item.def}${item.hp ? ` &nbsp; ❤️ +${item.hp} Can` : ""}${item.spd ? ` &nbsp; ⚡ +${item.spd} Hız` : ""}${item.crit ? ` &nbsp; 🎯 +${item.crit} Kritik` : ""} &nbsp; · ${item.rarity.toUpperCase()} (${RARITY_CHANCE_LABELS[item.rarity]} şans)</div>
     ${item.enchantPct ? `<div class="item-popup-passive" style="color:var(--accent-2)">✨ Efsun: +%${item.enchantPct} ${SLOT_MAP[item.slot].type === "atk" ? "Saldırı" : "Savunma"}</div>` : ""}
     ${getLiveEffectDesc(item) ? `<div class="item-popup-passive">✨ ${getLiveEffectDesc(item)}</div>` : ""}
     ${item.minorTrait ? `<div class="item-popup-passive minor-passive">${item.minorTrait.icon} ${item.minorTrait.name}: ${item.minorTrait.desc}</div>` : ""}

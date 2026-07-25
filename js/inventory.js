@@ -9,6 +9,27 @@ import { createMarketListing } from "./market.js";
 import { S } from "./state.js";
 
 // ============================================================
+// [FIX v7] GİZLİ BONUS STATLARIN GÖSTERİMİ
+// ------------------------------------------------------------
+// SORUN: rollBonusStat() her eşyaya %25 ihtimalle Hız / Kritik / Can
+// bonuslarından birini veriyordu (item-systems.js) ve bu bonuslar
+// computeStatsFromEquipment tarafından da gerçekten hesaba katılıyordu —
+// AMA arayüzde hiçbir yerde çizilmiyordu. Ne envanter kartında, ne kutu
+// açılış ekranında, ne karakter ekranında. Yani "hiç can/hız/kritik veren
+// eşya görmedim" şikayeti doğruydu: eşyalar vardı, GÖRÜNMÜYORDU.
+// (Örn. 133 can = 100 taban + üzerindeki bir eşyanın gizli +33 can bonusu.)
+// Bu fonksiyon o üç bonusu, varsa, rozet olarak basar.
+// ============================================================
+export function bonusStatPills(it) {
+  if (!it) return "";
+  const out = [];
+  if (it.hp)   out.push(`<span class="inv-stat-pill hp">❤️ +${it.hp} Can</span>`);
+  if (it.spd)  out.push(`<span class="inv-stat-pill spd">⚡ +${it.spd} Hız</span>`);
+  if (it.crit) out.push(`<span class="inv-stat-pill crit">🎯 +${it.crit} Kritik</span>`);
+  return out.join("");
+}
+
+// ============================================================
 // SEVİYE-DIŞI EŞYA OTOMATİK SÖKÜMÜ (kalıcı çözüm)
 // ------------------------------------------------------------
 // SORUN: Geçmişte (level kontrolü eklenmeden önce) kutu/pazar "slot boşsa
@@ -41,20 +62,73 @@ export async function autoUnequipOverleveledItems() {
 
   if (!changed) return; // seviye-dışı eşya yok, dokunma
   try {
-    const patch = { equipment: newEquipment, inventory: newInventory };
-    // statlar ekipmandan yeniden hesaplanabiliyorsa güncelle
-    try {
-      const stats = computeStatsFromEquipment(newEquipment);
-      if (stats && typeof stats.attack === "number") { patch.attack = stats.attack; patch.defense = stats.defense; }
-    } catch (e) { /* stat hesaplama imzası farklıysa sadece ekipman/envanteri yaz */ }
+    // [FIX v7 — İKİ AYRI BUG BİRDEN]
+    //  1) Eskiden computeStatsFromEquipment(newEquipment) çağrılıyordu, yani
+    //     statAllocated (seviye atlayınca yatırılan Stat Puanları) İKİNCİ
+    //     PARAMETRE OLARAK VERİLMİYORDU → otomatik söküm çalışan her oyuncunun
+    //     yatırdığı tüm stat puanları saldırı/savunmadan SESSİZCE siliniyordu.
+    //  2) Sadece attack/defense yazılıyordu; speed/critStat/maxHp yazılmıyordu
+    //     → söküm sonrası oyuncu, artık üzerinde OLMAYAN eşyanın can/hız/kritik
+    //     bonusuyla savaşmaya devam ediyordu (hayalet stat).
+    // Artık beş statın hepsi, statAllocated dahil, tek seferde yazılıyor.
+    const stats = computeStatsFromEquipment(newEquipment, data.statAllocated);
+    const patch = {
+      equipment: newEquipment,
+      inventory: newInventory,
+      attack: stats.attack,
+      defense: stats.defense,
+      speed: stats.speed,
+      critStat: stats.critStat,
+      maxHp: stats.maxHp,
+    };
     await updateDoc(doc(db, PLAYERS_COL, S.currentPlayerId), patch);
     // yerel veriyi de güncelle ki UI hemen doğru göstersin
-    S.currentPlayerData.equipment = newEquipment;
-    S.currentPlayerData.inventory = newInventory;
-    if (patch.attack !== undefined) { S.currentPlayerData.attack = patch.attack; S.currentPlayerData.defense = patch.defense; }
-    console.warn("[Otomatik söküm] Seviyeni aşan eşyalar envantere alındı.");
+    Object.assign(S.currentPlayerData, patch);
+    console.warn("[Otomatik söküm] Seviyeni aşan eşyalar envantere alındı, statlar yeniden hesaplandı.");
   } catch (e) {
     console.error("[Otomatik söküm] hata:", e);
+  }
+}
+
+// ============================================================
+// [FIX v7] STAT SENKRONİZASYONU — "rakibin canı hep 100" bug'ının KÖK ÇÖZÜMÜ
+// ------------------------------------------------------------
+// SORUN: speed / critStat / maxHp alanları oyuna SONRADAN eklendi. Bu alanlar
+// Firestore'daki oyuncu dokümanına SADECE oyuncu bir eylem yaptığında yazılıyor
+// (eşya kuşanma, kutu açma, +basma, stat puanı dağıtma). Yani o alanlar
+// eklendikten sonra hiç eşya kuşanmamış bir oyuncunun dokümanında bu üç alan
+// HİÇ YOKTUR. battle.js o oyuncuyu savaşa sokarken `defender.maxHp || BASE_HP`
+// yazdığı için can 100'e, kritik ve hız 0'a düşer — oyuncunun gerçekte taktığı
+// can/hız/kritik eşyaları savaşta HİÇ SAYILMAZ. "Benim canım 133, rakibinki hep
+// 100 sabit" şikayetinin sebebi tam olarak budur: senin alanın (bir eylemle)
+// yazılmış, onunki hiç yazılmamış.
+//
+// ÇÖZÜM: Girişte, oyuncunun ekipmanından statları yeniden hesapla ve Firestore'da
+// yazan değerle karşılaştır. Bir fark varsa (ya da alan hiç yoksa) düzelt.
+// Herkes bir kez giriş yaptığında kendi dokümanını onarır → migration script'i
+// gerekmez, sorun kendiliğinden ve kalıcı olarak kapanır. Fark yoksa Firestore'a
+// HİÇ yazmaz, yani her açılışta boşuna yazma maliyeti oluşmaz.
+// ============================================================
+export async function resyncStatsFromEquipment() {
+  const data = S.currentPlayerData;
+  if (!data || !S.currentPlayerId) return;
+  try {
+    const stats = computeStatsFromEquipment(data.equipment || emptyEquipment(), data.statAllocated);
+    const patch = {};
+    // Not: `!==` kullanılıyor, çünkü alan HİÇ YOKSA (undefined) sayıya asla
+    // eşit olmaz ve mutlaka yazılır — asıl onarmak istediğimiz durum bu.
+    if (data.attack !== stats.attack) patch.attack = stats.attack;
+    if (data.defense !== stats.defense) patch.defense = stats.defense;
+    if (data.speed !== stats.speed) patch.speed = stats.speed;
+    if (data.critStat !== stats.critStat) patch.critStat = stats.critStat;
+    if (data.maxHp !== stats.maxHp) patch.maxHp = stats.maxHp;
+    if (!Object.keys(patch).length) return; // her şey zaten doğru
+
+    await updateDoc(doc(db, PLAYERS_COL, S.currentPlayerId), patch);
+    Object.assign(S.currentPlayerData, patch);
+    console.warn("[Stat senkronu] Eksik/yanlış statlar ekipmandan onarıldı:", patch);
+  } catch (e) {
+    console.error("[Stat senkronu] hata:", e);
   }
 }
 
@@ -423,21 +497,8 @@ export function renderInventoryModal() {
   inventoryModalTitle.textContent = `${s.icon} ${s.label} Envanteri`;
 
   const rarityOrder = { efsanevi: 0, nadir: 1, standart: 2 };
-  // [v2.4 fix] "Bu slotta eşyan yok" BUG'I:
-  // Bir eşya kuşanılınca envanter dizisinden çıkıp equipment'a taşınır; slotta
-  // yalnızca o eşya varsa envanter dizisi BOŞ kalıyor ve ekran yanlışlıkla
-  // "eşyan yok" diyordu. Çözüm: getSlotInventory (VERİ listesi — yazım güvenli,
-  // kuşanılıyı İÇERMEZ, çoğaltma bug'ı önlenir) çıktısına kuşanılı eşyayı
-  // SADECE EKRAN İÇİN, id ile tekilleştirerek geri ekliyoruz. Firestore'a yazan
-  // hiçbir çağrı bu listeyi kullanmaz (onlar getSlotInventory'yi doğrudan çağırır).
-  const equipped = S.currentPlayerData?.equipment?.[slot] || null;
-  const equippedId = equipped?.id;
-  const dataItems = getSlotInventory(slot);
-  let items = dataItems.slice();
-  if (equipped && !items.some(it => it.id && equippedId && it.id === equippedId)) {
-    items.unshift(equipped); // kuşanılı eşyayı listenin başına (ekranlık)
-  }
-  items.sort((a, b) => rarityOrder[a.rarity] - rarityOrder[b.rarity]);
+  const items = getSlotInventory(slot).slice().sort((a, b) => rarityOrder[a.rarity] - rarityOrder[b.rarity]);
+  const equippedId = S.currentPlayerData?.equipment?.[slot]?.id;
 
   const dropRatesHtml = renderDropRatesInfoHtml();
 
@@ -472,6 +533,7 @@ export function renderInventoryModal() {
         <div class="inv-item-stat-pills">
           <span class="inv-stat-pill atk">⚔️ +${it.atk}</span>
           <span class="inv-stat-pill def">🛡️ +${it.def}</span>
+          ${bonusStatPills(it)}
           ${it.enchantPct ? `<span class="inv-stat-pill enchant">✨ Efsun +%${it.enchantPct} ${statLabel}</span>` : ""}
         </div>
         ${getLiveEffectDesc(it) ? `<div class="item-popup-passive" style="margin-top:6px;">✨ ${getLiveEffectDesc(it)}</div>` : ""}
@@ -480,7 +542,7 @@ export function renderInventoryModal() {
           <button class="btn-mini nadir-mini" data-action="equip" data-id="${it.id}" ${isEquipped || !equipCheck.ok ? "disabled" : ""} title="${equipCheck.ok ? "" : equipCheck.reason}">Kuşan${equipCheck.ok ? "" : ` (🔒 Sv. ${levelReq})`}</button>
           <button class="btn-mini" data-action="scrap" data-id="${it.id}" ${isEquipped ? "disabled" : ""}>Hurdaya Çevir<span>✨ +${computeScrapGainForItem(it)} Hurda</span></button>
           <button class="btn-mini nadir-mini" data-action="upgrade" data-id="${it.id}" ${upgradeCheck.ok ? "" : "disabled"} title="${upgradeCheck.ok ? "" : upgradeCheck.reason}">+ Basma (+${upgradeLevel} → +${upgradeLevel + 1}) · %${Math.round(getUpgradeSuccessChance(upgradeLevel + 1) * 100)} şans<span>✨ ${upCost.hurdaCost} Hurda + ${upCost.bookCost}x ${BOOK_TIER_ICONS[it.rarity]}</span></button>
-          <button class="btn-mini gold-mini" data-action="sell" data-id="${it.id}" ${isEquipped ? "disabled" : ""} title="Oyuncular Arası Pazar'a listele">🪙 Pazara Çıkar</button>
+          <button class="btn-mini gold-mini" data-action="sell" data-id="${it.id}" ${isEquipped || S.currentPlayerData?.tradeBanned ? "disabled" : ""} title="${S.currentPlayerData?.tradeBanned ? "Ticaret yasaklısın" : "Oyuncular Arası Pazar'a listele"}">🪙 Pazara Çıkar</button>
         </div>
         </div>
       </div>`;

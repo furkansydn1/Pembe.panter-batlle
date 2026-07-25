@@ -1,12 +1,15 @@
 import { showLoginScreen } from "./auth-ui.js";
-import { getElo, getLeagueTier, renderAttackTargets } from "./battle.js";
+import { BASE_HP, getElo, getLeagueTier, renderAttackTargets } from "./battle.js";
 import { renderBoxStatus, renderCharacterStage } from "./box-open.js";
 import { BASE_ATTACK, BASE_DEFENSE, ENERGY_MAX, ENERGY_REGEN_MS_PER_POINT, ENERGY_TASKS, getGold, getScrap } from "./core-config.js";
-import { badgesGridEl, badgesProgressEl, charAllocAtkEl, charAllocDefEl, charLevelBadgeEl, charStatPointsCountEl, charStatPointsRowEl, charXpFillEl, charXpLabelEl, closeViewEquipmentBtn, collectionModal, currentPlayerNameEl, dailyEventBanner, energyBarFill, energyStatus, energyTasksRow, gameScreen, inventoryModal, leaderboardEl, levelUpConfettiLayer, levelUpLevelNumberEl, levelUpOverlay, loginScreen, materialsGridEl, myAttackEl, myAttackEnvEl, myAttackWarEl, myDefenseEl, myDefenseEnvEl, myDefenseWarEl, myGoldBoxEl, myGoldEnvEl, myGoldMarketEl, myGoldWarEl, myPointsEl, myPointsEnvEl, myPointsWarEl, myScrapBoxEl, myScrapEl, myScrapEnvEl, myScrapWarEl, myStreakEl, statAllocAtkBtn, statAllocDefBtn, statsOpponentsEl, statsOverviewEl, statsStreakEl, streakChip, topEnergyFillEl, topEnergyLabelEl, topGoldValEl, topPerformersBanner, topPointsValEl, topScrapValEl, tpBestName, tpWorstName, viewEquipmentGrid, viewEquipmentModal, viewEquipmentTitle, weeklyLeaderboardInfoEl } from "./dom.js";
+import { myHpEl, myCritEl, mySpdEl, myHpWarEl, myCritWarEl, mySpdWarEl, myHpEnvEl, myCritEnvEl, mySpdEnvEl, badgesGridEl, badgesProgressEl, charAllocAtkEl, charAllocDefEl, charLevelBadgeEl, charStatPointsCountEl, charStatPointsRowEl, charXpFillEl, charXpLabelEl, closeViewEquipmentBtn, collectionModal, currentPlayerNameEl, dailyEventBanner, energyBarFill, energyStatus, energyTasksRow, gameScreen, inventoryModal, leaderboardEl, levelUpConfettiLayer, levelUpLevelNumberEl, levelUpOverlay, loginScreen, materialsGridEl, myAttackEl, myAttackEnvEl, myAttackWarEl, myDefenseEl, myDefenseEnvEl, myDefenseWarEl, myGoldBoxEl, myGoldEnvEl, myGoldMarketEl, myGoldWarEl, myPointsEl, myPointsEnvEl, myPointsWarEl, myScrapBoxEl, myScrapEl, myScrapEnvEl, myScrapWarEl, myStreakEl, statAllocAtkBtn, statAllocDefBtn, statsOpponentsEl, statsOverviewEl, statsStreakEl, streakChip, topEnergyFillEl, topEnergyLabelEl, topGoldValEl, topPerformersBanner, topPointsValEl, topScrapValEl, tpBestName, tpWorstName, viewEquipmentGrid, viewEquipmentModal, viewEquipmentTitle, weeklyLeaderboardInfoEl } from "./dom.js";
 import { BADGES, ensurePersonalDailyEventForToday, getTodaysEvent, randInt } from "./events-badges.js";
 import { LOG_COL, MARKET_LISTINGS_COL, PLAYERS_COL, TRADE_LOGS_COL, collection, db, doc, getDoc, limit, onSnapshot, orderBy, query, updateDoc } from "./firebase-setup.js";
-import { autoUnequipOverleveledItems, cleanupGhostEquippedItems, dedupeDuplicateInventoryItems, renderCollection, renderInventoryModal } from "./inventory.js";
+import { autoUnequipOverleveledItems, cleanupGhostEquippedItems, dedupeDuplicateInventoryItems, renderCollection, renderInventoryModal, resyncStatsFromEquipment } from "./inventory.js";
 import { BOOK_TIER_ICONS, BOOK_TIER_NAMES, RARITY_ORDER, computeStatsFromEquipment, getBooks, xpNeededForLevel } from "./item-systems.js";
+// [FIX v7] Kritik/Hız yüzdeleri düello motorunun KENDİ formülünden okunur;
+// arayüzde ikinci bir formül tutmuyoruz ki senkron kaçmasın.
+import { critChancePctFromStat, extraHitPctFromSpeed } from "./duel-engine.js";
 import { SLOTS, itemIconSvg } from "./items-data.js";
 import { dateStr, emptyEquipment, formatRemaining, renderMapTab } from "./map.js";
 import { renderMarketListingsGrid, renderMarketTab, renderMyListingsPanel, renderTradeBanBanner, renderTradeLogsFeed } from "./market.js";
@@ -61,7 +64,12 @@ export async function startGame() {
     // onSnapshot tekrar çalışır ama __autoUnequipDone bayrağı ikinci kez engeller.
     if (!S.__autoUnequipDone) {
       S.__autoUnequipDone = true;
-      autoUnequipOverleveledItems();
+      // [FIX v7] Önce seviye-dışı eşyaları sök, SONRA statları ekipmandan
+      // yeniden senkronla. Sıra önemli: söküm ekipmanı değiştirebilir, senkron
+      // da nihai ekipmana göre beş statı birden Firestore'a yazar. Bu ikinci
+      // adım, speed/critStat/maxHp alanları hiç yazılmamış eski hesapların
+      // savaşta 100 can / 0 kritik / 0 hız görünmesini kalıcı olarak bitirir.
+      autoUnequipOverleveledItems().then(() => resyncStatsFromEquipment());
     }
     // [Kalıcı fix] Kuşanılan eşyanın envanterde "hayalet kopya" olarak kalması
     // bug'ından (eski equipItem'dan miras) etkilenmiş hesapları girişte bir kez
@@ -254,6 +262,17 @@ export function renderMyStats() {
   if (myDefenseEnvEl) myDefenseEnvEl.textContent = S.currentPlayerData.defense ?? BASE_DEFENSE;
   if (myPointsEnvEl) myPointsEnvEl.textContent = S.currentPlayerData.points ?? 0;
   if (myScrapEnvEl) myScrapEnvEl.textContent = getScrap(S.currentPlayerData);
+  // [FIX v7] Can / Kritik / Hız artık üç panelde de görünüyor. Kritik ve Hız
+  // ham stat olarak değil, savaşta karşılık geldikleri GERÇEK YÜZDE olarak
+  // gösteriliyor (ham "12 kritik" oyuncuya hiçbir şey ifade etmiyordu).
+  const _hp = S.currentPlayerData.maxHp ?? BASE_HP;
+  const _crit = `%${critChancePctFromStat(S.currentPlayerData.critStat)}`;
+  const _spd = `%${extraHitPctFromSpeed(S.currentPlayerData.speed)}`;
+  for (const [el, val] of [
+    [myHpEl, _hp], [myHpWarEl, _hp], [myHpEnvEl, _hp],
+    [myCritEl, _crit], [myCritWarEl, _crit], [myCritEnvEl, _crit],
+    [mySpdEl, _spd], [mySpdWarEl, _spd], [mySpdEnvEl, _spd],
+  ]) { if (el) el.textContent = val; }
   if (myGoldBoxEl) myGoldBoxEl.textContent = getGold(S.currentPlayerData);
   if (myGoldWarEl) myGoldWarEl.textContent = getGold(S.currentPlayerData);
   if (myGoldEnvEl) myGoldEnvEl.textContent = getGold(S.currentPlayerData);

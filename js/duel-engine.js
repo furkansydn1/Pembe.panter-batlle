@@ -51,6 +51,28 @@ export const DUEL_DMG_VARIANCE = 0.25;  // ±%25/vuruş: tur bazında heyecan; T
 // "kim saldırırsa kazanıyor" şikayetinin matematiksel kaynağı buydu.
 export const DUEL_ATTACKER_TIE_INITIATIVE = 0.6;
 
+// ============================================================
+// [FIX v7] ARAYÜZ İÇİN TEK KAYNAK YARDIMCILARI
+// ------------------------------------------------------------
+// Kritik ve Hız statlarının "yüzde" karşılığı ŞİMDİYE KADAR hiçbir yerde
+// gösterilmiyordu, bu yüzden oyuncu bu iki statın ne işe yaradığını
+// göremiyordu. Bu iki fonksiyon, düellonun KULLANDIĞI birebir aynı
+// formülü kullanır — arayüz artık gerçekten savaşta geçerli olan sayıyı
+// gösterir, ikinci bir (senkron kaçması muhtemel) formül yazılmaz.
+// ============================================================
+
+// critStat → gerçek kritik ŞANSI (%). Taban %5 dahil, %40 tavan.
+export function critChancePctFromStat(critStat) {
+  const chance = Math.min(DUEL_CRIT_CAP, DUEL_BASE_CRIT + Math.max(0, (Number(critStat) || 0) / DUEL_CRIT_PER_POINT));
+  return Math.round(chance * 100);
+}
+
+// speed → her turda ikinci vuruş yapma ŞANSI (%). %50 tavan.
+export function extraHitPctFromSpeed(speed) {
+  const spd = Math.max(0, Number(speed) || 0);
+  return Math.round(DUEL_SPEED_MAX_EXTRA * (spd / (spd + DUEL_SPEED_HALF)) * 100);
+}
+
 // Bir savaşçının ham verisinden düello statlarını çıkarır.
 // stat isimleri ana oyunla aynı: attack, defense, speed, critStat, maxHp.
 export function toDuelFighter(p, opts = {}) {

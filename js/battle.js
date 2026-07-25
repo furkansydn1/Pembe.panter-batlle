@@ -9,7 +9,7 @@ import { MAX_CONSECUTIVE_ATTACKS_ON_TARGET, TARGET_LOCK_COOLDOWN_ATTACKS, THRONE
 import { S } from "./state.js";
 import { playSound, tone } from "./ui-misc.js";
 import { BOUNTY_DOC_ID, META_COL } from "./wheel-bounty-oracle.js";
-import { simulateDuel, buildDuelCommentary, DUEL_MAX_TURNS } from "./duel-engine.js";
+import { simulateDuel, buildDuelCommentary, DUEL_MAX_TURNS, critChancePctFromStat, extraHitPctFromSpeed } from "./duel-engine.js";
 const DUEL_MAX_TURNS_LABEL = DUEL_MAX_TURNS;
 
 // ============================================================
@@ -183,6 +183,23 @@ export function canAttackNow() {
   return lastWindow !== getAttackWindowIndex();
 }
 
+// ============================================================
+// [FIX v7] TOPLAM GÜÇ — tek kaynak.
+// Bu formül griefing kontrolünde zaten kullanılıyordu ama runAttack'in
+// İÇİNE gömülüydü, dolayısıyla arayüz onu gösteremiyordu. Dışarı alındı:
+// artık saldırı listesinde rakibin ve senin toplam gücün yan yana görünüyor,
+// böylece "bu adam bana nasıl yeniyor" sorusu savaştan ÖNCE cevaplanıyor.
+// Ölçekler eşitlenir: can/10 (100 can ≈ 10 puan), kritik ve hız doğrudan.
+// ============================================================
+export function rawTotalPower(p) {
+  if (!p) return 0;
+  return (p.attack ?? BASE_ATTACK)
+       + (p.defense ?? BASE_DEFENSE)
+       + (p.maxHp ?? BASE_HP) / 10
+       + (p.critStat ?? 0)
+       + (p.speed ?? 0);
+}
+
 export function renderAttackTargets() {
   if (!S.currentPlayerData) return;
   const able = canAttackNow() && !S.attackInProgress;
@@ -219,7 +236,8 @@ export function renderAttackTargets() {
     return `
     <div class="attack-target-row ${isLocked ? "locked" : ""}">
       <div class="name">${throneBadge}${p.nick} ${badge}${bountyBadge}</div>
-      <div class="stats">⚔️${p.attack ?? BASE_ATTACK} 🛡️${p.defense ?? BASE_DEFENSE} · ${p.points ?? 0}⭐</div>
+      <div class="stats">⚔️${p.attack ?? BASE_ATTACK} 🛡️${p.defense ?? BASE_DEFENSE} ❤️${p.maxHp ?? BASE_HP} 🎯%${critChancePctFromStat(p.critStat)} ⚡%${extraHitPctFromSpeed(p.speed)} · ${p.points ?? 0}⭐</div>
+      <div class="stats" style="opacity:.75;">Toplam güç: <b>${Math.round(rawTotalPower(p))}</b> (seninki ${Math.round(rawTotalPower(S.currentPlayerData))})</div>
       <button data-id="${p.id}" ${canHitThis ? "" : "disabled"} style="${canHitThis ? "" : "opacity:.35;cursor:not-allowed;"}">${isLocked ? "Kilitli" : "Saldır"}</button>
     </div>`;
   }).join("");
@@ -689,14 +707,8 @@ export async function runAttack(defenderId) {
       // (saldırı, savunma, can, kritik, hız) — oyuncunun beklediği "total güç"
       // buydu. Her stat kabaca aynı ölçeğe getirilip toplanıyor: can/10 (100 can
       // ≈ 10 puan), kritik ve hız zaten küçük sayılar olduğu için doğrudan.
-      function totalPower(p) {
-        const atk = p.attack ?? BASE_ATTACK;
-        const def = p.defense ?? BASE_DEFENSE;
-        const hp = (p.maxHp ?? 100) / 10;      // 100 can ≈ 10 güç puanı
-        const crit = p.critStat ?? 0;           // kritik statı (0-50 civarı)
-        const spd = p.speed ?? 0;               // hız statı
-        return atk + def + hp + crit + spd;
-      }
+      // [FIX v7] Artık tek kaynak: rawTotalPower (yukarıda, arayüz de aynısını gösterir).
+      const totalPower = rawTotalPower;
       const attackerTotalPower = totalPower(attacker);
       const defenderTotalPower = totalPower(defender);
       const isPowerGriefing = attackerTotalPower >= defenderTotalPower * GRIEFING_POWER_RATIO;
