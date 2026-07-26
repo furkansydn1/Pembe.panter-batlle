@@ -94,6 +94,17 @@ export function extraHitPctFromSpeed(speed) {
   return Math.round(DUEL_SPEED_MAX_EXTRA * (spd / (spd + DUEL_SPEED_HALF)) * 100);
 }
 
+// [v14] İç can ölçeğini (500 tabanlı) oyunun kendi ölçeğine geri çevirir.
+// Oranı korur: iç canın %40'ı kalmışsa, gerçek canının da %40'ı kalır.
+function toDisplayHp(f) {
+  const pct = Math.max(0, f.hp) / f.maxHp;
+  return Math.max(0, Math.round(pct * f.displayMax));
+}
+// Bir hasar değerini oyun birimine çevirir (spiker "12 hasar" desin, "61" değil).
+function toDisplayDmg(f, dmg) {
+  return Math.max(1, Math.round(dmg * (f.displayMax / f.maxHp)));
+}
+
 // Bir savaşçının ham verisinden düello statlarını çıkarır.
 // stat isimleri ana oyunla aynı: attack, defense, speed, critStat, maxHp.
 export function toDuelFighter(p, opts = {}) {
@@ -104,13 +115,16 @@ export function toDuelFighter(p, opts = {}) {
   // sadece taban büyütülür. (172 → 500 + 72 = 572)
   const rawHp = Math.max(1, Math.round(Number(p.maxHp) || DUEL_HP_LEGACY_BASE));
   const hp = Math.max(1, DUEL_HP_BASE + (rawHp - DUEL_HP_LEGACY_BASE));
+  // [v14] displayMax = oyuncunun GERÇEK canı (profilde yazan). İç hesap 500
+  // ölçeğinde döner ama dışarı verilen her sayı bu orana geri çevrilir —
+  // savaş ekranı, can barı ve spiker hep oyunun kendi birimini gösterir.
   // kritik şansı: taban %5 + stat (critStat/100 — MAP ile aynı ölçek), %40 tavan
   const crit = Math.min(DUEL_CRIT_CAP, DUEL_BASE_CRIT + Math.max(0, (Number(p.critStat) || 0) / DUEL_CRIT_PER_POINT));
   // hızdan gelen ekstra-vuruş şansı (azalan getiri, tavan %50)
   const extraHitChance = DUEL_SPEED_MAX_EXTRA * (spd / (spd + DUEL_SPEED_HALF));
   return {
     name: p.nick || opts.name || "Savaşçı",
-    atk, def, spd, crit, extraHitChance,
+    atk, def, spd, crit, extraHitChance, displayMax: rawHp,
     maxHp: hp, hp,
   };
 }
@@ -153,10 +167,13 @@ export function simulateDuel(attackerRaw, defenderRaw, opts = {}) {
     let h = computeHitDamage(from, to, rng);
     const before1 = to.hp;
     to.hp = Math.max(0, to.hp - h.dmg);
+    // [v14] Dışarı verilen hasar ve can, oyunun kendi ölçeğinde.
     turns.push({
       turn: turnNo, actor: actorKey, target: toKey,
-      dmg: h.dmg, isCrit: h.isCrit, extra: false,
-      targetHpBefore: before1, targetHpAfter: to.hp, ko: to.hp <= 0,
+      dmg: toDisplayDmg(to, h.dmg), isCrit: h.isCrit, extra: false,
+      targetHpBefore: Math.round(before1 * to.displayMax / to.maxHp),
+      targetHpAfter: toDisplayHp(to), targetHpMax: to.displayMax,
+      ko: to.hp <= 0,
     });
     if (to.hp <= 0) { ko = actorKey; return; }
 
@@ -167,8 +184,10 @@ export function simulateDuel(attackerRaw, defenderRaw, opts = {}) {
       to.hp = Math.max(0, to.hp - h2.dmg);
       turns.push({
         turn: turnNo, actor: actorKey, target: toKey,
-        dmg: h2.dmg, isCrit: h2.isCrit, extra: true,
-        targetHpBefore: before2, targetHpAfter: to.hp, ko: to.hp <= 0,
+        dmg: toDisplayDmg(to, h2.dmg), isCrit: h2.isCrit, extra: true,
+        targetHpBefore: Math.round(before2 * to.displayMax / to.maxHp),
+        targetHpAfter: toDisplayHp(to), targetHpMax: to.displayMax,
+        ko: to.hp <= 0,
       });
       if (to.hp <= 0) { ko = actorKey; return; }
     }
@@ -215,8 +234,8 @@ export function simulateDuel(attackerRaw, defenderRaw, opts = {}) {
     return {
       winner, reason, turns,
       finalHp: {
-        attacker: Math.max(0, Math.round(A.hp)), attackerMax: A.maxHp,
-        defender: Math.max(0, Math.round(D.hp)), defenderMax: D.maxHp,
+        attacker: toDisplayHp(A), attackerMax: A.displayMax,
+        defender: toDisplayHp(D), defenderMax: D.displayMax,
       },
       fighters: { attacker: A, defender: D },
     };
