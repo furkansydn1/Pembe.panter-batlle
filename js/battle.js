@@ -219,20 +219,41 @@ const _winChanceCache = new Map();
 
 export function estimateWinChance(me, opp) {
   if (!me || !opp) return 50;
-  const sig = [me.attack, me.defense, me.maxHp, me.critStat, me.speed, "|",
-               opp.attack, opp.defense, opp.maxHp, opp.critStat, opp.speed].join(",");
+
+  // [v15] Tahmin artık GERÇEK savaşın kullandığı statlarla yapılıyor:
+  // buildSideStats "expected" modunda, ufak pasifleri / efsanevi çarpanları /
+  // şanslı zarı / Günün Olayı'nı beklenen değerleriyle uygular. Lanet de
+  // hesaba katılır (savunanın savunması düşer).
+  const myEvent = getTodaysEvent(me);
+  const oppEvent = getTodaysEvent(opp);
+  const mySide = buildSideStats(me, myEvent, null, "expected");
+  const oppSide = buildSideStats(opp, oppEvent, null, "expected");
+  if (opp.curseNextAttack && opp.curseNextAttack.active) {
+    oppSide.def *= (1 - opp.curseNextAttack.reduction);
+  }
+
+  const sig = [
+    Math.round(mySide.atk), Math.round(mySide.def), me.maxHp, me.critStat, me.speed, "|",
+    Math.round(oppSide.atk), Math.round(oppSide.def), opp.maxHp, opp.critStat, opp.speed,
+    "|", !!getEffect(me.equipment, "crit_instant_win"),
+  ].join(",");
   if (_winChanceCache.has(sig)) return _winChanceCache.get(sig);
 
-  const A = { nick: "", attack: me.attack ?? BASE_ATTACK, defense: me.defense ?? BASE_DEFENSE,
+  const A = { nick: "", attack: mySide.atk, defense: mySide.def,
               maxHp: me.maxHp ?? BASE_HP, critStat: me.critStat ?? 0, speed: me.speed ?? 0 };
-  const B = { nick: "", attack: opp.attack ?? BASE_ATTACK, defense: opp.defense ?? BASE_DEFENSE,
+  const B = { nick: "", attack: oppSide.atk, defense: oppSide.def,
               maxHp: opp.maxHp ?? BASE_HP, critStat: opp.critStat ?? 0, speed: opp.speed ?? 0 };
   let wins = 0;
   for (let i = 0; i < WIN_CHANCE_SAMPLES; i++) {
     if (simulateDuel(A, B).winner === "attacker") wins++;
   }
-  const pct = Math.round((wins / WIN_CHANCE_SAMPLES) * 100);
-  // Önbellek sonsuz büyümesin (10 oyunculuk bir oyunda zaten dolmaz, yine de emniyet).
+  let p = wins / WIN_CHANCE_SAMPLES;
+
+  // Anlık zafer eşyası: %10 ihtimalle statlara bakmadan kazandırır.
+  // Yani gerçek şans = %10 + kalan %90'ın içinde düellodan gelen şans.
+  if (getEffect(me.equipment, "crit_instant_win")) p = 0.10 + 0.90 * p;
+
+  const pct = Math.round(p * 100);
   if (_winChanceCache.size > 200) _winChanceCache.clear();
   _winChanceCache.set(sig, pct);
   return pct;
@@ -331,6 +352,80 @@ export function renderAttackTargets() {
 // Statlar belirleyici, zar sadece küçük bir sürpriz.
 // (Güç * 0.8) + (1-10 arası zar)  -- efsanevi pasifler bunun üstüne binebilir.
 // ============================================================
+// ============================================================
+// [v15] SAVAŞ STATLARININ TEK KAYNAĞI — buildSideStats
+// ------------------------------------------------------------
+// Bu fonksiyon eskiden runAttack'in İÇİNE gömülüydü (buildDuelSide). Sonuç:
+// saldırı ekranındaki "zafer şansı" tahmini oyuncunun HAM statlarıyla
+// hesaplanırken, gerçek savaş bambaşka — çok daha yüksek — statlarla
+// yapılıyordu. Aradaki farkı yaratan, tahmine hiç girmeyen şunlardı:
+//   • Keskin/Sağlam ufak pasifleri (% saldırı / % savunma)
+//   • Efsanevi çarpan eşyaları (×1.15, %50 ihtimalle tetiklenir)
+//   • Şanslı savunma zarı (savunmayı 2 kez atıp iyisini alır)
+//   • GÜNÜN OLAYI (herkesin saldırı/savunmasını o güne özel çarpar)
+//   • Lanet (savunanın savunmasını %20 düşürür)
+//   • Anlık zafer eşyası (%10 ihtimalle statlara BAKMADAN kazandırır)
+// "%80 ihtimalle yeneceğim adam beni yendi, %6'lık adamı ben yendim"
+// şikayetinin sebebi buydu: gösterilen yüzde, oynanan maçın yüzdesi değildi.
+//
+// Artık iki taraf da bu tek fonksiyondan geçiyor.
+//   mode "battle"   → gerçek savaş: efektler zar atılarak tetiklenir
+//   mode "expected" → tahmin: zar atılmaz, her efektin BEKLENEN değeri kullanılır
+//                     (örn. %50 ihtimalle ×1.15 → ortalama ×1.075)
+// Böylece tahmin ile savaş aynı dünyadan besleniyor.
+// ============================================================
+export function buildSideStats(p, ownEvent, sideLog, mode = "battle") {
+  const expected = mode === "expected";
+  const log = (m) => { if (!expected && sideLog) sideLog.push(m); };
+
+  // (|| hem undefined hem NaN'ı yakalar — "güç 0" bug'ının kalıcı fix'i)
+  let atk = (p.attack || BASE_ATTACK);
+  let def = (p.defense || BASE_DEFENSE);
+
+  // Ufak "Keskin/Sağlam" pasifleri: her zaman geçerli, şansa bağlı değil.
+  const mAtk = getMinorTraitBonusPct(p.equipment, "atk_boost");
+  if (mAtk > 0) atk *= (1 + mAtk / 100);
+  const mDef = getMinorTraitBonusPct(p.equipment, "def_boost");
+  if (mDef > 0) def *= (1 + mDef / 100);
+
+  // Efsanevi çarpan eşyaları (%50 ihtimalle ×1.15)
+  const atkMultItem = getEffect(p.equipment, "attack_multiplier");
+  if (atkMultItem) {
+    if (expected) atk *= 1 + 0.15 * (EFFECT_ACTIVATION_CHANCE.attack_multiplier ?? 1);
+    else if (effectActivates(atkMultItem.effect)) {
+      atk *= 1.15;
+      log(`${p.nick}'in ${atkMultItem.name} saldırısını güçlendirdi.`);
+    }
+  }
+  const defMultItem = getEffect(p.equipment, "defense_multiplier");
+  if (defMultItem) {
+    if (expected) def *= 1 + 0.15 * (EFFECT_ACTIVATION_CHANCE.defense_multiplier ?? 1);
+    else if (effectActivates(defMultItem.effect)) {
+      def *= 1.15;
+      log(`${p.nick}'in ${defMultItem.name} savunmasını güçlendirdi.`);
+    }
+  }
+
+  // Şanslı savunma zarı: savunmayı 2 kez yuvarlar, iyisini alır.
+  // İki düzgün zarın büyüğünün ortalaması = 1 + yayılım/3 (beklenen değer modunda bu kullanılır).
+  const luckyItem = getEffect(p.equipment, "lucky_defense_roll");
+  if (luckyItem) {
+    const spread = 0.15 * (ownEvent.varianceMult || 1);
+    if (expected) def *= 1 + (spread / 3) * (EFFECT_ACTIVATION_CHANCE.lucky_defense_roll ?? 1);
+    else if (effectActivates(luckyItem.effect)) {
+      const rollA = def * ((1 - spread) + Math.random() * (spread * 2));
+      const rollB = def * ((1 - spread) + Math.random() * (spread * 2));
+      def = Math.max(rollA, rollB);
+      log(`${p.nick}'in şanslı eşyası savunmasını 2 kez yuvarladı, iyisini seçti.`);
+    }
+  }
+
+  // Günün Olayı (kişisel): kendi çarpanları kendi statına.
+  atk *= (ownEvent.attackMult || 1);
+  def *= (ownEvent.defenseMult || 1);
+  return { atk, def };
+}
+
 export function getEffect(equipment, effectName) {
   for (const s of SLOTS) {
     const item = equipment?.[s.key];
@@ -860,45 +955,8 @@ export async function runAttack(defenderId) {
       // "Offrole" ağırlığı kaldırıldı çünkü sıralı düelloda her iki stat da
       // zaten gerçek rolünde kullanılıyor — ayrıca eklemek çifte sayımdı.
       // ============================================================
-      function buildDuelSide(p, ownEvent, sideLog) {
-        // (|| hem undefined hem NaN'ı yakalar — "güç 0" bug'ının kalıcı fix'i)
-        let atk = (p.attack || BASE_ATTACK);
-        let def = (p.defense || BASE_DEFENSE);
-        // Ufak "Keskin/Sağlam" pasifleri: kendi eşyasından, iki stata da
-        const mAtk = getMinorTraitBonusPct(p.equipment, "atk_boost");
-        if (mAtk > 0) atk *= (1 + mAtk / 100);
-        const mDef = getMinorTraitBonusPct(p.equipment, "def_boost");
-        if (mDef > 0) def *= (1 + mDef / 100);
-        // Efsanevi çarpan eşyaları: sahibinin KENDİ statına, rol fark etmeksizin
-        // (savaşta iki taraf da hem vuruyor hem savunuyor)
-        const atkMultItem = getEffect(p.equipment, "attack_multiplier");
-        if (atkMultItem && effectActivates(atkMultItem.effect)) {
-          atk *= 1.15;
-          sideLog.push(`${p.nick}'in ${atkMultItem.name} saldırısını güçlendirdi.`);
-        }
-        const defMultItem = getEffect(p.equipment, "defense_multiplier");
-        if (defMultItem && effectActivates(defMultItem.effect)) {
-          def *= 1.15;
-          sideLog.push(`${p.nick}'in ${defMultItem.name} savunmasını güçlendirdi.`);
-        }
-        // Şanslı savunma zarı: kendi savunmasını 2 kez yuvarlar, iyisini alır
-        const luckyItem = getEffect(p.equipment, "lucky_defense_roll");
-        if (luckyItem && effectActivates(luckyItem.effect)) {
-          const spread = 0.15 * (ownEvent.varianceMult || 1);
-          const rollA = def * ((1 - spread) + Math.random() * (spread * 2));
-          const rollB = def * ((1 - spread) + Math.random() * (spread * 2));
-          def = Math.max(rollA, rollB);
-          sideLog.push(`${p.nick}'in şanslı eşyası savunmasını 2 kez yuvarladı, iyisini seçti.`);
-        }
-        // Günün Olayı (kişisel): kendi attackMult'u kendi saldırısına,
-        // kendi defenseMult'u kendi savunmasına — iki tarafta da aynı kural.
-        atk *= (ownEvent.attackMult || 1);
-        def *= (ownEvent.defenseMult || 1);
-        return { atk, def };
-      }
-
-      const attackerSide = buildDuelSide(attacker, attackerEvent, legendaryLog);
-      const defenderSide = buildDuelSide(defender, defenderEvent, legendaryLog);
+      const attackerSide = buildSideStats(attacker, attackerEvent, legendaryLog);
+      const defenderSide = buildSideStats(defender, defenderEvent, legendaryLog);
 
       // Lanet: defender bir önceki saldırıdan lanetliyse savunması düşer
       // (tasarım gereği lanet "sıradaki SAVUNMA"ya işler, o yüzden defender'a özel)
